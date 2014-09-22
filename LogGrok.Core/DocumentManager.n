@@ -1,0 +1,109 @@
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+using Nemerle;
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
+
+using Microsoft.Practices.Prism.PubSubEvents;
+using Microsoft.Practices.Unity;
+namespace LogGrok.Core
+{
+    public class DocumentManager
+    {
+        public this(logProcessorFactories : IEnumerable[ILogProcessorFactory], container : IUnityContainer)
+        {
+            _logProcessorFactories = logProcessorFactories;
+            CurrentDocumentChanged += (_,_) => {};
+            Documents = ObservableCollection();
+            _container = container;
+            
+            CannotOpenFile += _ => {};
+        }
+
+        public LoadNew(fileName : string) : void
+        {
+            LoadNew(fileName, 0, -1)
+        }
+
+        public LoadNew(fileName : string, startOffset : long, endOffset : long) : void
+        {
+            def document = TryCreateDocument(fileName, startOffset, endOffset);
+            
+            match(document)
+            {
+                | Some(doc) => Documents.Add(doc); CurrentDocument = document;
+                | _         => CannotOpenFile(fileName);
+            }
+        }
+
+        public Documents : ObservableCollection[Document] { get; private set; }
+
+        public event CurrentDocumentChanged : EventHandler[DataEventArgs[option[Document]]];
+
+        public CurrentDocument : option[Document]
+        { 
+            get { _currentDocument }
+
+            set 
+            {
+                unless (Object.ReferenceEquals(_currentDocument.WithDefault(null), value.WithDefault(null)))
+                {
+                    _currentDocument = value;
+                    CurrentDocumentChanged(this, DataEventArgs(value));
+                }
+            }; 
+        }        
+
+        public Close(doc : Document) : void
+        {
+            when ( _currentDocument.Map(d => Object.ReferenceEquals(d ,doc)).WithDefault(false))
+                CurrentDocument = Documents.Find(d => !Object.ReferenceEquals(d ,doc));
+
+            _ = Documents.Remove(doc);
+            
+            _documentContextMapping[doc].Dispose();
+            _ = _documentContextMapping.Remove(doc);
+        }
+                
+        public event CannotOpenFile : Action[string];
+
+        public SupportedLogTypes : IEnumerable[string]
+        {
+            get { _logProcessorFactories.Select(_.LogType) }
+        }
+
+        private TryCreateDocument(fileName : string,  startOffset : long, endOffset : long) : option[Document]
+        {
+            def context = _container.CreateChildContainer();
+            
+            def optionalResult =
+                    _logProcessorFactories.Select(_.Create(fileName, () => LogFile.OpenRead(fileName), context, startOffset, endOffset))
+                        .FirstOrDefault(result => result.HasValue);
+                        
+            match(optionalResult)
+            {
+                | Some((processor, metaInformation)) =>
+                    {
+                        _ = context.RegisterInstance(metaInformation);
+                        _ = context.RegisterInstance(processor : ILogProcessor);
+                        _ = context.RegisterInstance(processor : IIndexedLineProvider);
+                        
+                        def document = context.Resolve() : Document;
+                        
+                        _documentContextMapping[document] = context;
+                        Some(document)
+                    }
+                | _  => context.Dispose(); None()
+            }
+        }
+
+        _container : IUnityContainer;
+        _logProcessorFactories : IEnumerable[ILogProcessorFactory];
+        mutable _currentDocument : option[Document] = None();
+        
+        _documentContextMapping : Dictionary.[Document, IUnityContainer] = Dictionary.[Document, IUnityContainer]();
+    }
+}

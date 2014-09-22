@@ -1,0 +1,82 @@
+using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Console;
+using System.Collections.Generic;
+using System.IO;
+using System.Runtime.CompilerServices;
+using System.Linq;
+using System.Text.Encoding;
+using System.Text.RegularExpressions;
+using System.Threading;
+
+using LogGrok.Core;
+
+namespace LogGrok.LogParserBase
+{
+    public module FileSearcher
+    {           
+        internal type GetOffsetsWithTextFunction = (void -> Stream) * string * SearchOptions * long -> (IEnumerable[LineLocation] -> IEnumerable[LineOrProgress]);
+        
+        public GetOffsetsWithUtf8Text(streamFactory : void -> Stream, pattern: string, options : SearchOptions, offset: long) : 
+            IEnumerable[LineLocation] -> IEnumerable[LineOrProgress]
+        {
+            lineLocations => GetMatches(buffer => UTF8.GetString(buffer, 0, buffer.Length), streamFactory, pattern, options, offset, lineLocations)
+        }
+        
+        public GetOffsetsWithUtf16Text(streamFactory : void -> Stream, pattern: string, options: SearchOptions, offset: long) : 
+            IEnumerable[LineLocation] -> IEnumerable[LineOrProgress]
+        {
+             lineLocations => GetMatches(buffer => Unicode.GetString(buffer, 0, buffer.Length), streamFactory, pattern, options, offset, lineLocations)
+        } 
+        
+        internal GetMatches(unicodeReader : array[byte] -> string, 
+                            streamFactory : void -> Stream, 
+                            pattern : string, 
+                            options : SearchOptions, 
+                            offset: long, 
+                            lineLocations : IEnumerable[LineLocation]) : IEnumerable[LineOrProgress]
+        {
+            def regexOptions = if (options %&& SearchOptions.CaseSensitive)
+                                   RegexOptions.Compiled
+                               else
+                                   RegexOptions.Compiled | RegexOptions.IgnoreCase;
+            def escapedPattern = if (options %&& SearchOptions.UseRegex)
+                                    pattern
+                                 else
+                                    Regex.Escape(pattern);
+            def regex = Regex(escapedPattern, regexOptions);
+            
+            using (stream = streamFactory())
+            {
+                _ = stream.Seek(offset, SeekOrigin.Begin);
+                def streamLength = stream.Length;
+                
+                foreach (lineLocation in lineLocations)
+                {   
+                    when (lineLocation.Index % 1000 == 0)
+                        yield LineOrProgress.Progress((lineLocation.Offset :> double) / streamLength * 100.0);
+                        
+                    when (regex.IsMatch(LoadLine(stream, lineLocation.Length, unicodeReader))) //don't use pipeline here!
+                        yield LineOrProgress.Line(lineLocation.Index)
+                }
+            
+                yield LineOrProgress.Progress(100.0)
+            }
+        }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private LoadLine(stream : Stream, lineLength : int, unicodeReader : array[byte] -> string) : string
+        {
+            def buffer = array(lineLength);
+            def bytesRead = stream.Read(buffer, 0, buffer.Length);
+                
+            assert(bytesRead == lineLength);
+            
+            unicodeReader(buffer)
+        }
+    }
+}

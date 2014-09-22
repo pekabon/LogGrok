@@ -1,0 +1,58 @@
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace LogGrok.Storage
+{
+    public class PagedStorage
+    {
+        public this(pageSize : int)
+        {
+            _pageSize = pageSize;
+            def tempFileName = Path.GetTempFileName();
+            _file = FileStream(tempFileName, 
+                                    FileMode.Create, 
+                                    FileAccess.ReadWrite, 
+                                    FileShare.Read,
+                                    bufferSize = 64*1024,
+                                    options = FileOptions.SequentialScan | FileOptions.DeleteOnClose);
+            File.SetAttributes(tempFileName, FileAttributes.Temporary);  
+        }
+        
+        public ReservePage() : int
+        {
+            Interlocked.Increment(ref _pageCount);
+        }
+        
+        public LoadPage(pageNumber : int) : array[byte]
+        {
+            lock(_file)
+            {
+                def bytes = array(_pageSize);
+                _file.Position = _pageSize * pageNumber;
+                _= _file.Read(bytes, 0, _pageSize);
+                bytes;
+            }
+        }
+        
+        public StorePage(pageNumber : int, bytes : array[byte]) : void
+        {
+            lock(_file)
+            {
+                _file.Position = _pageSize * pageNumber;
+                _file.Write(bytes, 0, _pageSize);
+            }
+        }
+        
+        private _pageSize : int;
+        mutable _pageCount : int = -1;
+        private _file : Stream;
+    }
+}

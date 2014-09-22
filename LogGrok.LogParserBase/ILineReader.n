@@ -1,0 +1,12 @@
+using System;
+using System.Collections.Generic;
+using LogGrok.Core;
+
+namespace LogGrok.LogParserBase
+{
+    public interface ILineReader : IEnumerable[Line], IDisposable
+    {
+        GetLastLine() : ILine;
+        ReadLineAt(beginOffset : long, endOffset : long) : ILine;
+    }
+}

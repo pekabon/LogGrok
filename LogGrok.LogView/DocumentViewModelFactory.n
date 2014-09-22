@@ -1,0 +1,27 @@
+﻿using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+using Microsoft.Practices.Unity;
+
+using LogGrok.Core;
+
+namespace LogGrok.LogView
+{
+    [Record]
+    internal class DocumentViewModelFactory : IDocumentViewModelFactory
+    {
+        public CreateViewModel() : object
+        {
+            _container.Resolve() : LogViewModel
+        }
+        
+        private _container : IUnityContainer;
+    }
+    
+}

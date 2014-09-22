@@ -1,0 +1,12 @@
+ using LogGrok.Infrastructure;
+
+ namespace LogGrok.IndexedFilter
+ {
+    public partial class ThreadFilterView
+    {
+        public this()
+        {
+            InitializeComponent();
+        }
+    }
+}

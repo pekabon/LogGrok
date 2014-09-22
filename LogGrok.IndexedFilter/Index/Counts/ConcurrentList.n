@@ -1,0 +1,155 @@
+using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+
+using LogGrok.Macros;
+
+namespace LogGrok.IndexedFilter.Index.Counts
+{
+    public class ConcurrentList[T] : IList[T], IDisposable
+    {
+        public Add(item : T) : void
+        {
+            writelock(_lock) _list.Add(item);
+        }
+
+        public Insert(index : int, item : T) : void 
+        {
+            writelock(_lock) _list.Insert(index, item);
+        }
+
+        public Remove(item : T) : bool 
+        {
+            writelock(_lock) _list.Remove(item);
+        }
+
+        public RemoveAt(index : int) : void 
+        {
+            writelock(_lock) _list.RemoveAt(index);
+        }
+
+        public IndexOf(item : T) : int 
+        {
+            readlock(_lock) _list.IndexOf(item);
+        }
+
+        public Clear() : void 
+        {
+            writelock(_lock) _list.Clear();
+        }
+
+        public Contains(item : T ) : bool 
+        {
+            readlock(_lock) _list.Contains(item);
+        }
+
+        public CopyTo(arr : array[T], arrayIndex : int) : void 
+        {
+            readlock(_lock) _list.CopyTo(arr, arrayIndex);
+        }
+
+        public GetEnumerablor() : IEnumerator[T]
+            implements IEnumerable[T].GetEnumerator
+        {
+            ConcurrentEnumerator.[T](_list, _lock);
+        }
+
+        public NonGenericGetEnumerator() : IEnumerator
+            implements IEnumerable.GetEnumerator
+        {
+            GetEnumerablor()
+        }
+
+        public Item[index : int] : T
+        {
+            get
+            {
+                readlock(_lock) _list[index];
+            }
+            set
+            {
+                writelock(_lock) _list[index] = value
+            }
+        }
+
+        public Count : int 
+        {
+            get
+            {
+                readlock(_lock)  _list.Count;
+            }
+        }
+
+        public IsReadOnly : bool 
+        {
+            get { false; }
+        }
+
+        protected override Finalize () : void
+        {
+            this.Dispose(false);
+        }
+
+        public Dispose() : void 
+        {
+            Dispose(true);
+        }
+
+        private Dispose(disposing : bool) : void 
+        {
+            when (disposing)
+                GC.SuppressFinalize(this);
+
+            _lock.Dispose();
+        }
+
+        private class ConcurrentEnumerator : IEnumerator[T], IEnumerator
+        {
+            public this(inner : IEnumerable[T], @lock : ReaderWriterLockSlim)
+            {
+                _lock = @lock;
+                _lock.EnterReadLock();
+                _inner = inner.GetEnumerator();
+            }
+
+            public MoveNext() : bool
+            {
+                _inner.MoveNext();
+            }
+
+            public Reset() : void
+            {
+                _inner.Reset();
+            }
+
+            public Dispose() : void
+            {
+                this._lock.ExitReadLock();
+            }
+
+            public Current : T
+            {
+                get { _inner.Current; }
+            }
+
+            NonGenericCurrent : object implements IEnumerator.Current
+            {
+                get { _inner.Current; }
+            }
+
+
+            private _inner : IEnumerator[T];
+            private _lock : ReaderWriterLockSlim;
+        }
+        
+        private _list : List.[T] = List.[T]();
+        private _lock = ReaderWriterLockSlim(LockRecursionPolicy.NoRecursion);
+    }
+}

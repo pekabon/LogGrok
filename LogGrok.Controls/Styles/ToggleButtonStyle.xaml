@@ -1,0 +1,49 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:controls="clr-namespace:LogGrok.Controls">
+    <SolidColorBrush x:Key="ToggleButtonGoldBorder" Color="#FFE5C365" />
+    <SolidColorBrush x:Key="ToggleButtonGoldBackground" Color="#FFFDF4BF" />
+    <SolidColorBrush x:Key="PressedButtonGoldBackground" Color="#FFE5C365" />
+
+    <Style x:Key="SearchOptionToggleButtonStyle" TargetType="{x:Type ToggleButton}">
+        <Setter Property="Control.IsTabStop" Value="True" />
+        <Setter Property="UIElement.Focusable" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type ToggleButton}">
+                    <Border Name="Border"
+                            Width="20"
+                            Height="20"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            SnapsToDevicePixels="True">
+                        <Border.Child>
+                            <ContentPresenter Name="Image"
+                                              Margin="0"
+                                              RecognizesAccessKey="True"
+                                              Visibility="Visible" />
+                        </Border.Child>
+                    </Border>
+                    <ControlTemplate.Triggers>
+
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Border" Property="BorderThickness" Value="1" />
+                            <Setter TargetName="Border" Property="BorderBrush" Value="{StaticResource ToggleButtonGoldBorder}" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Border" Property="BorderThickness" Value="1" />
+                            <Setter TargetName="Border" Property="BorderBrush" Value="{StaticResource ToggleButtonGoldBorder}" />
+                            <Setter TargetName="Border" Property="Background" Value="{StaticResource ToggleButtonGoldBackground}" />
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Border" Property="Background" Value="{StaticResource ToggleButtonGoldBackground}" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                            <Setter TargetName="Border" Property="Background" Value="{StaticResource ToggleButtonGoldBackground}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+</ResourceDictionary>

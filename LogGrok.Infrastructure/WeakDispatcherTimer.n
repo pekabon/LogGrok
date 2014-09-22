@@ -1,0 +1,42 @@
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+using Nemerle.Extensions;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+using System.Windows.Threading;
+using System.Threading;
+
+namespace LogGrok.Infrastructure
+{
+    public class WeakDispatcherTimer
+	{
+	    public this(original : EventHandler, interval : TimeSpan)
+	    {
+	        _original = original;
+	        _timer = DispatcherTimer() <- ( Interval = interval );
+	        _timer.Tick += ProcessTick(WeakReference(this), _, _);
+	        _timer.Start();
+	    }
+	    
+	    public Stop() : void 
+	    { 
+	        _timer.Stop(); 
+	    }
+	    
+	    private static ProcessTick(self : WeakReference, sender : object, args : EventArgs) : void
+	    {
+	        def selfHardreference = self.Target;
+	        if (selfHardreference != null)
+				(selfHardreference :> WeakDispatcherTimer)._original(sender, args);
+			else
+			    (sender :> DispatcherTimer).Stop();
+	    }
+	    
+	    private _timer : DispatcherTimer;
+	    private _original : EventHandler;
+	}
+}

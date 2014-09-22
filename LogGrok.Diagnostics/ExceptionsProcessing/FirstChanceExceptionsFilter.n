@@ -1,0 +1,55 @@
+﻿using Nemerle;
+using Nemerle.Assertions;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.IO;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace LogGrok.Diagnostics.ExceptionsProcessing
+{
+  public module FirstChanceExceptionsFilter
+  {
+      public IsKnown([NotNull] exception : Exception) : bool
+      {
+          match (exception)
+          {
+            | exception is ArgumentException => IsKnown(exception, KnownArgumentExceptionMethods)
+            | exception is InvalidOperationException => IsKnown(exception, KnownInvalidOperationExceptionMethods)
+            | exception is AccessViolationException => IsKnown(exception, KnownAccessViolationExceptionMethods)
+            | exception is DirectoryNotFoundException => IsKnown(exception, KnownDirectoryNotFoundExceptionMethods)
+            | _ => false
+          }
+      }
+      
+      private IsKnown(exception : Exception, knownMethods : IEnumerable.[string]) : bool
+      {
+          knownMethods.Any(method => exception.StackTrace.Contains(method));
+      }
+      
+      private KnownArgumentExceptionMethods : list[string] = [
+          "System.Drawing.Font.FromLogFont",          
+          "System.Windows.Automation.Provider.AutomationInteropProvider.HostProviderFromHandle",          
+          "System.Windows.Ink.StrokeCollection",
+          "System.Windows.Input.PenThreadWorker.WorkerOperationGetTabletInfo.OnDoWork",
+          "MS.Internal.TextFormatting.TextFormatterImp.FormatLine"
+      ];
+      
+      private KnownInvalidOperationExceptionMethods : list[string] = [      
+          "System.Windows.Input.StylusLogic",
+          "System.Windows.Window.DragMove",
+          "System.Windows.Threading.Dispatcher.WndProcHook",          
+      ];
+      
+      private KnownAccessViolationExceptionMethods : list[string] = [
+          "MS.Win32.Penimc.UnsafeNativeMethods.GetPenEventMultiple"
+      ];
+      
+      private KnownDirectoryNotFoundExceptionMethods : list[string] = [
+          "NLog.Internal.FileAppenders.BaseFileAppender.WindowsCreateFile"
+      ];
+  }
+}

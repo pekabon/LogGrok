@@ -1,0 +1,13 @@
+using System.Windows;
+using System.Windows.Input;
+
+using Nemerle.Extensions;
+
+namespace LogGrok.Infrastructure
+{
+ public module RoutedCommands
+    {
+        public GotoLineCommand : RoutedCommand = RoutedUICommand("Go to line...", "GotoLine", typeof(UIElement), 
+                InputGestureCollection() <- [ KeyGesture(Key.G, ModifierKeys.Control) ]);
+    }
+}

@@ -1,0 +1,10 @@
+﻿namespace LogGrok.LogParserBase
+{
+    [Record]
+    public class LineLocation
+    {
+        public Index : int;
+        public Length : int;
+        public Offset : long;
+    }
+}

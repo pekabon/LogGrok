@@ -1,0 +1,122 @@
+using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Windows.Interop;
+using System.Collections.Generic;
+using System.Linq;
+using System.Windows;
+using System.Windows.Input;
+
+namespace LogGrok.Infrastructure.Behaviors.DataObjects
+{   
+    public sealed class FileGroupDataObject
+    {
+        public this(dataObject : DataObject)
+        {
+            _dataObject = dataObject;
+        }
+        
+        public GetFilesPath() : IEnumerable.[string]
+        {
+            def fileGroupDescriptorStream = _dataObject.GetData("FileGroupDescriptorW") :> Stream;
+            def fileGroupDescriptorStreamReader = BinaryReader(fileGroupDescriptorStream);                        
+            def filesCount = fileGroupDescriptorStreamReader.ReadInt32();
+            def filesPath = List.[string]();
+            def fileDescriptorSize = Marshal.SizeOf(typeof(FileDescriptor));
+            def dataObject = _dataObject : ComTypes.IDataObject;
+            def tempDir = Path.Combine(Path.GetTempPath(), "LogGrok", Guid.NewGuid().ToString());
+            
+            _ = Directory.CreateDirectory(tempDir);
+                        
+            for (mutable i = 0; i < filesCount; i++)
+            {
+                def readBuffer = fileGroupDescriptorStreamReader.ReadBytes(fileDescriptorSize);
+                def handle = GCHandle.Alloc(readBuffer, GCHandleType.Pinned);
+                def fileDescriptor = Marshal.PtrToStructure(
+                    handle.AddrOfPinnedObject(), typeof(FileDescriptor)) :> FileDescriptor;       
+                def filePath = Path.Combine(tempDir, fileDescriptor.cFileName);
+                if (fileDescriptor.dwFileAttributes.HasFlag(FileAttributes.Directory))
+                {
+                    _ = Directory.CreateDirectory(filePath);
+                }
+                else
+                {
+                    mutable fileSize = fileDescriptor.nFileSizeHigh : long;
+                    fileSize = fileSize << 32;
+                    fileSize = fileSize | fileDescriptor.nFileSizeLow;
+                            
+                    mutable formatetc = ComTypes.FORMATETC();
+                    mutable stgmedium = ComTypes.STGMEDIUM();
+                    unchecked  { formatetc.cfFormat = RegisterClipboardFormat("FileContents") :> short; }
+                    formatetc.tymed = ComTypes.TYMED.TYMED_ISTREAM;
+                    formatetc.lindex = i;                            
+                    dataObject.GetData(ref formatetc, out stgmedium);
+                    def istream = Marshal.GetTypedObjectForIUnknown(
+                        stgmedium.unionmember, typeof(ComTypes.IStream)) :> ComTypes.IStream;
+                    def fileBuffer = array(8 * 1024 * 1024) : array.[1][byte];
+                    
+                    using (def file = FileStream(filePath, FileMode.Create, FileAccess.Write))
+                    {
+                        mutable currentPosition = 0;
+                        while (currentPosition < fileSize)
+                        {
+                            def readBytesCount = Math.Min(fileBuffer.Length, fileSize - currentPosition) :> int;
+                            istream.Read(fileBuffer, readBytesCount, IntPtr.Zero);
+                            file.Write(fileBuffer, 0, readBytesCount);
+                            currentPosition += fileBuffer.Length;
+                        }
+                    }
+                
+                    filesPath.Add(filePath);
+                    handle.Free();
+                }
+            }
+            
+            filesPath;
+        }
+        
+        private _dataObject : DataObject;      
+        
+        
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern RegisterClipboardFormat(lpszFormat : string) : uint;
+        
+        [StructLayout(LayoutKind.Sequential, CharSet=CharSet.Auto)]
+        [Record]
+        private struct FileDescriptor
+        {
+           public dwFlags : FileDescriptorFlags;
+           public clsid : Guid;
+           public sizel : System.Drawing.Size;
+           public pointl : System.Drawing.Point;
+           public dwFileAttributes : FileAttributes;
+           public ftCreationTime : ComTypes.FILETIME;
+           public ftLastAccessTime : ComTypes.FILETIME;
+           public ftLastWriteTime : ComTypes.FILETIME;
+           public nFileSizeHigh : UInt32;
+           public nFileSizeLow : UInt32;
+           [MarshalAs(UnmanagedType.ByValTStr, SizeConst=260)]
+           public cFileName : string;
+        }
+        
+        [Flags]
+        private enum FileDescriptorFlags : uint
+        {
+            | FD_CLSID = 0x00000001 
+            | FD_SIZEPOINT = 0x00000002 
+            | FD_ATTRIBUTES = 0x00000004 
+            | FD_CREATETIME = 0x00000008 
+            | FD_ACCESSTIME = 0x00000010
+            | FD_WRITESTIME = 0x00000020 
+            | FD_FILESIZE = 0x00000040 
+            | FD_PROGRESSUI = 0x00004000
+            | FD_LINKUI = 0x00008000 
+            | FD_UNICODE = 0x80000000
+        }
+    }
+}

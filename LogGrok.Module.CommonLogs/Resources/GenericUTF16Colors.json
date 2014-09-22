@@ -1,0 +1,32 @@
+[
+  {
+    "Name": "Error",
+    "Rule": {
+      "Pattern": "Exception|Error",
+      "Options": "IgnoreCase"
+    },
+    "TextColor": {
+      "Foreground": "#FFFF0000",
+      "Background": "#00FFFFFF"
+    },
+    "SearchAreas": [
+      "Message"
+    ],
+    "Usage": "ParsedAreas"
+  },
+  {
+    "Name": "Warning",
+    "Rule": {
+      "Pattern": "Warning",
+      "Options": "IgnoreCase"
+    },
+    "TextColor": {
+      "Foreground": "#FFD2691E",
+      "Background": "#00FFFFFF"
+    },
+    "SearchAreas": [
+      "Message"
+    ],
+    "Usage": "ParsedAreas"
+  }
+]

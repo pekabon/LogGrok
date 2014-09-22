@@ -1,0 +1,34 @@
+namespace LogGrok.Macros.LogParserGenerator
+{
+    variant Limit
+    {
+        | Count
+		{
+			Value : int;
+			public override ToString() : string { Print(Value.ToString()) }
+		}
+        | MinMax
+		{
+			Min : int;
+			Max : int;
+			public override ToString() : string { Print($"$Min, $Max") }
+		}
+		| UserFunction
+		{
+		    Name: string;
+			public override ToString() : string { Print(Name) }
+		}
+		| None 
+		{
+		    public override ToString() : string { Print("-") }
+		}
+		| Last
+		{
+		    public override ToString() : string { Print("Last") }
+		}
+         
+		public mutable Terminal : option[char] = option.None();
+		
+		private Print(v : string) : string { $"($v,$(Terminal.WithDefault('-')))" }
+    }
+}

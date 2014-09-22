@@ -1,0 +1,163 @@
+<controls:MetroWindow x:Class="LogGrok.Settings.ColorSettingsDialog"
+                      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                      xmlns:avalon="clr-namespace:Xceed.Wpf.Toolkit;assembly=Xceed.Wpf.Toolkit"
+                      xmlns:behaviors="clr-namespace:LogGrok.Infrastructure.Behaviors;assembly=LogGrok.Infrastructure"
+                      xmlns:controls="clr-namespace:MahApps.Metro.Controls;assembly=MahApps.Metro"
+                      xmlns:toolkit="http://schemas.xceed.com/wpf/xaml/toolkit"
+                      xmlns:xcad="http://schemas.xceed.com/wpf/xaml/avalondock"
+                      Title="Color Settings"
+                      GlowBrush="{DynamicResource AccentColorBrush}"
+                      ResizeMode="NoResize"
+                      SaveWindowPosition="True"
+                      SizeToContent="WidthAndHeight"
+                      WindowStartupLocation="CenterOwner"
+                      WindowStyle="ToolWindow">
+    <controls:MetroWindow.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Controls.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Fonts.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Colors.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Accents/Blue.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Accents/BaseLight.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <xcad:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+
+            <DataTemplate x:Key="ColorViewTemplate">
+                <StackPanel Orientation="Horizontal">
+                    <Frame Width="16"
+                           Height="16"
+                           Margin="5,0,0,0"
+                           BorderBrush="DarkGray"
+                           BorderThickness="1">
+                        <Frame.Background>
+                            <SolidColorBrush Color="{Binding Color}" />
+                        </Frame.Background>
+                    </Frame>
+                    <TextBlock Margin="5,0,0,0" Text="{Binding Name}" />
+                </StackPanel>
+            </DataTemplate>
+
+            <DataTemplate x:Key="ColorRuleViewTemplate">
+                <StackPanel>
+                    <TextBlock Text="{Binding Name}" />
+                </StackPanel>
+            </DataTemplate>
+
+            <DataTemplate x:Key="LogRuleViewTemplate">
+                <StackPanel>
+                    <TextBlock Text="{Binding Name}" />
+                </StackPanel>
+            </DataTemplate>
+
+            <DataTemplate x:Key="SearchAreaTemplate">
+                <CheckBox Margin="5,0,0,0"
+                          Content="{Binding Name}"
+                          IsChecked="{Binding IsSet}" />
+            </DataTemplate>
+
+
+        </ResourceDictionary>
+    </controls:MetroWindow.Resources>
+
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition />
+        </Grid.RowDefinitions>
+
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition />
+            <ColumnDefinition />
+            <ColumnDefinition />
+        </Grid.ColumnDefinitions>
+
+        <Grid Grid.Column="1"
+              MaxHeight="{Binding Parent.ActualHeight,
+                                  Mode=OneWay,
+                                  RelativeSource={RelativeSource Self}}"
+              Margin="10,0,0,0">
+
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <ComboBox ItemTemplate="{DynamicResource LogRuleViewTemplate}"
+                      ItemsSource="{Binding LogRules}"
+                      SelectedItem="{Binding SelectedLog}" />
+
+            <ListBox Grid.Row="1"
+                     MinWidth="200"
+                     Margin="0,5,0,0"
+                     ItemTemplate="{DynamicResource ColorRuleViewTemplate}"
+                     ItemsSource="{Binding SelectedLog.Rules}"
+                     SelectedItem="{Binding SelectedLog.SelectedRule}" />
+
+            <StackPanel Grid.Row="2" Orientation="Horizontal">
+                <Button MinWidth="100"
+                        Margin="2"
+                        Command="{Binding SelectedLog.MoveUpCommand}"
+                        Content="Up" />
+                <Button MinWidth="100"
+                        Margin="2"
+                        Command="{Binding SelectedLog.MoveDownCommand}"
+                        Content="Down" />
+            </StackPanel>
+        </Grid>
+
+        <StackPanel Grid.Column="2"
+                    Height="Auto"
+                    Margin="10,0,0,0">
+
+            <StackPanel IsEnabled="{Binding SelectedLog.CanEditRule}">
+
+                <TextBox MinWidth="200"
+                         Text="{Binding SelectedLog.SelectedRule.Name,
+                                        UpdateSourceTrigger=PropertyChanged}"
+                         controls:TextboxHelper.Watermark="Rule name..." />
+
+                <TextBox MinWidth="200"
+                         Margin="0,5,0,0"
+                         Text="{Binding SelectedLog.SelectedRule.Rule,
+                                        UpdateSourceTrigger=PropertyChanged,
+                                        ValidatesOnExceptions=True}"
+                         controls:TextboxHelper.Watermark="Regular expression..." />
+
+                <CheckBox Margin="10,5,0,0"
+                          Content="Match case"
+                          IsChecked="{Binding SelectedLog.SelectedRule.RuleIsCaseSensitive}" />
+
+                <Label Margin="0,5,0,0" Content="Apply To:" />
+                <ComboBox ItemsSource="{Binding SelectedLog.SelectedRule.Usages}" SelectedItem="{Binding SelectedLog.SelectedRule.Usage}" />
+                <ListBox Margin="0,5,0,0"
+                         ItemTemplate="{DynamicResource SearchAreaTemplate}"
+                         ItemsSource="{Binding SelectedLog.SelectedRule.SearchAreas}" />
+
+                <Label Content="Foreground:" />
+                <ComboBox ItemTemplate="{DynamicResource ColorViewTemplate}"
+                          ItemsSource="{Binding SelectedLog.SelectedRule.ForegroundColors}"
+                          SelectedItem="{Binding SelectedLog.SelectedRule.Foreground}" />
+
+                <Label Content="Background:" />
+                <ComboBox ItemTemplate="{DynamicResource ColorViewTemplate}"
+                          ItemsSource="{Binding SelectedLog.SelectedRule.BackgroundColors}"
+                          SelectedItem="{Binding SelectedLog.SelectedRule.Background}" />
+
+            </StackPanel>
+
+            <StackPanel Margin="0,10,0,0" Orientation="Horizontal">
+                <Button MinWidth="100"
+                        Margin="2"
+                        Command="{Binding SelectedLog.AddNewRuleCommand}"
+                        Content="Add" />
+                <Button MinWidth="100"
+                        Margin="2"
+                        Command="{Binding SelectedLog.DeleteRuleCommand}"
+                        Content="Remove" />
+            </StackPanel>
+        </StackPanel>
+    </Grid>
+</controls:MetroWindow>

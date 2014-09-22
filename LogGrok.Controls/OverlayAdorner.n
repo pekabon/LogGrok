@@ -1,0 +1,81 @@
+using Nemerle;
+using Nemerle.Assertions;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Documents;
+using System.Windows.Media;
+using System.Windows.Input;
+using System.Windows.Threading;
+
+namespace LogGrok.Controls
+{
+    public class OverlayAdorner[TOverlay] : Adorner, IDisposable where TOverlay : FrameworkElement, new()
+    {
+        public static Create(elementToAdorn : FrameworkElement, adorningElement : TOverlay ) : IDisposable
+        {
+            OverlayAdorner.[TOverlay](elementToAdorn, adorningElement);
+        }
+
+        private this([NotNull] elementToAdorn : FrameworkElement, [NotNull] adorningElement : FrameworkElement )
+        {
+            base(elementToAdorn);
+
+            _focusedElement = Keyboard.FocusedElement;
+            _adorningElement = adorningElement;
+            _adorningElement .Focusable = true;
+            AddVisualChild(adorningElement);
+
+            Focusable = true;
+            IsHitTestVisible = true;
+            
+            elementToAdorn.IsEnabled = false;
+            
+            _elementToAdorn = elementToAdorn;
+            _layer = AdornerLayer.GetAdornerLayer(elementToAdorn);
+            _layer.IsHitTestVisible = true;
+            _layer.Add(this);
+        }
+
+        protected override VisualChildrenCount : int
+        {
+            get { 1 }
+        }
+
+        protected override ArrangeOverride(finalSize : Size) : Size 
+        {
+            def adorningPoint = Point(0, 0);
+            _adorningElement.Arrange(Rect(adorningPoint, AdornedElement.RenderSize));
+
+            finalSize;
+        }
+
+        protected override GetVisualChild(index : int) : Visual 
+        {
+            if (index == 0)
+                _adorningElement
+            else 
+                base.GetVisualChild(index)
+        }
+        public Dispose() : void 
+        {
+           
+            RemoveVisualChild(_adorningElement);
+            _layer.Remove(this);
+            _elementToAdorn.IsEnabled = true;
+            _ = _focusedElement.Focus()
+        }
+
+        private _adorningElement : UIElement;
+        private _elementToAdorn : FrameworkElement;
+        private _layer : AdornerLayer;
+        
+        private _focusedElement : IInputElement;
+    }
+}

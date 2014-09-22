@@ -1,0 +1,71 @@
+using Nemerle;
+using Nemerle.Assertions;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Microsoft.Practices.Prism;
+using Microsoft.Practices.Prism.Regions;
+using Microsoft.Practices.Unity;
+
+namespace LogGrok.Infrastructure
+{
+    public class HierarchicalRegionViewRegistry : IRegionViewRegistry
+    {
+        public this([NotNull] container : IUnityContainer)
+        {
+            _container = container;
+            _parent = if (container.Parent != null && container.Parent.IsRegistered.[HierarchicalRegionViewRegistry]())
+                        Some(container.Parent.Resolve() : HierarchicalRegionViewRegistry)
+                      else None();
+            ContentRegistered += (_,_) => {} 
+        }
+
+        public event ContentRegistered : EventHandler[ViewRegisteredEventArgs];
+
+        public GetContents(regionName : string) : IEnumerable[object]
+        {
+            def result = 
+                if (_contents.ContainsKey(regionName))
+                {
+                    Some(GetContentsCore(regionName, _container))
+                }
+                else 
+                {
+                    _parent.Map(p => p.GetContentsCore(regionName, _container))
+                }
+            
+            result.Value
+        }
+        
+        private GetContentsCore(regionName : string, container : IUnityContainer) : IEnumerable[object]
+        {
+            _contents[regionName].Select(c : Func[_, _] => c(container))
+        }
+
+        public RegisterViewWithRegion(regionName : string, getContentDelegate : System.Func[object]) : void
+        {
+            def del = c : IUnityContainer => getContentDelegate();
+            RegisterViewWithRegion(regionName, del);
+        }
+
+        public RegisterViewWithRegion(regionName : string, viewType : System.Type) : void
+        {
+            def del = c : IUnityContainer => c.Resolve(viewType, viewType.FullName);
+            RegisterViewWithRegion(regionName, del);
+        }
+        
+        private RegisterViewWithRegion(regionName : string, getContentDelegate : Func[IUnityContainer, object]) : void
+        {
+            _contents.Add(regionName, getContentDelegate);
+            ContentRegistered(this, ViewRegisteredEventArgs(regionName, null));
+        }
+        
+        private _container : IUnityContainer;
+        private _parent : option[HierarchicalRegionViewRegistry];
+        private _contents = ListDictionary.[string, Func[IUnityContainer, object]]();
+    }
+}

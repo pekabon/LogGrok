@@ -1,0 +1,33 @@
+using Nemerle.Assertions;
+using Nemerle.Collections;
+using Nemerle.Extensions;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Windows;
+
+using Microsoft.Practices.Prism.Modularity;
+using Microsoft.Practices.Unity;
+using Microsoft.Practices.Prism.Regions;
+
+using LogGrok.Infrastructure;
+
+namespace LogGrok.Module.FileInfo
+{
+  [Record]
+  [Module(ModuleName = "FileInfoModule")]
+  public class Module : IModule
+  {
+    public Initialize() : void 
+    {
+        _container.RegisterType.[FileInfoViewModel](HierarchicalLifetimeManager());
+        _container.RegisterView.[FileInfoView, FileInfoViewModel]();
+        
+
+    }
+    _container : IUnityContainer;
+  }
+}

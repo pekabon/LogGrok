@@ -1,0 +1,110 @@
+using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Compiler;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace LogGrok.Macros
+{
+    macro @readlock(lockOnExpr, body)
+    syntax ("readlock", "(", lockOnExpr, ")", body)
+    {
+        def typer = Macros.ImplicitCTX();
+        def lockOnTExpr = typer.TypeExpr(lockOnExpr);
+
+        typer.DelayMacro(lastTry =>
+                         match (lockOnTExpr.Type.Hint)
+                         {
+                             | Some(Class(typeInfo, _)) when typeInfo.IsValueType =>
+                                when (lastTry)
+                                    Message.Error (lockOnExpr.Location,
+                                    $"`$typeInfo' is not a reference type as required by the lock expression");
+                                None()
+
+                             | None =>
+                                when (lastTry)
+                                    Message.Error (lockOnExpr.Location,
+                                    "compiler was unable to analyze type of locked object, but it "
+                                    "must verify that it is reference type");
+                                None()
+
+                             | _ =>
+
+                                    Some(<[
+                                        def toLock = $(lockOnTExpr : typed);
+                                        toLock.EnterReadLock();
+                                        try { $body }
+                                        finally { toLock.ExitReadLock(); }
+                                        ]>)
+                         });
+    }
+    
+    macro @upgradablereadlock(lockOnExpr, body)
+    syntax ("upgradablereadlock", "(", lockOnExpr, ")", body)
+    {
+        def typer = Macros.ImplicitCTX();
+        def lockOnTExpr = typer.TypeExpr(lockOnExpr);
+
+        typer.DelayMacro(lastTry =>
+                         match (lockOnTExpr.Type.Hint)
+                         {
+                             | Some(Class(typeInfo, _)) when typeInfo.IsValueType =>
+                                when (lastTry)
+                                    Message.Error (lockOnExpr.Location,
+                                    $"`$typeInfo' is not a reference type as required by the lock expression");
+                                None()
+
+                             | None =>
+                                when (lastTry)
+                                    Message.Error (lockOnExpr.Location,
+                                    "compiler was unable to analyze type of locked object, but it "
+                                    "must verify that it is reference type");
+                                None()
+
+                             | _ =>
+
+                                    Some(<[
+                                        def toLock = $(lockOnTExpr : typed);
+                                        toLock.EnterUpgradeableReadLock();
+                                        try { $body }
+                                        finally { toLock.ExitUpgradeableReadLock(); }
+                                        ]>)
+                         });
+    }
+
+    macro @writelock(lockOnExpr, body)
+    syntax ("writelock", "(", lockOnExpr, ")", body)
+    {
+        def typer = Macros.ImplicitCTX();
+        def lockOnTExpr = typer.TypeExpr(lockOnExpr);
+
+        typer.DelayMacro(lastTry =>
+                         match (lockOnTExpr.Type.Hint)
+                         {
+                             | Some(Class(typeInfo, _)) when typeInfo.IsValueType =>
+                                when (lastTry)
+                                    Message.Error (lockOnExpr.Location,
+                                    $"`$typeInfo' is not a reference type as required by the lock expression");
+                                None()
+
+                             | None =>
+                                when (lastTry)
+                                    Message.Error (lockOnExpr.Location,
+                                    "compiler was unable to analyze type of locked object, but it "
+                                    "must verify that it is reference type");
+                                None()
+
+                             | _ =>
+                                Some(<[
+                                    def toLock = $(lockOnTExpr : typed);
+                                    toLock.EnterWriteLock();
+                                    try { $body }
+                                    finally { toLock.ExitWriteLock(); }
+                                    ]>)
+                         });
+    }
+}

@@ -1,0 +1,307 @@
+using System;
+using System.Threading;
+using System.Collections.Generic;
+using System.Linq;
+using System.IO;
+using System.Runtime.CompilerServices;
+
+using Nemerle.Extensions;
+using Nemerle.Collections;
+
+namespace LogGrok.LogParserBase
+{
+    class LineIndex : IDisposable
+    {
+        [Record]
+        class LineEnumerable : IEnumerable[LineLocation]
+        {
+		    public GetEnumerator() : IEnumerator[LineLocation] { LineEnumerator(_startIndex, _lineIndex); }
+            _startIndex : int;
+		    _lineIndex : LineIndex;
+        }
+        
+        class LineEnumerator : IEnumerator[LineLocation]
+        { 
+        
+            public this(index : int, lineIndex : LineIndex)
+            {
+                _startIndex = index;
+                Reset();
+                _lineIndex = lineIndex;
+            }
+            public Current : object { get { CurrentGeneric } }
+
+            public MoveNext() : bool 
+            { 
+                ++_index;
+                while (_index >= _lineIndex._lastLineIndex && !_lineIndex._loaded)
+                {
+                    _ = _lineIndex._stateChangedEvent.Reset();
+                    _ = _lineIndex._stateChangedEvent.Wait(10); 
+                }
+
+                if (!_lineIndex._loaded)
+                    true
+                else
+                {
+                    if(_index <= _lineIndex._lastLineIndex)
+                        true
+                    else
+                    {
+                        _index = _lineIndex._lastLineIndex;
+                        false
+                    }
+
+                }
+            }
+
+            public Reset() : void {_index = _startIndex - 1 }
+
+            public CurrentGeneric : LineLocation
+                implements IEnumerator[LineLocation].Current
+            {
+                get 
+                { 
+                    def offset = _lineIndex.GetLineOffset(_index);
+                    if (_index < _lineIndex._lastLineIndex)
+                        LineLocation(_index, (_lineIndex.GetLineOffset(_index + 1) - offset) :> int, offset) 
+                    else
+                    {
+                        assert(_lineIndex._loaded);
+                        LineLocation(_index, (_lineIndex._lineEndOffset - offset) :> int, offset)
+                    }
+                }
+            }
+
+            public Dispose() : void { Reset() }
+
+            _startIndex : int;
+            mutable _index : int = -1;
+            _lineIndex : LineIndex;
+        }
+
+        class ChunkCollection : IDisposable
+        {
+            public this()
+            {
+                def tempFileName = Path.GetTempFileName();
+                _stream = FileStream(tempFileName, 
+                                     FileMode.Create, 
+                                     FileAccess.ReadWrite, 
+                                     FileShare.None,
+                                     bufferSize = 64*1024,
+                                     options = FileOptions.SequentialScan | FileOptions.DeleteOnClose);
+                File.SetAttributes(tempFileName, FileAttributes.Temporary);                                      
+            }
+
+            public Add(item : LineIndexChunk) : void
+            {
+                def SaveLastChunk()
+                {
+                    lock(_stream)
+                    {
+                        _ = _stream.Seek((Count-1)*(LineIndexChunk.Size : long), SeekOrigin.Begin);
+                        LastChunk.Save(_stream);
+                    }
+                }
+
+                when (Count > 0)
+                    SaveLastChunk();
+
+                Count++;
+                LastChunk = item;
+            }
+
+            public Dispose() : void { _stream.Dispose() }
+
+            public GetChunkByIndex(index : int) : LineIndexChunk
+            {
+                def result = LastChunk;
+                if (index == Count - 1)
+                    result
+                else
+                    GetChunkByIndexFromDisk(index);
+            }
+
+            private GetChunkByIndexFromDisk(index : int) : LineIndexChunk
+            {
+                lock(_stream)
+                {
+                    mutable chunkWeakRef;
+                    _ = _chunkCache.TryGetValue(index, out chunkWeakRef);
+
+                    def lineIndexChunk = chunkWeakRef?.Target :> LineIndexChunk;
+                    if(lineIndexChunk != null)
+                    {
+                        lineIndexChunk
+                    }
+                    else
+                    {
+                        _ = _stream.Seek(index * (LineIndexChunk.Size : long), SeekOrigin.Begin);
+                        def lineIndexChunk = LineIndexChunk.Load(_stream);
+                        _chunkCache[index] = WeakReference(lineIndexChunk);
+                        lineIndexChunk
+                    }
+                }
+            }
+
+            internal mutable Count : int;
+            internal volatile mutable LastChunk : LineIndexChunk;
+            _stream            : FileStream;
+            _chunkCache        : Dictionary[int, WeakReference] = Dictionary();
+        }
+
+        class LineIndexChunk
+        {
+            public this(firstLine : int, firstLineOffset : long)
+            {
+                FirstLine = firstLine;
+                FirstLineOffset = firstLineOffset;
+                Lines[0] = 0;
+                LineCount++;
+            }
+
+            public static Size : int { get { sizeof(int) +  sizeof(long) + LinesInChunk*sizeof(int) } }
+            public FirstLine : int { get; private set; }
+            public LastLine : int { get { FirstLine + LineCount - 1 } }
+            public FirstLineOffset : long;
+
+            public static Load(stream : Stream) : LineIndexChunk
+            {
+                def buffer = array(Size);
+                _ = stream.Read(buffer, 0, Size);
+
+                def lineIndexChunk = LineIndexChunk(BitConverter.ToInt32(buffer, 0), BitConverter.ToInt64(buffer, sizeof(int)));
+                Buffer.BlockCopy(buffer, sizeof(int) + sizeof(long), lineIndexChunk.Lines, 0, LinesInChunk * sizeof(int));
+                lineIndexChunk.LineCount = LinesInChunk;
+
+                lineIndexChunk
+            }
+
+            public Save(stream : Stream) : void
+            {
+                stream.Write(BitConverter.GetBytes(FirstLine), 0, sizeof(int));
+                stream.Write(BitConverter.GetBytes(FirstLineOffset), 0, sizeof(long));
+
+                def byteArray = array(LinesInChunk * sizeof(int));
+                Buffer.BlockCopy(Lines, 0, byteArray, 0, byteArray.Length);
+                stream.Write(byteArray, 0, byteArray.Length);
+            }
+
+            public GetIndex(Offset : long) : int
+            {
+                def searchResult = Array.BinarySearch(Lines, 0, LineCount, (Offset - FirstLineOffset) :> int);
+                if (searchResult >= 0)
+                    searchResult + FirstLine
+                else
+					~searchResult - 1 + FirstLine
+            }
+
+            public GetLineOffset(index : int) : long { Lines[index - FirstLine] +  FirstLineOffset }
+
+            internal Lines : array[int] = array(LinesInChunk);
+            internal mutable LineCount : int;
+        }
+
+        public Dispose() : void { _chunks.Dispose() }
+
+        public GetLineOffset(index : int) : long
+        {
+            assert(index <= _lastLineIndex);
+            def chunkIndex = index / LinesInChunk;
+            _chunks.GetChunkByIndex(chunkIndex).GetLineOffset(index)
+        }
+
+        public GetLineLocations(startIndex : int) : IEnumerable[LineLocation] { LineEnumerable(startIndex, this); }
+
+        public GetLineIndex(offset : long) : option[int]
+        {
+            def searchResult = BinarySearch(0, _chunks.Count, offset);
+            if (searchResult >= 0)
+                Some(_chunks.GetChunkByIndex(searchResult).GetIndex(offset))
+            else
+			{   
+				if (offset < _lineEndOffset)
+					Some(_chunks.GetChunkByIndex(~searchResult - 1).GetIndex(offset))
+				else if (_loaded)
+					None();
+				else
+				{
+				    _expectedOffset = offset;
+					_ = _expectedOffsetFoundEvent.WaitOne();
+					GetLineIndex(offset);
+				}
+            }
+        }
+
+        public AddNextLine(lineOffset : long, lineEndOffset : long) : int
+        {
+            _lineEndOffset = lineEndOffset;
+
+            when (_expectedOffset != 0 && lineEndOffset > _expectedOffset)
+            {
+                _expectedOffset = 0;
+				assert(_expectedOffsetFoundEvent.Set());
+			}
+
+            def newIndex = if (_chunks.Count == 0)
+            {
+                def firstIndex = 0;
+                _chunks.Add(LineIndexChunk(firstIndex, lineOffset));
+                firstIndex
+            }
+            else
+            {
+                def lastChunk = _chunks.LastChunk;
+                if (lastChunk.LineCount < LinesInChunk)
+                {
+                    lastChunk.Lines[lastChunk.LineCount]=((lineOffset - lastChunk.FirstLineOffset) :> int);
+                    lastChunk.LineCount++;
+                    lastChunk.FirstLine + lastChunk.LineCount - 1
+                }
+                else
+                {
+                    def index = lastChunk.LastLine + 1;
+                    _chunks.Add(LineIndexChunk(index, lineOffset));
+                    _stateChangedEvent.Set();
+                    index
+                }
+            };
+
+            _ = Interlocked.Exchange(ref _lastLineIndex, newIndex);
+
+            newIndex
+        }
+
+        public OnLoaded() : void { _loaded = true; }
+
+        public LastLineOffset : long { get  { _lineEndOffset } }
+
+        private BinarySearch(lo : int, hi : int, value : long) : int
+        {
+          if (lo <= hi)
+          {
+            def i = (lo + hi) >> 1;
+            def cmpResult = _chunks.GetChunkByIndex(i).FirstLineOffset.CompareTo(value);
+
+            if (cmpResult == 0)
+              i
+            else if (cmpResult < 0)
+              BinarySearch (i + 1, hi, value)
+            else
+              BinarySearch (lo, i - 1, value)
+          }
+          else
+            ~lo
+        }
+
+        static LinesInChunk  = 100000;
+        _chunks : ChunkCollection = ChunkCollection();
+        private volatile mutable _loaded = false;
+        private mutable _lineEndOffset = 0l;
+        private _expectedOffsetFoundEvent = AutoResetEvent(false);
+        private mutable _expectedOffset = 0l;
+        private mutable _lastLineIndex = -1;
+        private _stateChangedEvent = ManualResetEventSlim();
+    }
+}

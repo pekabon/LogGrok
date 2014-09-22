@@ -1,0 +1,20 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Text;
+using System.Linq;
+
+namespace LogGrok.Core
+{
+    public interface ILine
+    {
+        Item[s : string] : object
+        {
+            get;
+        }
+        
+        Time : TimeSpan { get;}
+        
+        RawLine : string { get; }
+    }
+}

@@ -1,0 +1,281 @@
+using Nemerle;
+using Nemerle.Assertions;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using LogGrok.Storage;
+
+namespace LogGrok.IndexedFilter.Index
+{
+    internal variant TreeNode
+    {
+        | Node 
+            { 
+                public Keys : array [int]; 
+                public Nodes : array [TreeNode]; 
+            }
+        | Leaf 
+            { 
+                public Payload : LeafPayload[int, int, byte] 
+                {
+                    get 
+                    { 
+                        page.Payload 
+                    }
+                }
+                
+                private mutable page : Page[LeafPayload[int, int, byte]];
+                
+                [RecordIgnore]
+                public mutable firstElementCache : option[int * int * byte];
+                
+                public NextLeaf : option[Leaf] { get; set; }
+                
+                public Store() : void 
+                {
+                    match (page)
+                    {
+                        | Memory as memoryPage => 
+                        {
+                            firstElementCache = Some((Payload.Keys[0], Payload.Values[0], Payload.RangeLength[0]));
+                            page = memoryPage.Store();
+                        }
+                        | Storage => throw InvalidOperationException("Page already stored");
+                    }
+                }
+            }
+
+        public mutable Occupancy : int; 
+        
+        public static Empty(nodeSize : int) : Node
+        {
+            TreeNode.Node(array(nodeSize), array(nodeSize + 1)) 
+        }
+        
+         public static Insert(this node :TreeNode, newKey : int, newValue : int, [NotNull] leafFactory : void ->TreeNode.Leaf) :TreeNode
+        {
+            match (InsertCore(node, newKey, newValue, leafFactory))
+            {
+                | None => node
+                | Some((newNode, oldSeniorKey)) =>
+                {
+                        def newHead =TreeNode.Empty(node.Occupancy - 1);
+                        newHead.Keys[0] = oldSeniorKey;
+                        newHead.Nodes[0] = node;
+                        newHead.Nodes[1] = newNode;
+                        newHead.Occupancy = 2;
+                        newHead
+                }
+            }
+        }
+
+        public static FindValue(this node :TreeNode, key : int) :  int
+        {
+            def result = match (node)
+            {
+                | Node(keys, nodes) =>
+                {
+                        def found = Array.BinarySearch(keys, 0, node.Occupancy - 1, key);
+
+                        def index = if (found >= 0) found else ~found;
+
+                        FindValue(nodes[index], key)
+                }
+                | Leaf as leaf =>
+                {
+                        match (leaf.firstElementCache)
+                        {
+                            | Some(firstElement) when firstElement[0] >= key =>
+                                {
+                                    def (k, value, range) = firstElement;
+                                    if (key == k)
+                                    {
+                                        value + range - 1
+                                    }
+                                    else
+                                    {
+                                        def difference = k - key;
+                                        def valdiff = range - difference - 1;
+                                        value + valdiff
+                                    }
+                                }
+                                        
+                            | _ =>                                         
+                            {
+                                def payload = leaf.Payload;
+                                def keys = payload.Keys;
+                                def values = payload.Values;
+                                def ranges = payload.RangeLength;
+
+                                def found = Array.BinarySearch(keys, 0, node.Occupancy, key);
+
+                                if (found >= 0) 
+                                    values[found] + ranges[found] - 1
+                                else 
+                                {
+                                    def difference = keys[~found] - key;
+                                    def valdiff = ranges[~found] - difference - 1;
+                                    values[~found] + valdiff
+                                }
+                            }
+                        }
+                    
+                    
+                       
+                }
+            }
+                
+            result;
+        }
+        
+        public static GetLeafs(this node : TreeNode) : IEnumerable[TreeNode.Leaf]
+        {
+            | Node as node => foreach (l in GetLeafs(node.Nodes[0])) yield l;
+            | Leaf as leaf => 
+            {
+                yield leaf;
+                when (leaf.NextLeaf.HasValue)
+                {
+                    foreach (l in GetLeafs(leaf.NextLeaf.Value))
+                        yield l;
+                }
+            }
+        }
+        
+        public static Enumerate(this leaf : TreeNode.Leaf) : IEnumerable[int]
+        {
+            def payload = Lazy(() => leaf.Payload);
+            
+            foreach (i in [0..leaf.Occupancy - 1])
+            {
+                    match(i, leaf.firstElementCache)
+                    {
+                        | (0, Some(firstElement)) =>
+                            {
+                                def (_, v, r) = firstElement;
+                                foreach (index in [0..r - 1]) yield v + index
+                            }
+                        | _ => foreach (index in [0..payload.Value.RangeLength[i] - 1]) yield payload.Value.Values[i] + index
+                    }
+            }
+        }
+        
+        static InsertCore(this node :TreeNode, newKey : int, newValue : int, 
+                                            [NotNull] leafFactory: void ->TreeNode.Leaf) : option[TreeNode * int]
+        {
+            match (node)
+            {
+                | Node(keys, nodes) as node when node.Occupancy== 0 => 
+                    {
+                        keys[0] = newKey;
+
+                        def newLeaf = leafFactory();
+                        _ = newLeaf.InsertCore(newKey, newValue, leafFactory);
+                        nodes[0] = newLeaf;
+                        
+                        node.Occupancy = 1;
+
+                        None()
+                    }
+
+                | Node(_, nodes) as node when node.Occupancy == nodes.Length => 
+                    {
+                        def currentIndex = node.Occupancy - 1;
+                        def targetNode = nodes[currentIndex];
+                        def result = InsertCore(targetNode, newKey, newValue, leafFactory);
+                        match (result)
+                        {
+                            | None => None()
+                            | Some((newNode, seniorKey)) =>
+                            {
+                                    def newHead =TreeNode.Empty(node.Occupancy - 1);
+                                    newHead.Keys[0] = newKey;
+                                    newHead.Nodes[0] = newNode;
+                                    newHead.Occupancy = 1;
+                                    Some(newHead, seniorKey)
+                            }
+                        }
+                    }
+
+                | Node(keys, nodes) as node =>
+                {
+                        def currentIndex = node.Occupancy - 1;
+
+                        def targetNode = nodes[currentIndex];
+                        def result     = InsertCore(targetNode, newKey, newValue, leafFactory);
+
+                        match(result, node.Occupancy < nodes.Length - 1)
+                        {
+                            | (None , _) =>
+                            {
+                                keys[currentIndex] = newKey;
+                                None()
+                            }
+                            | (Some((newNode,_)), true) =>
+                            {
+                                keys[currentIndex + 1] = newKey;
+                                nodes[currentIndex + 1] = newNode;
+                                node.Occupancy++;
+                                None()
+                            }
+                            | (Some((newNode,_)), false) =>
+                            {
+                                nodes[currentIndex + 1] = newNode;
+                                node.Occupancy++;
+                                None()
+                            }
+                        }
+                }
+
+                | Leaf as leaf =>
+                {
+                    def payload = leaf.Payload;
+                    def keys = payload.Keys;
+                    def values = payload.Values;
+                    def rangeLengths = payload.RangeLength;
+                    
+                    def lastIndex = (node.Occupancy - 1);
+                    def landsIntoRange = 
+                            if (node.Occupancy == 0) 
+                                false
+                            else
+                                (values[lastIndex] + rangeLengths[lastIndex] >= newValue) && (rangeLengths[lastIndex] < byte.MaxValue);
+
+                    def isFull = node.Occupancy == values.Length;
+
+                    match(landsIntoRange, isFull)
+                    {
+                        | (true, _) =>
+                        {
+                                    keys[lastIndex] = newKey;
+                                    rangeLengths[lastIndex] = rangeLengths[lastIndex]  + 1b;
+
+                                    None()
+                        }
+                          | (_, false) =>
+                        {
+                                    def index = node.Occupancy;
+                                    keys[index] = newKey;
+                                    values[index] = newValue;
+                                    rangeLengths[index] = 1;
+                                    node.Occupancy ++;
+                                    None()
+                        }
+                        | (_, true) =>
+                        {
+                                    leaf.Store();
+                                    def newLeaf = leafFactory();
+                                    leaf.NextLeaf = Some(newLeaf);
+                                    _ = InsertCore(newLeaf, newKey, newValue, leafFactory);
+                                    Some(newLeaf, keys[node.Occupancy-1])
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,23 @@
+using System;
+using System.Linq;
+using System.IO;
+using System.Text;
+using Nemerle.Assertions;
+
+namespace LogGrok.Core
+{
+    public module LogFile
+    {
+        public OpenRead([NotNullOrEmpty] fileName : string) : Stream 
+        {
+           FileStream(fileName, 
+                                        FileMode.Open, 
+                                        FileAccess.Read, 
+                                        FileShare.ReadWrite,
+                                        BufferSize,
+                                        options = FileOptions.SequentialScan);
+        }
+        
+        public static BufferSize = 64*1024;
+    }
+}

@@ -1,0 +1,81 @@
+﻿using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.ComponentModel;
+using System.Collections.Generic;
+using System.Linq;
+using System.Windows;
+using System.Windows.Media;
+
+namespace LogGrok.LogView.DataVirtualization
+{
+    public abstract class VirtualItem[T] : INotifyPropertyChanged
+        where T : class
+    {
+        protected this(sourceList : IList[T], index : int)
+        {
+            Index = index;
+            _sourceList = sourceList;
+        }
+        
+        public SourceItem : T
+        {
+            get
+            {
+                when (ReferenceEquals(_sourceItem, null))
+                {
+                    _sourceItem = _sourceList[Index];
+                    when (_sourceItem is INotifyPropertyChanged)
+                    {
+                        WeakEventManager.[INotifyPropertyChanged, PropertyChangedEventArgs].AddHandler(
+                            _sourceItem :> INotifyPropertyChanged, "PropertyChanged", OnPropertyChanged);
+                    }
+                }
+                    
+                _sourceItem;
+            }
+        }
+        
+        public Index : int { get; private set; }
+        
+        public event PropertyChanged : PropertyChangedEventHandler;
+        
+        public GetProperty[TProperty](selector : T -> TProperty) : TProperty
+        {
+            def item = SourceItem;
+            if (ReferenceEquals(item, null)) 
+                default(TProperty) 
+            else 
+                selector(item);
+        }
+        
+        public override Equals(other : object) : bool 
+        {
+            | i is VirtualItem[T] => Index == i.Index
+            | _ => false
+        }
+        
+        public override GetHashCode() : int
+        {
+            Index.GetHashCode()
+        }
+        
+        public override ToString() : string
+        {
+            SourceItem.ToString();   
+        }
+        
+        private OnPropertyChanged(_ : object, args : PropertyChangedEventArgs) : void
+        {
+            def propertyChanged = PropertyChanged;
+            when (propertyChanged != null)
+                propertyChanged(this, args);
+        }
+        
+        private mutable _sourceItem : T;
+        private mutable _sourceList : IList[T];
+    }
+}

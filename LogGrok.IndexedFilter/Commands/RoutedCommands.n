@@ -1,0 +1,23 @@
+using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+using Nemerle.Extensions;
+
+using System;
+using System.Windows;
+using System.Windows.Input;
+using System.Windows.Controls;
+using System.Collections.Generic;
+using System.Linq;
+
+using Microsoft.Practices.Prism.Commands;
+
+namespace LogGrok.IndexedFilter.Commands
+{
+    public module RoutedCommands
+    {
+        public Cancel : RoutedCommand = RoutedUICommand(
+            "Cancel", "Cancel", typeof(UIElement), InputGestureCollection() <- [ KeyGesture(Key.Escape) ]);
+    }
+}

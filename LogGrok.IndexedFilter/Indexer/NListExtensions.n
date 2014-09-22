@@ -1,0 +1,30 @@
+﻿using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace LogGrok.IndexedFilter.Indexer
+{
+    public module NListExtensions
+    {
+        public IndexOf[T](this source : list[T], elem : T) : int
+        {
+            def loop(source, elem, index)
+            {
+                match (source)
+                {
+                    | head :: _ when head.Equals(elem) => index
+                    | _ :: tail => loop(tail, elem, index + 1)
+                    | _ => -1
+                }
+            }
+
+            loop(source, elem, 0)
+        }
+
+    }
+}

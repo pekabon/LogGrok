@@ -1,0 +1,32 @@
+using Nemerle.Assertions;
+using Nemerle.Utility;
+using System;
+using System.Collections.Generic;
+
+using LogGrok.Core;
+using LogGrok.LogParserBase;
+
+namespace LogGrok.LogParserBase
+{
+    public abstract class Line : ILine
+    {
+        public Offset : long { get; set; }
+        public EndOffset : long { get; set; }
+        public RawLine : object { get; set; }
+       
+        public abstract Time : TimeSpan 
+        {
+            get; set;
+        }
+        
+        public GetRawLine() : string implements ILine.get_RawLine { RawLine.ToString() }
+        
+        public GetTime() : TimeSpan implements ILine.get_Time { Time }
+        
+        public abstract Item[s : string] : object
+        {
+            get;
+        }
+        
+    }
+}

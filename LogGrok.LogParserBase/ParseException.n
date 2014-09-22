@@ -1,0 +1,10 @@
+using System;
+
+namespace LogGrok.LogParserBase
+{
+    public class ParseException : Exception
+    {
+        public this(message : string) { base(message) }
+    }
+}
+

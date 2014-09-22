@@ -1,0 +1,79 @@
+using Nemerle;
+using Nemerle.Assertions;
+using Nemerle.Collections;
+using Nemerle.Extensions;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.Linq;
+using System.Windows;
+
+using Microsoft.Practices.Prism.Modularity;
+using Microsoft.Practices.Prism.Regions;
+using Microsoft.Practices.Prism.UnityExtensions;
+using Microsoft.Practices.Unity;
+
+using Xceed.Wpf.AvalonDock.Layout;
+
+using System.Windows.Controls;
+
+namespace LogGrok.Infrastructure
+{
+    [Record]
+    public class LayoutGroupRegionAdapter[T, U] : AddingRegionAdpaterBase[T, SingleActiveRegion]
+        where T : LayoutGroup[U] 
+        where U : LayoutContent, new()
+    {
+        protected override AddView(view : object, pane : T) : void
+        {
+            match(view)
+            {
+                | viewCollection is IViewCollection => AddViewCollection(viewCollection, pane)
+                | _                                 => AddViewCore(view, pane, None())
+            }
+        }
+
+        private AddViewCollection(viewCollection : IViewCollection, pane : T) : void
+        {
+            def control = ContentControl();
+            control.Content = viewCollection.Current;
+            viewCollection.CurrentChanged += (_, current) => control.Content = current.Value;
+
+            AddViewCore(control, pane, viewCollection.Name);
+        }
+
+        private AddViewCore(view : object, pane : T, name : option[string]) : void
+        {
+            def attr = view.GetType()
+                .GetCustomAttributes(typeof(ModuleMetaInfoAttribute), false)
+                .Cast.[ModuleMetaInfoAttribute]()
+                              .SingleOrDefault();
+
+            def element = view :> FrameworkElement;
+
+            def u = U() <- 
+            { 
+                    Content = element; 
+                    Title = match(name)
+                            {
+                                | Some(n) => n
+                                | _       => PaneConentAttachedProperties.GetPaneTitle(element) ?? attr?.Name ?? "Title"; 
+                            }
+                    ToolTip = PaneConentAttachedProperties.GetPaneTitleToolTip(element);
+            };
+
+            PaneConentAttachedProperties.AddPaneTitleChangedHandler(
+                element, 
+                (_ , args) => u.Title = args.NewValue);
+
+            PaneConentAttachedProperties.AddPaneTitleToolTipChangedHandler(
+          element, 
+          (_, args) => u.ToolTip = args.NewValue);
+
+            pane.Children.Add(u);
+        }
+    }
+}

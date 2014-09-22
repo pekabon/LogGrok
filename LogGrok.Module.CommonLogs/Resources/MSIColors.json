@@ -1,0 +1,28 @@
+[
+  {
+    "Name": "Error (another installation in progress)",
+    "Rule": {
+      "Pattern": "Another installation is already in progress",
+      "Options": "IgnoreCase"
+    },
+    "TextColor": {
+      "Foreground": "#FFFF0000",
+      "Background": "#00FFFFFF"
+    },
+    "SearchAreas": [],
+    "Usage": "Line"
+  },
+  {
+    "Name": "Error (API call rejected)",
+    "Rule": {
+      "Pattern": "API call rejected",
+      "Options": "IgnoreCase"
+    },
+    "TextColor": {
+      "Foreground": "#FFFF0000",
+      "Background": "#00FFFFFF"
+    },
+    "SearchAreas": [],
+    "Usage": "Line"
+  }
+]

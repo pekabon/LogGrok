@@ -1,0 +1,6 @@
+obj/
+bin/
+*.tmp_proj
+packages/
+*.csproj.user
+*.suo

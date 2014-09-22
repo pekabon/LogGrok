@@ -1,0 +1,37 @@
+<UserControl x:Class="LogGrok.Module.FileInfoView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        
+        <TextBlock Text="Path:"/>
+        <TextBlock Grid.Row="1" Text="Header:"/>
+        <TextBlock Grid.Row="2" Text="Start Timer:"/>
+        <TextBlock Grid.Row="3" Text="End Timer:"/>
+        <TextBlock Grid.Row="4" Text="Line Count:"/>
+        <TextBlock Grid.Row="5" Text="Line per second:"/>
+        <TextBlock Grid.Row="6" Text="Loading progress:"/>
+        
+        <TextBlock Grid.Column="1" Text="{Binding FullPath}"/>
+        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Header}"/>
+        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding StartTime}"/>
+        <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding EndTime}"/>
+        <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding LineCount}"/>
+        <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding LinePerSecond}"/>
+        <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding Progress, StringFormat={}{0:00.00}}"/>
+    </Grid>
+</UserControl>

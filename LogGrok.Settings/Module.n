@@ -1,0 +1,67 @@
+﻿using Nemerle.Assertions;
+using Nemerle.Collections;
+using Nemerle.Extensions;
+using Nemerle.Text;
+using Nemerle.Utility;
+using Nemerle.Linq;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Windows;
+
+using Microsoft.Practices.Prism.Modularity;
+using Microsoft.Practices.Unity;
+using Microsoft.Practices.Prism.Regions;
+
+using LogGrok.Core;
+using LogGrok.Infrastructure;
+
+namespace LogGrok.Settings
+{
+    public class WindowControlledLifetimeManager : LifetimeManager
+    {
+        public override GetValue() : object
+        {
+            match (_weak)
+            {
+                | None()  => null
+                | Some(x) =>
+                    {
+                        mutable window : Window;
+                        if (x.TryGetTarget(out window) && Application.Current.Windows.Cast.[Window]().Contains(window))
+                            window
+                        else
+                            null
+                    }
+            }
+        }
+        
+        public override SetValue(newValue : object) : void
+        {
+            | null => _weak = None()
+            | _    => _weak = Some(WeakReference.[Window](newValue :> Window))
+        }
+        
+        public override RemoveValue() : void
+        {
+            _weak = None()
+        }
+        
+        private mutable _weak : option[WeakReference[Window]] = None();
+    }
+    
+    [Record]
+    [Module(ModuleName = "Settings")]
+    public class Module : IModule
+    {
+        public Initialize() : void 
+        {
+            _ = _container.RegisterType.[IEnumerable[MetaInformation]](InjectionFactory(c => c.ResolveAll.[MetaInformation]() : IEnumerable[MetaInformation]));
+            _ = _container.RegisterType.[ColorRulesViewModel](ContainerControlledLifetimeManager());
+            _ = _container.RegisterType.[ColorSettingsDialog](WindowControlledLifetimeManager());
+        }
+
+        _container : IUnityContainer;
+    }
+}

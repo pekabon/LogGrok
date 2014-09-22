@@ -1,0 +1,50 @@
+using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
+
+using Microsoft.Practices.Prism.PubSubEvents;
+
+namespace LogGrok.Core
+{
+    public class DocumentCollection
+    {
+        public this()
+        {
+            CurrentDocumentChanged += (_,_) => {};
+        }
+        
+        public CurrentDocument : option[Document]
+        { 
+            get { _currentDocument }
+
+            set 
+            {
+                match(_currentDocument, value)
+                {
+                    | (Some(a), Some(b)) when !Object.ReferenceEquals(a,b) =>
+                    {
+                        _currentDocument = value;
+                        CurrentDocumentChanged(this, DataEventArgs(value));
+                    }
+                    | _ => ()
+                }
+            }; 
+        }
+
+        public Documents : ObservableCollection[Document] 
+        { 
+            get; 
+            default { ObservableCollection() } 
+        } 
+
+        public event CurrentDocumentChanged : EventHandler[DataEventArgs[option[Document]]];      
+        
+        mutable _currentDocument : option[Document] = None();
+    }
+}

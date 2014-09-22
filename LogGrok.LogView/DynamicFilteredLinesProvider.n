@@ -1,0 +1,77 @@
+using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Threading;
+
+using LogGrok.LogView.DataVirtualization;
+
+using LogGrok.Core;
+
+namespace LogGrok.LogView
+{
+    public class DynamicFilteredLinesProvider : IItemProvider[int] 
+    {
+        public this(indexes : IEnumerable[LineOrProgress])
+        {
+            CountChanged += _ => {};
+            ProgressChanged += progress => Progress = progress;
+            
+            _cancellationTokenSource = CancellationTokenSource();
+            
+            _ = Task.Run( () =>
+            {
+                mutable lastEvent = DateTime(0);
+                foreach (index in indexes.TakeWhile(_ => !_cancellationTokenSource.Token.IsCancellationRequested))
+                {
+                    match (index)
+                    {
+                        | LineOrProgress.Line(value) => {
+					        lock(_foundLineIndexes)
+						        _foundLineIndexes.Add(value);
+					        def now = DateTime.Now;
+					        when (now - lastEvent > TimeSpan.FromSeconds(1))
+					        {
+					            lastEvent = now;
+						        CountChanged(Count);
+					        }
+                        }
+                        | LineOrProgress.Progress(value) => ProgressChanged(value)
+                    }
+                    
+				}
+                CountChanged(Count);	
+			}, _cancellationTokenSource.Token
+            );
+        }
+        
+        public Count : int { get { _foundLineIndexes.Count } }
+        
+        public Progress : double { get; private set }
+        
+        public Fetch(start: int, end : int) : IList[int]
+        {
+            lock(_foundLineIndexes)
+            {
+				_foundLineIndexes.Skip(start).Take(end - start + 1).ToArray()
+			}
+		}
+		
+		public Search(_ : int) : int
+		{
+		    throw NotSupportedException();
+		}
+
+        public CancelLoad() : void { _cancellationTokenSource.Cancel(); }
+        public event CountChanged : Action[int];
+        public event ProgressChanged : Action[double];
+
+        private _foundLineIndexes = List.[int]();
+        private _cancellationTokenSource : CancellationTokenSource;
+    }
+}

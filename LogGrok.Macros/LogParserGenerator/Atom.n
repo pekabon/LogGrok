@@ -1,0 +1,48 @@
+using Nemerle;
+using System.Collections.Generic;
+
+namespace LogGrok.Macros.LogParserGenerator
+{
+    [Record]
+    variant Atom
+    {
+        | Constant 
+        { 
+			Value : string;
+			public override ToString() : string { Print($"'$Value'") }
+		}
+		| Heximal
+		{
+		    public override ToString() : string { Print("Heximal") }	
+		}
+		| Decimal
+		{
+		    public override ToString() : string { Print("Decimal") }	
+		}
+		| Text
+		{
+		    public override ToString() : string { Print("Text") }	
+		    public IsIndexed : bool;
+		}
+		| LazyText
+		{
+		    public override ToString() : string { Print("LazyText") }	
+		}
+		| Time
+		{
+		    Format : TimeFormat;
+		    public override ToString() : string { Print($"Time(..$(Format; \", \"))") }
+		}
+		| Variant
+		{
+		    Value : List[string];
+		    public override ToString() : string { Print($"Variant[..$(Value; \", \"))]") }
+		}
+		
+		public Name : option[string];
+		public mutable Limit : Limit;
+		public IsOptional : bool;
+		
+		private Print(v : string) : string { $"$v$Limit:$(Name.WithDefault(\"-\"))$(if (IsOptional) \"?\" else string.Empty)" }
+    }
+}

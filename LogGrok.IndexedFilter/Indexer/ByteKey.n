@@ -1,0 +1,42 @@
+﻿using Nemerle;
+
+using System;
+using System.Linq;
+
+using LogGrok.Core;
+
+namespace LogGrok.IndexedFilter.Indexer
+{
+    [Record]
+    public class ByteKey
+    {
+        public override GetHashCode() : int
+        {
+            unchecked
+            {
+                mutable result = 17;
+                for (mutable i = 0; i < _data.Length ; i++)
+                {
+                    result = result * 31 + _data[i].GetHashCode();
+                }
+                result
+            }
+        }
+        
+        public override Equals(other : object) : bool
+        {
+            | null => false
+            | otherKey is ByteKey => _data.SequenceEqual(otherKey._data)
+            | _ => throw ArgumentException($"Cannot compare ByteKey to $other");
+        }
+        
+        public GetComponent(i : int) : Text
+        {
+            _data[i]
+        }
+        
+        
+        
+        private _data : array[Text];
+    }
+}

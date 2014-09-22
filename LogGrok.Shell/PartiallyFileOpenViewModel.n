@@ -1,0 +1,103 @@
+using System;
+using System.Text;
+using System.Collections.Generic;
+using System.Linq;
+using System.IO;
+using Microsoft.Practices.Prism.Commands;
+using System.Windows.Input;
+using System.Windows;
+
+using Nemerle.WPF;
+using Nemerle.Surround;
+
+using LogGrok.Core;
+
+[assembly:DefineSurround("seekToBegin", true, _ = _stream.Seek(0, SeekOrigin.Begin), _ = _stream.Seek(0, SeekOrigin.Begin))]
+
+namespace LogGrok.Shell
+{
+    [NotifyPropertyChanged]
+    class PartiallyFileOpenViewModel
+    {
+        public this(fileName : string, view : Window)
+        {
+            def Open()
+            {
+                view.DialogResult = true;
+                view.Close();
+                _stream.Dispose();
+            }
+            
+            def BomIsEqaulToPreamble(encoding)
+            {
+                surroundwith(seekToBegin)
+                {
+                    def preamble = encoding.GetPreamble();
+                    def bom = array(preamble.Length);
+                    _ = _stream.Read(bom, 0, bom.Length);
+                    bom.SequenceEqual(preamble)
+                }
+            }
+            
+            def GetEncoding()
+            {
+                if (BomIsEqaulToPreamble(Encoding.Unicode))
+                {
+                    Encoding.Unicode
+                }
+                else
+                {
+                    Encoding.UTF8
+                }
+            }
+
+			_stream = LogFile.OpenRead(fileName);
+			_encoding = GetEncoding();
+            FileLength = _stream.Length;
+            FileName = fileName;
+            EndOffset = FileLength;
+            OpenCommand = DelegateCommand(Open);
+        }
+
+        public FileLength : long { get; private set; }
+        
+        public FileName : string { get; private set; }
+
+        [NotifyChangedOptions(Dependent = [StartText, Size])]
+        public StartOffset : long { get; private set; }
+
+        [NotifyChangedOptions(Dependent = [EndText, Size])]
+        public EndOffset : long { get; private set; }
+
+        public Size : long { get { EndOffset - StartOffset } }
+
+        public OpenCommand : ICommand { get; private set; }
+
+        public StartText : string 
+        { 
+            get 
+            {
+                ReadText(StartOffset);
+			} 
+        }
+        
+        public EndText : string 
+        { 
+            get
+            {
+               ReadText(EndOffset - _buffer.Length);
+            }
+        }
+        
+        private ReadText(startOffset : long) : string
+        {
+            _ = _stream.Seek(startOffset, SeekOrigin.Begin);
+			def length = _stream.Read(_buffer, 0, _buffer.Length);
+			_encoding.GetString(_buffer, 0, length);
+        }
+
+        private _stream : Stream;
+        private _encoding : Encoding;
+		private _buffer : array[byte] = array(400);
+    }
+}

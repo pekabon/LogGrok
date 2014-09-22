@@ -1,0 +1,133 @@
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+using Nemerle.Extensions;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace LogGrok.IndexedFilter
+{
+    public enum SortOrder
+    {
+        | Ascending = -1
+        | Descending = 1
+    }
+
+
+    [Record]
+    internal class PairComparableByFirst[T, U] : IComparable[PairComparableByFirst[T, U]] where T : IComparable[T]
+    {
+        public Value : T * U;
+
+        public SortOrder : SortOrder;
+
+        public CompareTo(other : PairComparableByFirst[T, U]) : int
+        {
+            def mult = this.SortOrder :> int;
+            Value[0].CompareTo(other.Value[0]) * mult;
+        }
+    }
+
+
+    public module CollectionUtils
+    {
+        public GetEnumerationType(this type : Type) : option[Type]
+        {
+            match (GetEnumerableInterface(type)) 
+            { 
+                | Some(enumerableInterface) => Some(enumerableInterface.GetGenericArguments().First());
+                | _ => None()
+            } 
+        }
+
+        public MergeSorted[T](collections : IEnumerable[IEnumerable[T]],  isNext : (T*T) -> bool) : IEnumerable[T] where T : IComparable[T] 
+        {
+            def pairs = collections
+                               .Select(e => e.GetEnumerator())
+                               .Where(e => e.MoveNext())
+                               .Select(e => PairComparableByFirst((e.Current, e), SortOrder.Ascending));
+
+            MergeSorted(pairs, SortOrder.Ascending,  isNext)
+        }
+
+        private MergeSorted[T](pairs : IEnumerable [PairComparableByFirst[T, IEnumerator[T]]], sortOrder : SortOrder, isNext : (T*T) -> bool) :  IEnumerable[T] where T : IComparable[T] 
+        {
+            def pairList = List.[PairComparableByFirst[T, IEnumerator[T]]]();
+
+            try
+            {
+                foreach(p in pairs)
+                    pairList.Add(p);
+                    
+                def heap = Heap(pairList);
+
+                while(!heap.IsEmpty)
+                {
+                    def (_, enumerator) = heap.ExtractFirst().Value;
+                    
+                    mutable haveNext;
+                    mutable cur;       
+                    
+                    do
+                    {
+                        cur = enumerator.Current;
+                        yield cur;
+                        haveNext = enumerator.MoveNext();
+                
+                    } while (haveNext && isNext(cur, enumerator.Current));
+            
+                    when (haveNext)
+                    {
+                        heap.Add(PairComparableByFirst((enumerator.Current, enumerator), sortOrder));
+                    }
+                }
+            }
+
+            finally 
+            {
+                Dispose(pairList)
+            }
+        }
+
+        private Dispose[T](pairs : IEnumerable [PairComparableByFirst[T, IEnumerator[T]]]) : void where T : IComparable[T]
+        {
+            foreach((_, enumerator) in pairs.Select(p => p.Value))
+            {
+                enumerator.Dispose()
+            }
+        }
+
+        [Record]
+        private class Comparable[T] : IComparable[Comparable[T]]
+        {
+            public Value : T { get; private set; }
+            private _comparator : Func[T, T, int];
+
+            public CompareTo(other : Comparable[T]) : int
+            {
+                _comparator(Value, other.Value)
+            }
+        }
+
+        GetEnumerableInterface(type : Type) : option[Type]
+        {
+            def interfaces = type.GetInterfaces();
+            def interfaces = 
+                                if(type.IsInterface)
+                                    interfaces.Concat([ type ])
+                                else 
+                                    interfaces;
+
+            def enumerableInterface = interfaces.FirstOrDefault(
+                o => o.IsGenericType && o.GetGenericTypeDefinition() == typeof(IEnumerable.[_]));
+
+            if (enumerableInterface != null) 
+                Some(enumerableInterface)
+            else 
+                None()
+        }
+    }
+}
+

@@ -1,0 +1,70 @@
+using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+using LogGrok.Core;
+using LogGrok.Infrastructure;
+
+namespace LogGrok.IndexedFilter.Index.Counts
+{
+    internal class FilteredCountIndicesProvider[T]
+    {
+        public this(
+            predicate : T -> bool,
+            countIndices : IList[List[T * int]], _granularity : int)
+        {
+            def FilterIndices(l)
+            {
+                def lst = List(l.Count);
+                lst.AddRange(l.Where(t => predicate(t[0])));
+                lst
+            }
+
+            _filteredCountIndices = 
+                ListLazyAdapter(countIndices, l => CountsIndexLeaf(FilterIndices(l)));
+        }
+
+        public Count  : int
+        {
+            get
+            {
+                _filteredCountIndices.LastOrDefault()?.TotalCount
+            }
+        }
+        
+        public GetAllKeys() : IEnumerable[T] 
+        {
+            _filteredCountIndices.LastOrDefault()?.Counts?.Select(t => t[0]) ?? Enumerable.Empty()
+        }
+
+        public GetStartIndexesForValue(value : int) : CountsIndexLeaf[T]
+        {
+            def idx = (value + 1) / _granularity;
+            
+            if (idx == 0)
+                CountsIndexLeaf(List())
+            else
+                _filteredCountIndices[idx - 1]
+        }
+        
+        public GetStartIndexes(position : int) : CountsIndexLeaf[T]
+        {
+            def found = _filteredCountIndices.BinarySearch(position, (leaf, p) => leaf.TotalCount.CompareTo(p));
+
+            def foundIdx = if (found < 0) ~found else found;
+
+            if (foundIdx == 0)
+                CountsIndexLeaf(List())
+            else
+                _filteredCountIndices[foundIdx - 1]
+        }
+        
+        private _filteredCountIndices : IList[CountsIndexLeaf[T]];
+        private _granularity = 65536;
+    }
+}

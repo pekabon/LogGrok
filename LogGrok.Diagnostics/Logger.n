@@ -1,0 +1,90 @@
+﻿using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Diagnostics;
+using System.Reflection;
+using System.Collections.Generic;
+using System.Collections.Concurrent;
+using System.Linq;
+using System.Deployment.Application;
+
+using NLog;
+
+using LogGrok.Diagnostics.Environment;
+using LogGrok.Diagnostics.Formatters;
+
+namespace LogGrok.Diagnostics
+{
+  public class Logger
+  {
+      static this()
+      {
+          _logger = LogManager.GetCurrentClassLogger();
+
+          GlobalDiagnosticsContext.Set("EntryAssembly", Assembly.GetEntryAssembly().FullName);
+          
+          GlobalDiagnosticsContext.Set(
+            "DeploymentVersion", 
+            if (ApplicationDeployment.IsNetworkDeployed) ApplicationDeployment.CurrentDeployment?.CurrentVersion?.ToString() else string.Empty);
+      }
+      
+      private this(component : string)
+      {
+          _component = component;
+      }
+      
+      public static Get(component : string = null) : Logger
+      {
+          def comp = component ?? ComponentProvider.DetectCurrentComponent();
+          _loggersCache.GetOrAdd(comp, c => Logger(c));
+      }
+      
+      public static FlushAll() : void
+      {
+          LogManager.Flush();   
+      }
+            
+      public Debug(message : string, params args : array[object]) : void
+      {
+          Log(LogLevel.Debug, message, args);
+      }
+      
+      public Info(message : string, params args : array[object]) : void
+      {
+          Log(LogLevel.Info, message, args);
+      }  
+      
+      public Warn(message : string, params args : array[object]) : void
+      {
+          Log(LogLevel.Warn, message, args);
+      }
+      
+      public Error(message : string, params args : array[object]) : void
+      {
+          Log(LogLevel.Error, message, args);
+      }
+      
+      public Flush() : void
+      {
+          LogManager.Flush();   
+      }
+      
+      private Log(level : LogLevel, message : string, args : array[object]) : void
+      {
+          def logEvent = LogEventInfo.Create(level, _logger.Name, null, message, args);
+          
+          logEvent.Properties["component"] = _component;
+          logEvent.Properties["levelShort"] = LogLevelFormatter.Format(level);
+          
+          _logger.Log(logEvent);                    
+      }
+      
+      private _component : String;
+      
+      private static _loggersCache : ConcurrentDictionary[string, Logger] = ConcurrentDictionary();
+      private static _logger : NLog.Logger;      
+  }
+}

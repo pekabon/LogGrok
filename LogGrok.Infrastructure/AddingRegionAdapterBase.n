@@ -1,0 +1,54 @@
+using Nemerle.Assertions;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.Linq;
+
+using Microsoft.Practices.Prism.Modularity;
+using Microsoft.Practices.Prism.Regions;
+using Microsoft.Practices.Prism.UnityExtensions;
+using Microsoft.Practices.Unity;
+using Microsoft.Practices.Prism.PubSubEvents;
+
+namespace LogGrok.Infrastructure
+{
+   
+    public abstract class AddingRegionAdpaterBase[TRegionTarget, TRegion] : RegionAdapterBase[TRegionTarget]
+        where TRegion       : IRegion, new()
+        where TRegionTarget : class
+    {
+        public this([NotNull] regionBehaviorFactory : IRegionBehaviorFactory)
+        {
+            base(regionBehaviorFactory)
+        }
+        
+        protected override Adapt([NotNull] region : IRegion, [NotNull] regionTarget : TRegionTarget) : void 
+        {
+            region.Views.CollectionChanged += 
+            (_, e) =>
+            {
+                match(e.Action)
+                {
+                    | NotifyCollectionChangedAction.Add => 
+                        foreach(view in e.NewItems)
+                        {
+                            AddView(view, regionTarget)
+                        }
+                    | _ => ()
+                }
+            }
+        }
+        
+        protected override CreateRegion() : IRegion
+        {
+            TRegion()   
+        }
+        
+        abstract protected AddView(view : object, target : TRegionTarget) : void;
+    }
+}

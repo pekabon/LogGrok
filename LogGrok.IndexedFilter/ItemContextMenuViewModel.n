@@ -1,0 +1,75 @@
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Windows.Input;
+
+using Nemerle.WPF;
+
+using Microsoft.Practices.Prism.Commands;
+
+namespace LogGrok.IndexedFilter
+{
+	[Record]
+	[NotifyPropertyChanged]
+	public class ItemContextMenuViewModel
+	{      
+	
+	// TODO:
+	    
+	    
+		//public ExcludeComponentCommand : ICommand
+		//{
+		//	get
+		//	{
+		//		GetCommand(l => _components.Disable(l.Component), l => !l.Component.IsEmpty)
+		//	}
+		//}
+
+		//public ExcludeThreadCommand : ICommand
+		//{
+		//	get
+		//	{
+		//	    DelegateCommand(_ => {})
+		//	    //GetCommand(l => {} /* TODO:_threads.Disable(l.Thread) */, falsel => l.Thread != 0)
+		//	}
+		//}
+
+		//public ExcludeSeverityCommand : ICommand
+		//{
+		//	get
+		//	{
+  //              GetCommand(l => _severities.Disable(l.Severity), l => l.Severity.IsEmpty)
+		//	}
+		//}
+
+		//private GetSelectedItems() : IEnumerable[LineViewModel]
+		//{
+		//    _logViewModel.GetSelectedLines()
+		//}
+		
+		//private GetCommand(action : LineViewModel -> void, isEnabled : LineViewModel -> bool) : DelegateCommand
+		//{
+		//    DelegateCommand(
+		//		    _ => GetSelectedItems().Iter(action),
+		//		    _ => GetSelectedItems().Any(isEnabled))
+		//}
+		
+		//public IsEnabled : bool
+		//{
+		//    get
+		//    {
+		//        ExcludeComponentCommand.CanExecute(null) || ExcludeThreadCommand.CanExecute(null) || ExcludeSeverityCommand.CanExecute(null)
+		//    }
+		//}
+		
+		//private _threads    : ThreadFilterViewModel;
+		//private _components : ComponentsViewModel;
+		//private _severities : SeveritiesViewModel;
+		
+		//private _logViewModel : LogViewModel;
+	}
+}

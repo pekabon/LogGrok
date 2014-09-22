@@ -1,0 +1,157 @@
+using Nemerle;
+using Nemerle.Assertions;
+using Nemerle.Collections;
+using Nemerle.Extensions;
+using Nemerle.Text;
+using Nemerle.Utility;
+using Nemerle.WPF;
+
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
+using System.Threading;
+using System.Windows.Input;
+
+using Microsoft.Practices.Prism.Commands;
+
+using LogGrok.Core;
+using LogGrok.IndexedFilter.Indexer;
+
+namespace LogGrok.IndexedFilter
+{
+    [NotifyPropertyChanged]
+    public class IndexedFilterViewModel
+    {
+        public this([NotNullOrEmpty] componentKey : string, 
+                    [NotNull] indexedFilter : IndexedFilter, 
+                    [NotNull] indexer : GenericIndexer, 
+                    [NotNull] syncContext : SynchronizationContext)
+        {
+            _componentKey = componentKey;
+            _indexedFilter = indexedFilter;
+
+            _elementFactory =
+          (component : Text, isActive : bool) => ElementViewModel(component.ToString(), 
+                                                                  component, isActive, () => indexer.GetIndexCountForComponent(componentKey, component));
+
+            Categories = indexer.GetAllComponents(componentKey);
+
+            Elements = ObservableCollection(Categories.Select(_elementFactory(_, true)));
+            
+            indexedFilter.Changed += () => OnFilterChanged();
+
+            Subscribe(indexer, syncContext);
+        }
+
+        public OnFilterChanged() : void
+        {
+            def exclusions = HashSet(_indexedFilter.GetExclusions(_componentKey));
+            
+            foreach (element in Elements)
+            {
+                element.IsActive = !exclusions.Contains(element.Category)
+            }
+            
+            RaisePropertyChanged(IsFilterApplied);
+        }
+        
+        public TextFilter : String
+        {
+            get; set;   
+        }
+
+        public Elements : ObservableCollection[ElementViewModel] { get; private set; }
+
+        public RefreshActiveChanged : ICommand 
+        { 
+            get 
+            {
+                DelegateCommand(RefreshExcludedCategories)
+
+            }
+        }
+
+        public DeselectAll : ICommand
+        {
+            get
+            {
+                DelegateCommand(() => _indexedFilter.ExcludeAllExcept(_componentKey, []));
+            }
+        }
+
+        public SelectAll : ICommand
+        {
+            get
+            {
+                DelegateCommand(() => _indexedFilter.SetExclusions(_componentKey, []));
+            }
+        }
+
+        public SelectOnlySearchResults : ICommand
+        {
+            get
+            {
+                DelegateCommand.[IEnumerable](items =>
+                {
+                                              def changedElements : IEnumerable[ElementViewModel] = items.Cast();
+                                              def activeCategories = changedElements.Select(o => o.Category);
+                                              Elements = ObservableCollection(
+                                                         Categories.Select(c => _elementFactory(c, activeCategories.Contains(c))));
+
+                                              RefreshExcludedCategories();
+                                              RaisePropertyChanged(IsFilterApplied);
+                })
+            }
+        }
+
+        public IsFilterApplied : bool
+        {
+            get 
+            {
+                GetExcludedCategories().Any()
+            }
+        }
+
+        public AddNewCategory(category : Text) : void
+        {
+            Categories = [category].Concat(Categories).ToList();
+            def newCategories = Categories.Except(Elements.Select(_.Category).Where(c => Categories.Contains(c)));
+
+            foreach(category in newCategories) 
+                Elements.Add(_elementFactory(category, true))
+        }
+
+        protected OnExcludedCategoriesChanged(excludedCategories : IEnumerable[Text]) : void
+        {
+            _indexedFilter.SetExclusions(_componentKey, excludedCategories);
+        }
+
+        protected Categories : IEnumerable[Text] { get; set; };
+
+        private GetExcludedCategories() : IEnumerable[Text]
+        {
+            Elements.Where(vm => !vm.IsActive).Select(vm => vm.Category)
+        }
+
+        private RefreshExcludedCategories() : void
+        {
+            OnExcludedCategoriesChanged(GetExcludedCategories());
+        }
+
+        private Subscribe(indexer : GenericIndexer,  syncContext : SynchronizationContext) : void
+        {
+            indexer.NewComponentFound += _ => 
+                                         syncContext.Post(_ => 
+                {
+                                                          foreach(t in indexer.GetAllComponents(_componentKey).ToList().Except(Categories))
+                                                              AddNewCategory(t);
+                }, null);
+        }
+
+        private _elementFactory : (Text*bool) -> ElementViewModel;
+        private _componentKey : string;
+        private _indexedFilter : IndexedFilter;
+    }
+}

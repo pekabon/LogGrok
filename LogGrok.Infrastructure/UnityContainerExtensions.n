@@ -1,0 +1,79 @@
+using Nemerle.Assertions;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+using Nemerle.Extensions;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Windows;
+
+using Microsoft.Practices.Prism.Modularity;
+using Microsoft.Practices.Unity;
+using Microsoft.Practices.Prism.Regions;
+
+using System.Windows.Controls;
+using Microsoft.Practices.ServiceLocation;
+namespace LogGrok.Infrastructure
+{
+    public module UnityContainerExtensions
+    {
+        public RegisterForRegion[TView, TViewModel]([NotNull] this container : IUnityContainer, [NotNullOrEmpty] region : string) : void where TView : FrameworkElement
+        {
+            container.RegisterView.[TView, TViewModel]();
+            RegisterViewForRegionCore.[TView](container, region);
+        }
+        
+        public RegisterForRegion[TView]([NotNull] this container : IUnityContainer, [NotNullOrEmpty] region : string) : void where TView : FrameworkElement
+        {
+            container.RegisterView.[TView]();
+            RegisterViewForRegionCore.[TView](container, region);
+        }
+        
+        public RegisterView[TView, TViewModel]([NotNull] this container : IUnityContainer) : void where TView : FrameworkElement
+        {
+            RegisterViewCore.[TView](container, ViewWithViewModelFactory.[TView, TViewModel]);
+        }
+        
+        public RegisterView[TView]([NotNull] this container : IUnityContainer) : void where TView : FrameworkElement
+        {
+            RegisterViewCore.[TView](container, c => c.Resolve.[TView]());
+        }        
+        
+        private ViewWithViewModelFactory[TView, TViewModel](c : IUnityContainer) : TView where TView : FrameworkElement
+        {
+            def dataContext : TViewModel = c.Resolve.[TViewModel]();
+            c.Resolve.[TView]() : TView <- { DataContext = dataContext; }
+        }        
+        
+        private RegisterViewForRegionCore[TView](container : IUnityContainer, region : string) : void where TView : FrameworkElement
+        {
+            //def name = typeof(TView).FullName;
+                
+            def regionViewRegistry = container.Resolve.[IRegionViewRegistry]();
+            
+            regionViewRegistry.RegisterViewWithRegion(region, typeof(TView));
+        }
+        
+        private RegisterViewCore[TView](container : IUnityContainer, viewFactory : IUnityContainer -> TView) : void where TView : FrameworkElement
+        {
+            def name = typeof(TView).FullName;
+        
+            _ = container.RegisterType.[TView]( name,  HierarchicalLifetimeManager(),
+                InjectionFactory(c => 
+                {
+                
+                    ServiceLocator.SetLocatorProvider(() =>
+                        { 
+                            def serviceLocator = c.Resolve.[IServiceLocator](); 
+                            serviceLocator
+                        });
+                        
+                    def view = viewFactory(c);
+                    AvalonRegion.SetContext(view, c);
+                    view;
+                }));
+        }
+    }
+}

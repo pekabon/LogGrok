@@ -1,0 +1,22 @@
+using Nemerle;
+
+using System;
+using System.Collections.Generic;
+using System.IO;
+
+using LogGrok.Core;
+using LogGrok.Macros.LogParserGenerator;
+using LogGrok.LogParserBase;
+
+namespace LogGrok.Module.CommonLogs
+{
+    [LogParserGenerator(
+        ushort, "\xd\xa", 
+        @"'MSI (' text(1):Source! ') (' text(2):Process! ':' text:Thread! ') [' time(HH:mm:SS:fff):Time ']: ' text:Message",
+        @"'MSI (' text(1):Source! ') (' text(2):Process! '!' text:Thread! ') [' time(HH:mm:SS:fff):Time ']: ' text:Message",
+        )]
+    class MsiLineReader : Utf16BaseParser
+    {
+        public this(stream : Stream) { base(stream); }
+    }
+}

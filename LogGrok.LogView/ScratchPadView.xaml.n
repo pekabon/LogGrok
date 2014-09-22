@@ -1,0 +1,12 @@
+ using LogGrok.Infrastructure;
+
+ namespace LogGrok.LogView
+ {
+    public partial class ScratchPadView
+    {
+        public this()
+        {
+            InitializeComponent();
+        }
+    }
+}

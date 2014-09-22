@@ -1,0 +1,13 @@
+ using LogGrok.Infrastructure;
+
+ namespace LogGrok.Module
+ {
+    [ModuleMetaInfo("File Info")]
+    public partial class FileInfoView
+    {
+        public this()
+        {
+            InitializeComponent();
+        }
+    }
+}

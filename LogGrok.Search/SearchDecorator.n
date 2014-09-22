@@ -1,0 +1,23 @@
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+using Nemerle.WPF;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Windows.Controls;
+using System.Windows;
+
+using LogGrok.Infrastructure.Decoration;
+
+namespace LogGrok.Search
+{
+  public class SearchDecorator : DecoratorControl
+  {
+      static this()
+      {
+        DefaultStyleKeyProperty.OverrideMetadata(typeof(SearchDecorator), FrameworkPropertyMetadata(typeof(SearchDecorator)));
+      }
+  }
+}

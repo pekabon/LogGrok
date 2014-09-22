@@ -1,0 +1,37 @@
+﻿using Nemerle;
+using Nemerle.Assertions;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+
+using Microsoft.Practices.Unity;
+
+namespace LogGrok.Core
+{
+
+    [Record]
+    public abstract class BaseLogProcessorFactory : ILogProcessorFactory
+    {
+        public Priority : int { get; private set; }
+
+        public LogType : string { get; private set; }
+
+        public abstract Create(fileName : string, streamFactory : void -> Stream, container : IUnityContainer, startOffset : long, endOffset : long) : option[ILogProcessor * MetaInformation];
+        
+        protected static CreateMetaInformation([NotNullOrEmpty] name : string, [NotNull] fields : IEnumerable[string * bool], settings : Uri) : MetaInformation
+        {
+            MetaInformation(name, fields.Select(field =>
+                                    {
+                                        def (fieldName, isIndexed) = field;
+                                        FieldDescriptor(fieldName, fieldName, isIndexed)
+                                    }) |> NList.ToList,
+                            settings);
+        }
+        
+    }
+}

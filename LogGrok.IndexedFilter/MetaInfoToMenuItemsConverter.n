@@ -1,0 +1,77 @@
+﻿using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Extensions;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Windows;
+using System.Windows.Data;
+using System.Globalization;
+
+using System.Windows.Markup;
+using System.Windows.Input;
+using System.Windows.Controls;
+
+using Microsoft.Practices.Prism.Commands;
+
+using LogGrok.Core;
+
+namespace LogGrok.IndexedFilter
+{
+    public class MetaInfoToMenuItemsConverterExtension : MarkupExtension, IMultiValueConverter
+    {
+        public override ProvideValue(_ : IServiceProvider) : object
+        {
+            this;
+        }
+        
+        public Convert(values : array[object], _ : Type, _ : object, _ : CultureInfo) : object 
+        {
+            match (NList.ToList(values))
+            {
+                | [meta is MetaInformation, command is ICommand, selectedItems : IEnumerable[object]] 
+                | [command is ICommand, meta is MetaInformation, selectedItems : IEnumerable[object]] => 
+                        if (selectedItems.Any()) ConvertCore(meta, command, selectedItems) else null
+                | _ => null
+            }
+        }
+        
+        private ConvertCore(meta : MetaInformation, command : ICommand, selectedItems : IEnumerable[object]) : IEnumerable[MenuItem]
+        {
+            
+            
+            def multiSelection = selectedItems.Skip(1).Any();
+            
+            meta.Fields.Where(_.IsIndexed).Select(f => 
+            { 
+                def menuItem = MenuItem() <- 
+                        { 
+                            Command = DelegateCommand(() => command.Execute(f.FieldName)); 
+                        };
+                
+                if (multiSelection)
+                    menuItem.Header = f.FieldHeader;
+                else
+                {
+                    menuItem.DataContext = selectedItems.Single();
+                    _ = menuItem.SetBinding(MenuItem.HeaderProperty, Binding($"[$(f.FieldName)]"));
+                    
+                    menuItem.HeaderStringFormat = $"$(f.FieldHeader): {0}";
+                }
+                
+                menuItem
+            });
+        }
+        
+        public ConvertBack(_ : object, _ : array[System.Type], _ : object, _ : System.Globalization.CultureInfo) : array[object]
+        {
+            throw NotSupportedException();
+        }
+    }
+        
+            
+}
+

@@ -1,0 +1,43 @@
+﻿using Nemerle.WPF;
+using System.Windows;
+using System.Windows.Interactivity;
+using Xceed.Wpf.AvalonDock;
+using Xceed.Wpf.AvalonDock.Layout;
+using Microsoft.Practices.Prism.Interactivity.InteractionRequest;
+
+namespace LogGrok.Infrastructure.Interaction
+{
+    public class ShowAnchorableLayoutAction : TriggerAction[FrameworkElement]
+    {
+        [DependencyProperty]
+        public DockingManager : DockingManager { get; set; }
+
+        [DependencyProperty]
+        public LayoutAnchorable : LayoutAnchorable { get; set; } 
+        
+        [DependencyProperty]
+        public LayoutAnchorablePane : LayoutAnchorablePane { get; set; } 
+        
+        protected override Invoke(args : object) : void
+        {
+            if (LayoutAnchorable.Parent != null)
+            {
+                LayoutAnchorable.Show(); 
+                
+                def shouldUnhideAutoHidden = 
+                {
+                    def args = args :> InteractionRequestedEventArgs;
+                    args.Context != null && args.Context.Content is bool && args.Context.Content :> bool
+                };
+                
+                when (LayoutAnchorable.IsAutoHidden && shouldUnhideAutoHidden)
+                    LayoutAnchorable.ToggleAutoHide();
+            }
+            else
+            {
+                LayoutAnchorablePane.Children.Add(LayoutAnchorable);
+                DockingManager.Layout.RootPanel.Children.Add(LayoutAnchorablePane);
+            }
+        }
+    }
+}

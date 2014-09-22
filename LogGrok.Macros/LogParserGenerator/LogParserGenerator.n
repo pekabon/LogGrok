@@ -1,0 +1,467 @@
+using Nemerle;
+using Nemerle.Compiler;
+using Nemerle.Collections;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace LogGrok.Macros.LogParserGenerator
+{
+    class Generator
+    {
+        internal GetCharConstantName(c : char) : Parsetree.Name
+        {
+            when (!_charConstatnts.ContainsKey(c))
+                _charConstatnts[c] = Macros.NewSymbol("CharConstant");
+            _charConstatnts[c]
+        }
+
+        internal DefineConstants(type : TypeBuilder, charType : Parsetree.PExpr) : void
+        {
+            mutable assigment = [];
+            foreach (constant in _charConstatnts)
+            {
+                type.Define(<[ decl: private static $(constant.Value : name) : $charType; ]>);
+                assigment ::= <[ $(constant.Value : name) = MakeConstant($(constant.Key : char)); ]>;
+            }
+
+            type.Define(<[ decl: static this() { ..$assigment } ]>);
+
+            when (_minimalLineLength == int.MaxValue)
+                _minimalLineLength = 0;
+
+            type.Define(<[ decl: MinimalHeaderLength = $_minimalLineLength ]>);
+        }
+
+        internal MakeStringMatch(value : string, offset: int) : Parsetree.PExpr
+        {
+            def Make(chars, offset = offset, result = [])
+            {
+                | (x :: xs, _, _) => Make(xs,  offset + 1, <[ Buffer[position + $offset] == $(GetCharConstantName(x) : name) ]> :: result);
+                | _ => result
+            }
+
+            Make( value.ToCharArray().ToNList() ).Aggregate( <[ true ]>, (ac,x) => <[ $ac && $x ]>)
+        }
+
+        private DistinctByName(atoms : IEnumerable[Atom]) : IEnumerable[Atom]
+        {
+            def uniqueNames = HashSet();
+            foreach (atom in atoms)
+                unless (uniqueNames.Contains(atom.Name.Value))
+                {
+                    yield atom;
+                    _ = uniqueNames.Add(atom.Name.Value);
+                }            
+        }
+
+        internal MakeLineClassAndMetaInformation(type : TypeBuilder, lineFormats : IEnumerable[string]) : void
+        {
+            
+
+            def uniqueNamedAtoms = 
+                                      DistinctByName(lineFormats.SelectMany(lineFormat => 
+                        {
+                                                                            def (_, lineAst) = Parser().TryParse(lineFormat);
+                                                                            lineAst.Atoms.Where(atom => atom.Name.HasValue)
+                        }));
+            
+            def lineTb = type.DefineNestedType(<[decl: class Line : LogParserBase.Line {} ]>);
+                        
+            def CreateProperties()
+            {
+                def fields =           
+                    uniqueNamedAtoms.Where(
+                        atom => 
+                        match(atom)
+                        { 
+                            | Atom.Constant => false 
+                            | Atom.Time => false
+                            | _ => true 
+                        })
+                        .Select(atom =>
+                            {
+                                match(atom)
+                                {
+                                    | Atom.Heximal
+                                    | Decimal       => <[decl: public $(Macros.UseSiteSymbol(atom.Name.Value) : name): int { get; set; }]>
+                                    | LazyText      => <[decl: public $(Macros.UseSiteSymbol(atom.Name.Value) : name): object { get; set; }]>
+                                    | Text          => <[decl: public $(Macros.UseSiteSymbol(atom.Name.Value) : name): LogGrok.Core.Text { get; set; }]>
+                                
+                                    | Variant 
+                                    | _ => Message.Error($"$atom is unsuported"); throw NotSupportedException();
+                                }
+                            })
+                        .Concat([<[decl: public override Time : TimeSpan { get; set; }]>]);
+            
+                foreach(f in fields)
+                {
+                    lineTb.Define(f);
+                }                
+            }
+        
+            def CreateIndexer()
+            {
+                def matchCases = 
+                    uniqueNamedAtoms.Where(
+                        atom => 
+                        match(atom)
+                        { 
+                            | Atom.Constant => false 
+                            | _ => true 
+                        })
+                        .Select(text =>
+                        {
+                            <[case: |  $(text.Name.Value) =>  $(Macros.UseSiteSymbol(text.Name.Value) : name) ]>
+                        })
+                        .Concat([<[case : | name => throw IndexOutOfRangeException(name)]>]);
+                lineTb.Define(<[decl:   public override Item[index : string] : object
+                                {
+                                    get
+                                    {
+                                        match(index)
+                                        {
+                                        ..$matchCases
+                                        }
+                                    }
+                                }]>);
+            }
+            
+            CreateProperties();
+            CreateIndexer();
+            
+            lineTb.Compile();
+            
+            def fieldsInfo = NList.ToList <|
+                uniqueNamedAtoms.Select(
+                atom =>
+                    match(atom)
+                    {
+                        | text is Atom.Text =>  <[ yield ($(text.Name.Value), $(text.IsIndexed)) ]>
+                        | _ => <[ yield ($(atom.Name.Value), false)  ]>
+                    });
+            
+            type.Define(<[decl: public static GetFields() : IEnumerable[string * bool]
+                        {
+                            ..$fieldsInfo
+                        }]>)
+        }
+
+        internal MakeLineFunctions(type : TypeBuilder, lineFormat : string, index : int) : void
+        {
+            def (endOfParsedLine, lineAst) = Parser().TryParse(lineFormat);
+
+            when (endOfParsedLine != lineFormat.Length)
+                Message.Error($"Not all string parsed, end of parse at position $endOfParsedLine");
+
+            mutable isBeginOfLine : list[Parsetree.PExpr] = [];
+            mutable createLine : list[Parsetree.PExpr] = [];
+
+            mutable offset = 0;
+
+            mutable beginOfLineCreated = false;
+
+            def FinalizeBeginOfLine()
+            {
+                beginOfLineCreated = true;
+                assert(offset != 0);
+                isBeginOfLine ::= <[ BufferLength >= position + $offset ]>;
+                _minimalLineLength = Math.Min(offset, _minimalLineLength);
+            }
+
+            def FindEndPosition(limit : Limit)
+            {
+                | Count(x) => <[ position + $x]>
+                | MinMax => Message.Error("MinMax limit is unsuported"); <[]>
+                | UserFunction(x) => <[ $(Macros.UseSiteSymbol(x) : name)(position, endPosition).WithDefault(position) ]> //TODO: do not use option
+                | Last => <[ endPosition ]>
+                | None when limit.Terminal.IsNone => Message.Error("LogGrok.Macros.LogParserGenerator internal error"); <[]>
+                | None => <[ Find(position, $(GetCharConstantName(limit.Terminal.Value) : name)) ]>
+            }
+
+            // TODO: refactor split matching for createLine and for isLineBegin
+            def MakeParseAndAssignStatement(limit, fieldName, functionName, optional : bool)
+            {
+                def assigment = fieldName.Map(
+                    x => <[ line.$(Macros.UseSiteSymbol(x) : name) = $(Macros.UseSiteSymbol(functionName) : name)(position, end) ]> ).WithDefault(<[]>);
+
+                createLine ::= if (optional)
+                         <[ def end = $(FindEndPosition(limit));
+                            when (end != position && Buffer[end] == $(GetCharConstantName(limit.Terminal.Value) : name))
+                            {
+                                $assigment;
+                                position = end;
+                            } ]>
+                               else
+                               {
+                                   match (limit)
+                                   {
+                                       | Limit.Count(c) => offset += c;
+                                       | _ => {}
+                                   }
+                         <[ def end = $(FindEndPosition(limit)); $assigment; position = end; ]>
+                               }
+            }
+
+            def ProcessTime(time)
+            {
+                mutable hasHours = false;
+                mutable hasMinutes = false;
+                mutable hasSeconds = false;
+                mutable hasSecondFraction = false;
+
+                foreach (item in time.Format) match (item)
+                    {
+                        | Hours as h => 
+                        hasHours = true;
+                        createLine ::= <[ def hours = ParseDecimal(position, position + $(h.Count)); ]>;
+                        createLine ::= <[ position += $(h.Count); ]>;
+                        offset += h.Count;
+                        | Minutes as m => 
+                        hasMinutes = true;
+                        createLine ::= <[ def minutes = ParseDecimal(position, position + $(m.Count)); ]>;
+                        createLine ::= <[ position += $(m.Count); ]>;
+                        offset += m.Count;
+                        | Seconds as s => 
+                        hasSeconds = true;
+                        createLine ::= <[ def seconds = ParseDecimal(position, position + $(s.Count)); ]>;
+                        createLine ::= <[ position += $(s.Count); ]>;
+                        offset += s.Count;
+                        | SecondsFraction as f => 
+                        hasSecondFraction = true;
+                        createLine ::= <[ def secondFraction = ParseDecimal(position, position + $(f.Count)); ]>;
+                        createLine ::= <[ position += $(f.Count); ]>;
+                        offset += f.Count;
+                        | Delimiter as d =>
+                        when (!beginOfLineCreated)
+                            isBeginOfLine ::= MakeStringMatch(d.Value, offset);
+                        offset += d.Value.Length;
+                        createLine ::= <[ position += $(d.Value.Length); ]>; 
+                    }
+
+                when (time.Name.HasValue)
+                    createLine ::= <[ line.Time = System.TimeSpan(0, 
+                        $(if (hasHours) <[hours]> else <[0]>),
+                        $(if (hasMinutes) <[minutes]> else <[0]>),
+                        $(if (hasSeconds) <[seconds]> else <[0]>),
+                        $(if (hasSecondFraction) <[secondFraction]> else <[0]>) );]>;
+            }
+
+            for (mutable i = 0; i < lineAst.Atoms.Count; ++i)
+            {
+                def result =  AstTools.Optimize(lineAst.Atoms[i], if (i + 1 < lineAst.Atoms.Count) Some(lineAst.Atoms[i + 1]) else None());
+                match (AstTools.Validate(result))
+                {
+                    | Some(error) => Message.Error(error)
+                    | _ => {}
+                }
+
+                when (!beginOfLineCreated && 
+                        (result.IsOptional ||
+                         result.Limit is Limit.MinMax ||
+                         result.Limit is Limit.UserFunction ||
+                        (result.Limit is Limit.None && !(result is Atom.Time || result is Atom.Constant))))
+                    FinalizeBeginOfLine();
+
+                match (result)
+                {
+                    | Decimal => MakeParseAndAssignStatement(result.Limit, result.Name, "ParseDecimal", optional = result.IsOptional);
+                    | Heximal => MakeParseAndAssignStatement(result.Limit, result.Name, "ParseHeximal", optional = result.IsOptional);
+                    | Text => MakeParseAndAssignStatement(result.Limit, result.Name, "CreateTextBytes", optional = result.IsOptional);
+                    | LazyText => MakeParseAndAssignStatement(result.Limit, result.Name, "CreateLazyText", optional = result.IsOptional);
+                    | Constant as constant =>
+                        when (!beginOfLineCreated)
+                            isBeginOfLine ::= MakeStringMatch(constant.Value, offset);
+                        offset += constant.Value.Length;
+                        createLine ::= if (result.IsOptional) 
+                                <[ when ($(MakeStringMatch(constant.Value, 0))) position += $(constant.Value.Length); ]>
+                            else
+                                <[ position += $(constant.Value.Length); ]>
+                    | Time as time => ProcessTime(time);
+                    | Variant 
+                    | _ => Message.Error($"$result is unsuported");
+                }
+            }
+
+            def isBeginOfLineJoined = isBeginOfLine.Aggregate( <[true]>, (ac,x) => <[ $ac && $x ]>);
+
+            _ = type.DefineWithSource( <[ decl: internal $(Macros.UseSiteSymbol("IsBeginOfLine"+index) : name)(position : int) : bool { $isBeginOfLineJoined }]> );
+
+            _ = type.DefineWithSource( <[
+                decl: 
+                [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+                internal $(Macros.UseSiteSymbol("CreateLine"+index) : name)(beginPosition : int, endPosition : int) : LogGrok.LogParserBase.Line 
+                { 
+                    unchecked 
+                    { 
+                        def line = Line(); 
+                        mutable position = beginPosition; 
+                        ..$(createLine.Reverse()) ; line 
+                    } 
+                } ]>);
+        }
+        _charConstatnts : Dictionary[char, Parsetree.Name] = Dictionary();
+        mutable _minimalLineLength = int.MaxValue;
+    }
+
+    [Nemerle.MacroUsage (Nemerle.MacroPhase.BeforeInheritance, Nemerle.MacroTargets.Class, Inherited = true)]
+    macro LogParserGenerator(type : TypeBuilder, charType : PExpr, eol : string, lineFormat : string, lineFormat1 : string = "", lineFormat2 : string = "", lineFormat3 : string = "",
+        lineFormat4 : string = "", lineFormat5 : string = "", lineFormat6 : string = "", lineFormat7 : string = "")
+    {
+        type.AddImplementedInterface( <[ LogGrok.LogParserBase.ILineReader ]> );
+
+        def impl = Generator();
+
+        def lines = array[ lineFormat, lineFormat1, lineFormat2, lineFormat3, lineFormat4, lineFormat5, lineFormat6, lineFormat7 ];
+
+        mutable validLines = [];    
+
+        impl.MakeLineClassAndMetaInformation(type, lines);
+        for (mutable i = 0; i < lines.Length; ++i)
+            when (!string.IsNullOrEmpty(lines[i]))
+            {
+                impl.MakeLineFunctions(type, lines[i], i);
+                validLines ::= i;
+            }
+
+        _ = type.DefineWithSource( <[ decl: [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)] 
+                        internal IsEol(position : int) : bool { BufferLength >= position + $(eol.Length) && $(impl.MakeStringMatch(eol, 0)) } ]>);
+
+        type.Define( <[ decl: static EolLength = $(eol.Length); ]> );
+
+        mutable detectLineBegin = validLines.Tail.FoldLeft(
+            <[  if ($(Macros.UseSiteSymbol("IsBeginOfLine" + validLines.Head) : name)(position)) $(validLines.Head) else -1 ]>,
+                (x, ac) => <[  if ($(Macros.UseSiteSymbol("IsBeginOfLine" + x.ToString()) : name)(position)) $x else $ac ]> );
+
+        _ = type.DefineWithSource( <[ decl: DetectLineBegin(position : int) : int { $detectLineBegin }; ]> );
+
+        mutable createLine = validLines.Tail.FoldLeft(
+            <[  if (index == $(validLines.Head)) $(Macros.UseSiteSymbol("CreateLine" + validLines.Head) : name)(begin, end) else throw LogGrok.LogParserBase.ParseException($"unknown line format index $index") ]>,
+                (x, ac) => <[  if (index == $x) $(Macros.UseSiteSymbol("CreateLine" + x.ToString()) : name)(begin, end) else $ac ]> );
+
+        def size = match (charType)
+                      {
+                          | <[ byte ]> => 1
+                          | <[ ushort ]> => 2
+                          | _ => Message.Error($"Unsopported char type $charType"); 0
+                      }
+
+        _ = type.DefineWithSource( <[ decl: CreateLine(index : int, begin : int, end : int) : LogGrok.LogParserBase.Line  //TODO: optimize for single pattern line text
+            { 
+                def line = $createLine;
+                line.Offset = BufferOffset + begin * $size;
+                line.EndOffset = BufferOffset + end * $size;
+                line.RawLine = CreateLazyText(begin, end);
+                line
+            }; ]> );   
+
+        type.Define( <[ decl:
+            public GetEnumerator() : IEnumerator[LogGrok.LogParserBase.Line]
+            {
+                def ReadLines(lineFormat, beginPosition)
+                {
+                    match (FindEndOfLine(beginPosition + MinimalHeaderLength))
+                    {
+                        | (-1, _) =>
+                            MoveBufferEndToBegin(beginPosition);
+                            if (TryReadBuffer(BufferLength - beginPosition))
+                                ReadLines(lineFormat, 0)
+                            else 
+                                when (BufferLength > EolLength)
+                                    yield CreateLine(lineFormat, 0, BufferLength - EolLength); //TODO: check eol
+                        | (nextlineFormat, lineEndPosition) => 
+                            yield CreateLine(lineFormat, beginPosition, lineEndPosition); 
+                            ReadLines(nextlineFormat, lineEndPosition + EolLength)
+                    }
+                }
+
+                _ = Stream.Seek(0, System.IO.SeekOrigin.Begin);
+                when (!TryReadBuffer())
+                    throw LogGrok.LogParserBase.ParseException("File is empty");
+                def lineFormat = DetectLineBegin(0);
+                def (lineFormat, beginPosition) = 
+                    if (lineFormat != -1) 
+                        (lineFormat, 0)
+                    else
+                    {
+                        def (format, endPosition) = FindEndOfLine(0);
+                        (format, endPosition + EolLength)
+                    }
+                ReadLines(lineFormat, beginPosition);
+            } ]> );
+
+        _ = type.DefineWithSource( <[ decl:
+            FindEndOfLine(position : int) : int * int
+            {
+                match (FindEolPosition(position))
+                {
+                    | -1 => (-1, -1)
+                    | lineEndPosition =>
+                        def index = DetectLineBegin(lineEndPosition + EolLength);
+                        if (index == -1) FindEndOfLine(lineEndPosition + EolLength) else (index, lineEndPosition)
+                }
+            } ]> );
+
+        _ = type.DefineWithSource( <[ decl: 
+            [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+            FindEolPosition(position : int) : int
+            {
+                if (IsEol(position))
+                    position
+                else if (BufferArrayLength > position + EolLength)
+                    FindEolPosition(position + 1) //TODO: optimize
+                else
+                    -1
+            }]> );   
+
+
+        _ = type.DefineWithSource( <[ decl: 
+            public GetLastLine() : LogGrok.LogParserBase.Line
+            {
+                _ = Stream.Seek(-System.Math.Min(BufferArrayLength, Stream.Length), System.IO.SeekOrigin.End);
+                _ = TryReadBuffer();
+
+                mutable position;
+                mutable end;
+                (position, end) = if(IsEol(BufferLength - EolLength))
+                        (BufferLength - EolLength - MinimalHeaderLength, BufferLength - EolLength)
+                    else
+                        (BufferLength - MinimalHeaderLength, BufferLength);
+                
+                        
+                position -= EolLength;
+                
+                while (position >= 0 && !(IsEol(position) && DetectLineBegin(position + EolLength) != -1))
+                    --position;
+
+                when (position < 0)
+                    throw LogGrok.LogParserBase.ParseException("Cannot find last line");
+
+                CreateLine(DetectLineBegin(position + EolLength), position + EolLength, end)
+            }
+        ]>);
+
+        _ = type.DefineWithSource( <[ decl:
+        public ReadLineAt(beginOffset : long, nextbeginOffset: long) : LogGrok.LogParserBase.Line
+            {
+                when (beginOffset < BufferOffset || nextbeginOffset > BufferOffset + BufferLength * $size)
+                {
+                    _ = Stream.Seek(beginOffset, System.IO.SeekOrigin.Begin);
+                    _  = TryReadBuffer();
+                }
+                def begin = ((beginOffset - BufferOffset) :> int) / $size;
+                def end =
+                {
+                    def end = ((nextbeginOffset - BufferOffset) :> int) / $size;
+                    if (IsEol(end - EolLength) && end - begin >= EolLength) end - EolLength else end;
+                }
+
+                CreateLine(DetectLineBegin(begin), begin, end)
+            } 
+        ]>);
+
+
+        impl.DefineConstants(type, charType);
+    }
+}

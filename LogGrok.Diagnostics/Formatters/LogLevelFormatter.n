@@ -1,0 +1,32 @@
+﻿using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+using NLog;
+
+namespace LogGrok.Diagnostics.Formatters
+{
+  public module LogLevelFormatter
+  {
+      public Format(logLevel : NLog.LogLevel) : string
+      {
+          if (logLevel == NLog.LogLevel.Debug)
+            "DBG"
+          else if (logLevel == NLog.LogLevel.Info)
+            "INF"
+          else if (logLevel == NLog.LogLevel.Warn)
+            "WRN"
+          else if (logLevel == NLog.LogLevel.Error)
+            "ERR"
+          else if (logLevel == NLog.LogLevel.Fatal)
+            "ERR"
+          else 
+            "UNK";
+      }
+  }
+}

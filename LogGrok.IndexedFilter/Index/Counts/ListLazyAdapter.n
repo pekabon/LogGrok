@@ -1,0 +1,144 @@
+using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+
+using LogGrok.Macros;
+
+namespace LogGrok.IndexedFilter.Index.Counts
+{
+    internal class ListLazyAdapter[U, T] : IList[T] where T : class
+    {
+        public this(inner : IList[U], func : U -> T)
+        {
+            _inner = inner;
+
+            _func = func;
+        
+            _list  =  array(_inner.Count);
+        }
+        
+        public Count : int
+        {
+            get
+            {
+                _inner.Count;
+            }
+        }
+        
+        public Item[index : int] : T
+        {
+            get
+            {
+                upgradablereadlock (_lock)
+                {
+                    when (index >= _list.Length)
+                    {
+                        writelock (_lock) when (index >= _list.Length) Array.Resize(ref _list, _inner.Count)
+                    }
+                    
+                    def created = _list[index];
+                    if (created != null)
+                    {
+                        created
+                    }
+                    else
+                    {
+                        writelock (_lock)
+                        {
+                            def item = _inner[index];
+                            def value = _func(item);
+                            _list[index] = value;
+                            value
+                        }
+                    }
+                }
+            }
+            
+            set 
+            {
+                ignore(index);
+                ignore(value);
+                throw NotSupportedException()
+            }
+        }
+        
+        public GetEnumerablor() : IEnumerator[T]
+            implements IEnumerable[T].GetEnumerator
+        {
+       
+           GetEnumerable().GetEnumerator()
+        }
+        
+        public NonGenericGetEnumerator() : IEnumerator
+            implements IEnumerable.GetEnumerator
+        {
+            GetEnumerablor()
+        }
+        
+        public Add(_ : T) : void
+        {
+            throw NotSupportedException()
+        }
+
+        public Insert(_ : int, _ : T) : void 
+        {
+            throw NotSupportedException()
+        }
+
+        public Remove(_ : T) : bool 
+        {
+            throw NotSupportedException()
+        }
+
+        public RemoveAt(_ : int) : void 
+        {
+            throw NotSupportedException()
+        }
+
+        public IndexOf(_ : T) : int 
+        {
+            throw NotSupportedException()
+        }
+
+        public Clear() : void 
+        {
+            throw NotSupportedException()
+        }
+
+        public Contains(_ : T ) : bool 
+        {
+            throw NotSupportedException()
+        }
+
+        public CopyTo(_ : array[T], _ : int) : void 
+        {
+            throw NotSupportedException()
+        }
+        
+        public IsReadOnly : bool 
+        {
+            get { true; }
+        }
+        
+        private GetEnumerable() : IEnumerable[T]
+        {
+            foreach(idx in $[0..Count - 1])
+                yield Item[idx];
+        };
+
+        private _inner : IList[U];
+
+        private _func : U -> T;
+        
+        private mutable _list  : array[T];
+        
+        private _lock = ReaderWriterLockSlim(LockRecursionPolicy.NoRecursion);
+    }
+}

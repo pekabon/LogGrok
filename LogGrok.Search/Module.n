@@ -1,0 +1,53 @@
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+
+using Microsoft.Practices.Prism.Modularity;
+using Microsoft.Practices.Unity;
+using Microsoft.Practices.Prism.UnityExtensions;
+
+using LogGrok.Infrastructure;
+using LogGrok.FilterManager;
+using LogGrok.LogView;
+using LogGrok.IndexedFilter;
+using LogGrok.Core;
+
+using IFilter = LogGrok.Core.IFilter;
+
+using Microsoft.Practices.Prism.Regions;
+
+namespace LogGrok.Search
+{
+  [Record]
+  [ModuleAttribute(ModuleName = "Search")]
+  public class Module : IModule
+  {
+    public Initialize() : void 
+    {   
+        _ = _container
+                .RegisterType.[SearchFilter](HierarchicalLifetimeManager())
+                .RegisterType.[IFilter, SearchFilter](HierarchicalLifetimeManager())
+                .RegisterType.[FilterManager]
+                    (HierarchicalLifetimeManager(),
+                            InjectionFactory(c =>
+                                FilterManager(
+                                    [c.Resolve.[IndexedFilter](), c.Resolve.[SearchFilter]()].Cast.[IFilter]())));
+                
+                        
+        _ = _container.RegisterType.[SearchDocument](HierarchicalLifetimeManager());
+        _ = _container.RegisterType.[SearchViewModel](HierarchicalLifetimeManager());
+        _ = _container.RegisterType.[SearchDocumentFactory](HierarchicalLifetimeManager());
+                
+           
+        _ = _container.RegisterForRegion.[SearchDecorator, SearchViewModel]("MainDocumentView");
+        
+    }
+    
+    _container : IUnityContainer
+  }
+}

@@ -1,0 +1,64 @@
+using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+using Microsoft.Practices.Prism.Modularity;
+using Microsoft.Practices.Unity;
+
+
+using Microsoft.Practices.Prism.Regions;
+
+using LogGrok.Infrastructure;
+using LogGrok.Core;
+using LogGrok.IndexedFilter.Indexer;
+
+namespace LogGrok.IndexedFilter
+{
+     [Record]    
+    [ModuleAttribute(ModuleName = "IndexedFilter")]
+    public class Module : IModule
+    {
+        
+        
+        public Initialize() : void 
+        {
+            
+            _ = _container
+                    .RegisterType.[GenericIndexer](HierarchicalLifetimeManager())
+                    .RegisterType.[IIndexedLineConsumer, GenericIndexer]("ThreadsAndCategoriesIndex", HierarchicalLifetimeManager(), 
+                        InjectionFactory(c => c.Resolve() : GenericIndexer))
+                    .RegisterType.[IndexedFilter](HierarchicalLifetimeManager());
+                    
+                _container
+                    .RegisterType.[string -> IndexedFilterView](HierarchicalLifetimeManager(),
+                        InjectionFactory(c => 
+                        {
+                            componentKey : string =>
+                            {
+                                def viewModel = IndexedFilterViewModel(componentKey, c.Resolve(), c.Resolve(), c.Resolve());
+                                def view = c.Resolve() : IndexedFilterView;
+                                
+                                view.DataContext = viewModel;
+                                view;
+                            }
+                        }));
+                    
+            //        .RegisterType.[ComponentsViewModel](HierarchicalLifetimeManager())
+            //        .RegisterType.[ThreadFilterViewModel](HierarchicalLifetimeManager())
+            //        .RegisterType.[SeveritiesViewModel](HierarchicalLifetimeManager());
+                    
+            //_container.RegisterForRegion.[ThreadFilterView, ThreadFilterViewModel]("ThreadFilter");
+            //_container.RegisterForRegion.[IndexedFilterView, ComponentsViewModel]("CategoriesSearch");
+            //_container.RegisterForRegion.[SeverityFilterView, SeveritiesViewModel]("SeverityFilter");
+            
+            //_container.RegisterForRegion.[ItemContextMenu, ItemContextMenuViewModel]("ContextMenu");
+        }
+        
+        _container : IUnityContainer;
+    }
+}

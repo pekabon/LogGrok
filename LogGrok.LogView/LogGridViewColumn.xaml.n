@@ -1,0 +1,13 @@
+
+namespace LogGrok.LogView
+{
+    public partial class LogGridViewColumn
+    {
+        public Property : string { get; set; }
+        
+        public this()
+        {
+            InitializeComponent();
+        }
+    }
+}

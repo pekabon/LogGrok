@@ -1,0 +1,60 @@
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using Nemerle.WPF;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Windows;
+
+namespace LogGrok.Infrastructure
+{
+	public module PaneConentAttachedProperties
+	{
+        [DependencyProperty(IsAttached, Metadata = PropertyMetadata(OnPaneTitleChanged))]
+        public GetPaneTitle(f : FrameworkElement) : string;
+	    
+        private OnPaneTitleChanged(d : DependencyObject, args : DependencyPropertyChangedEventArgs) : void
+        {
+            def element = d :> FrameworkElement;
+            element.RaiseEvent(RoutedPropertyChangedEventArgs.[string](args.OldValue :> string, args.NewValue :> string, PaneTitleChangedEvent))
+        }
+        
+        [DependencyProperty(IsAttached, Metadata = PropertyMetadata(string.Empty, OnPaneTitleToolTipChanged))]
+        public GetPaneTitleToolTip(f : FrameworkElement) : string;
+        
+        private OnPaneTitleToolTipChanged(d : DependencyObject, args : DependencyPropertyChangedEventArgs) : void 
+        {
+            def element = d :> FrameworkElement;
+            element.RaiseEvent(RoutedPropertyChangedEventArgs.[string](args.OldValue :> string, args.NewValue :> string, PaneTitleToolTipChangedEvent))
+        }
+                
+		internal PaneTitleChangedEvent : RoutedEvent = 
+		    EventManager.RegisterRoutedEvent("PaneTitleChanged", RoutingStrategy.Bubble, typeof(RoutedPropertyChangedEventHandler[string]), typeof(FrameworkElement));
+		  
+		public AddPaneTitleChangedHandler(o : DependencyObject, handler : RoutedPropertyChangedEventHandler[string]) : void
+		{
+		    (o :> FrameworkElement).AddHandler(PaneTitleChangedEvent, handler);
+		}
+		
+		public RemovePaneTitleChangedHandler(o : DependencyObject, handler : RoutedPropertyChangedEventHandler[string]) : void
+		{
+		    (o :> FrameworkElement).RemoveHandler(PaneTitleChangedEvent, handler);
+		}
+		
+		internal PaneTitleToolTipChangedEvent : RoutedEvent = 
+		    EventManager.RegisterRoutedEvent("PaneTitleToolTipChanged", RoutingStrategy.Bubble, typeof(RoutedPropertyChangedEventHandler[string]), typeof(FrameworkElement));
+		  
+		public AddPaneTitleToolTipChangedHandler(o : DependencyObject, handler : RoutedPropertyChangedEventHandler[string]) : void
+		{
+		    (o :> FrameworkElement).AddHandler(PaneTitleToolTipChangedEvent, handler);
+		}
+		
+		public RemovePaneTitleToolTipChangedHandler(o : DependencyObject, handler : RoutedPropertyChangedEventHandler[string]) : void
+		{
+		    (o :> FrameworkElement).RemoveHandler(PaneTitleToolTipChangedEvent, handler);
+		}
+	}
+}

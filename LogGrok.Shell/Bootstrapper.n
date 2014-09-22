@@ -1,0 +1,201 @@
+using Nemerle;
+using Nemerle.Assertions;
+using Nemerle.Collections;
+using Nemerle.Extensions;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.Linq;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Threading;
+using System.Reflection;
+using System.IO;
+using System.Diagnostics;
+
+using Microsoft.Practices.Prism.Modularity;
+using Microsoft.Practices.Prism.PubSubEvents;
+using Microsoft.Practices.Prism.Regions;
+using Microsoft.Practices.Prism.Logging;
+using Microsoft.Practices.Prism.UnityExtensions;
+using Microsoft.Practices.ServiceLocation;
+using Microsoft.Practices.Unity;
+using Microsoft.Practices.Prism.Regions.Behaviors;
+
+using Xceed.Wpf.AvalonDock.Layout;
+
+using LogGrok.Core;
+using LogGrok.Infrastructure;
+using LogGrok.Infrastructure.Decoration;
+using LogGrok.Diagnostics;
+using LogGrok.Diagnostics.Adapters;
+using LogGrok.Macros.Diagnostics;
+using LogGrok.Shell.Modularity;
+
+namespace LogGrok.Shell
+{
+    [TraceMethods(LogExecutionTime = true, LogParameters = true, LogResult = true)]
+    public class Bootstrapper : UnityBootstrapper
+    {
+        public this()
+        {
+            ExceptionsLogger.Initialize();
+            TracesLogger.Initialize();
+        }
+
+        public new Run() : void
+        {
+            Run(false)
+        }
+
+        protected override InitializeShell() : void 
+        {
+            base.InitializeShell();
+            Application.Current.MainWindow = this.Shell :> Window;
+            Application.Current.MainWindow.Show();
+        }
+
+        protected override ConfigureServiceLocator() : void
+        {
+            base.ConfigureServiceLocator();
+        }
+        
+        protected override CreateShell() : DependencyObject
+        {
+            try
+            {
+                _ = Container.RegisterInstance(SynchronizationContext.Current);
+                InitializeModules();
+                def mainWindow = Container.Resolve.[MainWindow](typeof(MainWindow).FullName);
+                mainWindow : DependencyObject
+            }
+            catch
+            {
+                | e => _ = MessageBox.Show(e.ToString()); throw;
+            }
+        }
+
+        private ConfigurePrismServices(container : IUnityContainer) : void 
+        {
+
+            _ = container.RegisterType.[IServiceLocator, UnityServiceLocatorAdapter](HierarchicalLifetimeManager());
+            _ = container.RegisterType.[IModuleInitializer, ModuleInitializer](ContainerControlledLifetimeManager());
+            _ = container.RegisterType.[IModuleManager, ModuleManager](ContainerControlledLifetimeManager());
+            _ = container.RegisterType.[RegionAdapterMappings, RegionAdapterMappings](HierarchicalLifetimeManager());
+            _ = container.RegisterType.[IRegionManager, RegionManager](HierarchicalLifetimeManager());
+            _ = container.RegisterType.[IEventAggregator, EventAggregator](ContainerControlledLifetimeManager());
+            _ = container.RegisterType.[HierarchicalRegionViewRegistry](HierarchicalLifetimeManager());
+            _ = container.RegisterType.[IRegionViewRegistry](HierarchicalLifetimeManager(),
+                                                                InjectionFactory(c => c.Resolve() : HierarchicalRegionViewRegistry));
+            _ = container.RegisterType.[IRegionBehaviorFactory, RegionBehaviorFactory](HierarchicalLifetimeManager(), 
+                                                                                       InjectionFactory(c => 
+                    { 
+                                                                                                        def behaviorFactory = RegionBehaviorFactory(c.Resolve.[IServiceLocator]());
+                                                                                                        ConfigureBehaviorFactory(behaviorFactory);
+                                                                                                        behaviorFactory
+                    }));
+            _ = container.RegisterType.[IRegionNavigationJournalEntry, RegionNavigationJournalEntry]();
+            _ = container.RegisterType.[IRegionNavigationJournal, RegionNavigationJournal]();
+            _ = container.RegisterType.[IRegionNavigationService, RegionNavigationService]();
+            _ = container.RegisterType.[IRegionNavigationContentLoader, RegionNavigationContentLoader](ContainerControlledLifetimeManager());
+
+
+            _ = container.RegisterType.[RegionAdapterMappings](
+            HierarchicalLifetimeManager(),
+            InjectionFactory(c =>
+                                                        {
+                             def mappings = RegionAdapterMappings();   
+                             def behaviorFactory = c.Resolve.[RegionBehaviorFactory]();
+
+                             mappings.RegisterMapping(typeof(LayoutDocumentPane),
+                                                      LayoutDocumentPaneRegionAdapter.[LayoutDocumentPane, LayoutDocument](behaviorFactory));
+
+                             mappings.RegisterMapping(typeof(LayoutAnchorablePane), 
+                                                      LayoutGroupRegionAdapter.[LayoutAnchorablePane, LayoutAnchorable](behaviorFactory));
+
+                             mappings.RegisterMapping(typeof(Menu),
+                                                      ItemsControlRegionAdapter(behaviorFactory));
+
+                             mappings.RegisterMapping(typeof(DecoratorContentControl),
+                                                      DecoratorRegionAdapter(behaviorFactory));
+
+                             mappings.RegisterMapping(typeof(ContentControl),
+                                                      ContentControlRegionAdapter(behaviorFactory));
+
+                             mappings.RegisterMapping(typeof(Selector), 
+                                                      SelectorRegionAdapter(behaviorFactory));
+
+                             mappings.RegisterMapping(typeof(ItemsControl), 
+                                                      ItemsControlRegionAdapter(behaviorFactory));
+
+
+                             mappings
+                                                        }));
+        }
+
+        protected override ConfigureRegionAdapterMappings() : RegionAdapterMappings
+        {
+            Container.Resolve.[RegionAdapterMappings]()
+        }
+
+        protected override ConfigureContainer() : void
+        {
+
+            base.ConfigureContainer();
+
+            ConfigurePrismServices(Container);
+            
+            _ = Container.RegisterType.[DocumentViewTemplateSelector](
+                    InjectionFactory(c => DocumentViewTemplateSelector(c.ResolveAll.[DataTemplate]())));
+
+            _ = Container.RegisterView.[MainWindow, MainWindowViewModel]();
+
+            _ = Container.RegisterType.[DocumentManager](
+                    InjectionFactory(c => DocumentManager(c.ResolveAll.[ILogProcessorFactory](), c)));
+        }
+
+        protected override CreateModuleCatalog() : IModuleCatalog
+        {
+            def appModulesDir = Path.Combine(
+                Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "Modules");
+            def externalModulesDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "LogGrok", "Modules");       
+            def createModuleCatalog = dir => DirectoryModuleCatalog() <- { ModulePath = dir };
+            
+            def moduleCatalogs = List.[IModuleCatalog]();
+            moduleCatalogs.Add(createModuleCatalog(appModulesDir));
+            
+            when (Directory.Exists(externalModulesDir))
+                moduleCatalogs.Add(createModuleCatalog(externalModulesDir));
+            
+            def aggregateModuleCatalog = AggregatedModuleCatalog(moduleCatalogs);
+            
+            aggregateModuleCatalog;
+        }
+        
+        protected override CreateLogger() : ILoggerFacade 
+        {
+            LoggerToLoggerFacadeApdater();
+        }
+        
+        protected override ConfigureDefaultRegionBehaviors() : IRegionBehaviorFactory 
+        {
+            Container.Resolve()
+        }
+
+        private ConfigureBehaviorFactory(factory : IRegionBehaviorFactory) : void
+        {
+            factory.AddIfMissing("AutoPopulate", typeof(AutoPopulateRegionBehavior));
+            factory.AddIfMissing("ContextToDependencyObject", typeof(BindRegionContextToDependencyObjectBehavior));
+            factory.AddIfMissing("ActiveAware", typeof(RegionActiveAwareBehavior));
+            factory.AddIfMissing(SyncRegionContextWithHostBehavior.BehaviorKey, typeof(SyncRegionContextWithHostBehavior));
+            factory.AddIfMissing(RegionManagerRegistrationBehavior.BehaviorKey, typeof(RegionManagerRegistrationBehavior));
+            factory.AddIfMissing("RegionMemberLifetimeBehavior", typeof(RegionMemberLifetimeBehavior));
+            factory.AddIfMissing("ClearChildViews", typeof(ClearChildViewsRegionBehavior));
+        }    
+    }
+}

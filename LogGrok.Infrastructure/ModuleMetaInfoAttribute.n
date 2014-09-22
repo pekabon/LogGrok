@@ -1,0 +1,18 @@
+using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace LogGrok.Infrastructure
+{
+  [Record]
+  [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
+  public sealed class ModuleMetaInfoAttribute : Attribute
+  {
+    [Accessor] _name : string;
+  }
+}

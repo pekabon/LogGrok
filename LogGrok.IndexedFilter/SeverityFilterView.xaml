@@ -1,0 +1,7 @@
+<UserControl x:Class="LogGrok.IndexedFilter.SeverityFilterView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:if="clr-namespace:LogGrok.IndexedFilter"
+             xmlns:scm="clr-namespace:System.ComponentModel;assembly=WindowsBase">
+    <if:IndexedFilterView />
+</UserControl>

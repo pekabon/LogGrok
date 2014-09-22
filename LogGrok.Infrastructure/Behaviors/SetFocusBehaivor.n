@@ -1,0 +1,35 @@
+using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
+using System.Windows;
+using System.Windows.Data;
+using System.Windows.Input;
+using System.Collections.ObjectModel;
+
+using Nemerle.WPF;
+using System.Windows.Markup;
+
+namespace LogGrok.Infrastructure.Behaviors
+{
+  
+  public module SetFocusBehaivor
+  {
+      [DependencyProperty(IsAttached, Metadata=PropertyMetadata(false, OnFocusedChanged))]
+      public GetFocused(_ : DependencyObject) : bool; 
+      
+       private OnFocusedChanged(d : DependencyObject, args : DependencyPropertyChangedEventArgs) : void 
+      {
+          def element = d :>FrameworkElement;
+          
+          element.Loaded += (_, _) =>
+            when (args.NewValue :> bool)
+                _ = element.Focus();
+      }
+  }
+}

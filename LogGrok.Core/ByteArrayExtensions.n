@@ -1,0 +1,60 @@
+﻿using Nemerle.Imperative;
+
+using System.Collections.Generic;
+
+namespace LogGrok.Core
+{
+    public module ByteArrayExtensions
+    {
+        public class ByteArrayEqualityComparer : IEqualityComparer[array[byte]]
+        {
+            public Equals(x : array[byte], y : array[byte]) : bool
+            {
+                ByteArrayExtensions.Equals(x, y)
+            }
+            
+            public GetHashCode(obj : array[byte]) : int
+            {
+                obj.GetModifiedFNVHash()
+            }
+        }
+        
+        public Equals(x : array[byte], y : array[byte]) : bool
+            {
+                if ((x == null || y == null) && !object.ReferenceEquals(x, y))
+                    false
+                else if (x.Length != y.Length)
+                    false
+                else
+                {
+                    mutable result = true;
+                    for (mutable i = 0; i < x.Length; i++)
+                        when (x[i] != y[i]) 
+                        {
+                            result = false;
+                            break;
+                        }
+                    result
+                }
+            }
+        
+        public GetModifiedFNVHash(this value : array[byte]) : int
+        {
+            unchecked
+            {
+                def p = 16777619;
+		        mutable hash = 2166136261 :> int;
+
+		        for (mutable i = 0; i < value.Length; i++)
+			        hash = (hash ^ value[i]) * p;
+
+			    hash += hash << 13;
+			    hash ^= hash >> 7;
+			    hash += hash << 3;
+			    hash ^= hash >> 17;
+			    hash += hash << 5;
+			    hash
+            }
+        }
+    }
+}

@@ -1,0 +1,86 @@
+﻿using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+using Nemerle.Imperative;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace LogGrok.Core
+{
+    public class Text : IComparable, IComparable[Text]
+    {
+        protected this(start : int, end : int, buffer : array[byte])
+        {
+            unchecked
+            {
+                Buffer = array(end - start);
+                Buffer.BlockCopy(buffer, start, Buffer, 0, end - start);
+            }
+        }
+      
+        public static Empty : Text
+        {
+            get
+            {
+                Text8(0, 0, array(0))
+            }
+        }
+        
+        public IsEmpty : bool
+        {
+            get
+            {
+                Buffer.Length == 0
+            }
+        }
+        
+        public Buffer : array[byte];
+        
+        public override GetHashCode() : int 
+        {
+            Buffer.GetModifiedFNVHash()
+        }
+        
+        public override Equals(other : object) : bool
+        {
+            | otherText is Text =>
+            {
+                if (Buffer.Length != otherText.Buffer.Length)
+                    false
+                else
+                {
+                    mutable result = true;
+                    for (mutable i = 0; i < Buffer.Length; i++)
+                        when (Buffer[i] != otherText.Buffer[i]) 
+                        {
+                            result = false;
+                            break;
+                        }
+                    result
+                }
+            }
+            | _ => false
+        }
+
+        public NonGenericCompareTo(obj : object) : int 
+                            implements IComparable.CompareTo
+        {
+            | text is Text => this.ToString().CompareTo(text.ToString())
+            | _ => throw ArgumentException("Cannot compare $obj to Text");
+        }
+        
+        public CompareTo(obj : Text) : int 
+        {
+            this.ToString().CompareTo(obj.ToString())
+        }
+        
+        public override ToString() : string
+        {
+            throw InvalidOperationException()
+        }
+        
+    }
+}

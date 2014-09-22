@@ -1,0 +1,52 @@
+﻿using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Text;
+using System.Diagnostics;
+using System.Collections.Generic;
+using System.Linq;
+
+using LogGrok.Diagnostics;
+
+namespace LogGrok.Diagnostics.Adapters
+{
+  public class LoggerToTraceListenerAdapter : TraceListener
+  {
+      public this()
+      {
+          Name = "Logger";
+      }
+      
+      public override Flush() : void
+      {
+          when (_message.Length != 0)
+          {
+              WriteLine(string.Empty);
+          }
+      }
+      
+      public override Fail(message : string, _ : string) : void
+      {
+          _logger.Error(message);
+      }
+
+      public override Write(message : string) : void
+      {
+          _ = _message.Append(message);
+      }
+
+      public override WriteLine(message : string) : void
+      {   
+        _ = _message.Append(message);
+        _logger.Info(_message.ToString());
+        _ = _message.Clear();
+      }
+      
+      private static _logger : Logger = Logger.Get(DiagnosticsComponent.Name);
+      
+      private _message : StringBuilder = StringBuilder();      
+  }
+}

@@ -1,0 +1,12 @@
+using Nemerle;
+using System.Collections.Generic;
+
+namespace LogGrok.Macros.LogParserGenerator
+{
+    [Record]
+    class Line
+    {
+        public Atoms : List[Atom];
+        public override ToString() : string { string.Join( ", ", Atoms ); }
+    }
+}

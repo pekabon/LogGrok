@@ -1,0 +1,80 @@
+using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using LogGrok.IndexedFilter.Index;;
+using LogGrok.Infrastructure;
+
+namespace LogGrok.IndexedFilter
+{
+    [Record]
+    public class CountsIndexLeaf
+    {
+        public Counts : Lazy[List[(int*string)* int]] { get; private set; }
+        
+        public TotalCount : Lazy[int]
+        {
+            get
+            {
+                _totalCount
+            }
+        }
+        
+        [RecordIgnore]
+        private _totalCount : Lazy[int] = Lazy.[int](() => Counts.Value.Sum(v => v[1]));
+    };
+    
+    internal class CountsIndexer
+    {
+        public this(keys : HashSet[int*string], countIndices : List[List[(int*string) * int]])
+        {
+            def FilterIndices(l : List[(int*string) * int])
+            {
+                l.Where(t => keys.Contains(t[0])).ToList()
+            }
+            
+            _filteredCountIndices =
+                countIndices.Select(l => CountsIndexLeaf(Lazy(() => FilterIndices(l)))).ToList();
+        }
+        
+        public GetStartIndexes(position : int) : List[(int*string) * int]
+        {
+            def found = _filteredCountIndices.BinarySearch(position, (leaf, p) => leaf.TotalCount.Value.CompareTo(p));
+            
+            def foundIdx = if (found < 0) ~found else found;
+            
+            if (foundIdx == 0)
+                 List.[(int*string) * int]()
+            else
+                _filteredCountIndices[foundIdx - 1].Counts.Value
+        }
+        
+        private _filteredCountIndices : List[CountsIndexLeaf];
+    }
+
+    internal class CountsIndex
+    {
+        internal Add(lastIndex : int,  indices : IDictionary.[int*string, IndexTree]) : void
+        {
+            when (lastIndex % _granularity == 0)
+            {
+                _countIndices.Add(indices.Select(kv => (kv.Key, kv.Value.Count)).ToList());
+            }
+        }
+        
+        internal GetStartIndexerForFilter(keys : IEnumerable[int*string]) : CountsIndexer
+        {
+            CountsIndexer(HashSet(keys), _countIndices)
+        }
+        
+
+        public _countIndices : List[List[(int*string) * int]];
+        
+        private _granularity = 10000;
+        private nodeSize = 10;
+    }
+}

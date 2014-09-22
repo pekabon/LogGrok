@@ -1,0 +1,269 @@
+using Nemerle.WPF;
+using Nemerle.Extensions;
+using Nemerle.Utility;
+using Nemerle.Collections;
+using Nemerle.Linq;
+
+using System;
+using System.Text;
+using System.Collections.Generic;
+using System.Linq;
+using System.IO;
+using Microsoft.Practices.Prism.Commands;
+using System.Windows.Input;
+using System.Windows;
+using LogGrok.Core;
+using System.Collections.ObjectModel;
+using System.Windows.Media;
+using System.Reflection;
+using System.Threading;
+using System.Text.RegularExpressions;
+using LogGrok.LogView;
+using System.Configuration;
+
+namespace LogGrok.Settings
+{
+    [Record]
+    public class ColorViewModel
+    {
+        [Accessor] _name  : string;
+        [Accessor] _color : Color;
+    }
+    
+    [Record]
+    [NotifyPropertyChanged]
+    public class SearchAreaViewModel
+    {
+        [RecordIgnore]
+        public IsSet : bool
+        {
+            get { _areas.Contains(_areaName) }
+            set { if (value) _areas.Add(_areaName) else _ = _areas.Remove(_areaName) }
+        }
+        
+        [Accessor] _name : string;
+        _areaName : string;
+        _areas    : IList[string];
+    }
+        
+    [NotifyPropertyChanged]
+    public class RuleViewModel
+    {
+        internal this(rule : ColorRule, metaInformation : MetaInformation)
+        {            
+            def colorsMeta = typeof(Colors).GetProperties(BindingFlags.Public | BindingFlags.Static);
+            def colors     = colorsMeta.Select(x => x.GetValue(null) :> Color);
+            def names      = colorsMeta.Select(_.Name);
+            
+            def CreateSearchAreaViewModel(fieldDescription)
+            {
+                def viewModel = SearchAreaViewModel(fieldDescription.FieldHeader, fieldDescription.FieldName, rule.SearchAreas);
+                viewModel.PropertyChanged += _ => RaisePropertyChanged(SearchAreas);
+                viewModel
+            }
+            
+            def CreateListOfColorsWithColor(color)
+            {
+                if (colors.Contains(color))
+                    ObservableCollection(names.Zip(colors, ColorViewModel))
+                else
+                    ObservableCollection([ColorViewModel($"Custom: $color", color)].Concat(names.Zip(colors, ColorViewModel)))
+            }
+            
+            OriginalRule     = rule;
+            SearchAreas      = ObservableCollection(metaInformation.Fields.Select(CreateSearchAreaViewModel));
+            ForegroundColors = CreateListOfColorsWithColor(rule.TextColor.Foreground);
+            BackgroundColors = CreateListOfColorsWithColor(rule.TextColor.Background);
+            Usages           = ObservableCollection([ColorRuleUsage.None, ColorRuleUsage.Line]);
+            
+            when (metaInformation.Fields.Any())
+                Usages.Add(ColorRuleUsage.ParsedAreas);
+        }
+        
+        public Name : string
+        {
+            get { OriginalRule.Name }
+            set { OriginalRule.Name = value }
+        }
+        
+        public Rule : string
+        {            
+            get { OriginalRule.Rule.ToString() }
+            set { OriginalRule.Rule = Regex(value, if (RuleIsCaseSensitive) RegexOptions.None else RegexOptions.IgnoreCase); }
+        }
+                
+        public RuleIsCaseSensitive : bool
+        {
+            get { !(OriginalRule.Rule.Options %&& RegexOptions.IgnoreCase) }
+            set { OriginalRule.Rule = Regex(OriginalRule.Rule.ToString(), if (value) RegexOptions.None else RegexOptions.IgnoreCase) }
+        }
+                
+        public ForegroundColors : ObservableCollection[ColorViewModel] { get; private set }
+        
+        public BackgroundColors : ObservableCollection[ColorViewModel] { get; private set }
+        
+        public Usages : ObservableCollection[ColorRuleUsage] { get; private set }
+
+        public SearchAreas : ObservableCollection[SearchAreaViewModel]
+        {
+            mutable _searchAreas : ObservableCollection[SearchAreaViewModel];
+            
+            get
+            {
+                if (OriginalRule.Usage != ColorRuleUsage.ParsedAreas)
+                    ObservableCollection()
+                else
+                    _searchAreas
+            }
+            
+            private set
+            {
+                _searchAreas = value
+            }
+        }
+                        
+        public Foreground : ColorViewModel
+        {
+            get { ForegroundColors.Find(x => x.Color.Equals(OriginalRule.TextColor.Foreground)).Value }
+            set { OriginalRule.TextColor.Foreground = value.Color }
+        }
+        
+        public Background : ColorViewModel
+        {
+            get { BackgroundColors.Find(x => x.Color.Equals(OriginalRule.TextColor.Background)).Value }
+            set { OriginalRule.TextColor.Background = value.Color }
+        }
+        
+        [NotifyChangedOptions(Dependent = [SearchAreas])]
+        public Usage : ColorRuleUsage
+        {
+            get { OriginalRule.Usage }
+            set { OriginalRule.Usage = value }
+        }
+                                                
+        internal OriginalRule : ColorRule { get; private set }
+    }
+                    
+    [NotifyPropertyChanged]
+    public class LogRulesViewModel
+    {
+        internal this (metaInformation : MetaInformation, rules : IEnumerable[ColorRule])
+        {
+            def CreateRuleViewModel(rule)
+            {
+                def viewModel = RuleViewModel(rule, metaInformation);
+                viewModel.PropertyChanged += _ => Changed();
+                viewModel
+            }            
+            
+            def AddNewRule()
+            {
+                def rule = ColorRule($"New Rule $(Rules.Count() + 1)", Regex(""), TextColor(background = Colors.Transparent, foreground = Colors.Black), List(), ColorRuleUsage.Line);
+                def viewModel = CreateRuleViewModel(rule);
+                Rules.Add(viewModel);
+                SelectedRule = viewModel;
+            }
+            
+            def DeleteRule()
+            {
+                def index = Rules.IndexOf(SelectedRule);
+                _ = Rules.Remove(SelectedRule);
+                when (!Rules.IsEmpty())
+                    SelectedRule = Rules[Math.Min(index, Rules.Count() - 1)];
+            }
+            
+            def SwapRules(rules, index1, index2)
+            {
+                def tmp = rules[index1];
+                rules[index1] = rules[index2];
+                rules[index2] = tmp;
+            }
+            
+            def MoveUp()
+            {
+                def rule  = SelectedRule;
+                def index = Rules.IndexOf(SelectedRule);
+                SwapRules(Rules, index, index - 1);
+                SelectedRule = rule
+            }
+            
+            def MoveDown()
+            {
+                def rule  = SelectedRule;
+                def index = Rules.IndexOf(SelectedRule);
+                SwapRules(Rules, index, index + 1);
+                SelectedRule = rule
+            }
+            
+            AddNewRuleCommand = DelegateCommand(AddNewRule);
+            DeleteRuleCommand = DelegateCommand(DeleteRule, () => SelectedRule != null);
+            MoveUpCommand = DelegateCommand(MoveUp, () => SelectedRule != null && Rules.IndexOf(SelectedRule) > 0);
+            MoveDownCommand = DelegateCommand(MoveDown, () => SelectedRule != null && Rules.IndexOf(SelectedRule) < Rules.Count() - 1);
+            HasSearchAreas = metaInformation.Fields.Any();
+                        
+            Rules = ObservableCollection(rules.Select(CreateRuleViewModel(_)));
+            Rules.CollectionChanged += _ => Changed();            
+
+            Name         = metaInformation.LogType;
+            SelectedRule = Rules.FirstOrDefault()
+        }
+                
+        public Rules : ObservableCollection[RuleViewModel] { get; private set }
+        
+        public HasSearchAreas : bool { get; private set }
+                        
+        public Name : string { get; private set }
+                
+        [NotifyChangedOptions(Dependent = [CanEditRule, AddNewRuleCommand, DeleteRuleCommand, MoveUpCommand, MoveDownCommand])]
+        public SelectedRule : RuleViewModel
+        { 
+            mutable _selectedRule : RuleViewModel;
+            get { _selectedRule }
+            set
+            {
+                _selectedRule = value;
+                    
+                AddNewRuleCommand.RaiseCanExecuteChanged();
+                DeleteRuleCommand.RaiseCanExecuteChanged();
+                MoveUpCommand.RaiseCanExecuteChanged();
+                MoveDownCommand.RaiseCanExecuteChanged();
+            }
+        }
+        
+        public CanEditRule : bool
+        {
+            get { SelectedRule != null }
+        }
+        
+        public AddNewRuleCommand : DelegateCommand { get; private set; }
+        
+        public DeleteRuleCommand : DelegateCommand { get; private set; }
+        
+        public MoveUpCommand : DelegateCommand { get; private set; }
+        
+        public MoveDownCommand : DelegateCommand { get; private set; }
+        
+        internal event Changed : Action;
+    }
+    
+    [NotifyPropertyChanged]
+    public class ColorRulesViewModel
+    {
+        public this (metaInfo : IEnumerable[MetaInformation], colorizerService : TextColorizerService)
+        {
+            def CreateLogRulesViewModel(metainformation)
+            {
+                def viewModel = LogRulesViewModel(metainformation, colorizerService.LogRules[metainformation.LogType]);
+                viewModel.Changed += () => colorizerService.LogRules[metainformation.LogType] = viewModel.Rules.Select(_.OriginalRule);
+                viewModel
+            }
+            
+            LogRules    = ObservableCollection(metaInfo.Select(CreateLogRulesViewModel));
+            SelectedLog = LogRules.First();
+        }
+        
+        public LogRules : ObservableCollection[LogRulesViewModel] { get; private set }
+
+        public SelectedLog : LogRulesViewModel { get; set }
+    }    
+}

@@ -1,0 +1,48 @@
+﻿using Nemerle;
+using Nemerle.Assertions;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+using LogGrok.Core;
+
+namespace LogGrok.LogView
+{
+    public class LineViewModelProvider : IItemProvider[LineViewModel]
+    {
+        public this([NotNull] indexesProvider : IItemProvider[int], [NotNull] textColorizer : TextColorizer, [NotNull] coreLineProvider: IIndexedLineProvider, [NotNull] metaInformation : MetaInformation)
+        {
+            _indexesProvider = indexesProvider;
+            _textColorizer = textColorizer;
+            _coreLineProvider = coreLineProvider;
+            _meta = metaInformation;
+            _indexesProvider.CountChanged += c => CountChanged(c);
+        }
+
+        public event CountChanged : Action[int];
+
+        public Count : int
+        {
+            get{ _indexesProvider.Count; }
+        }
+
+        public Fetch(start : int, end : int) : System.Collections.Generic.IList[LogGrok.LogView.LineViewModel]
+        {
+            _indexesProvider.Fetch(start, end).Select(i => LineViewModel(i, () => _coreLineProvider.GetLine(i), _meta, _textColorizer)).ToList()
+        }
+
+        public Search(_ : LogGrok.LogView.LineViewModel) : int
+        {
+            throw System.NotImplementedException()
+        }
+
+        private _indexesProvider : IItemProvider[int];
+        private _textColorizer : TextColorizer;
+        private _meta : MetaInformation;
+        private _coreLineProvider: IIndexedLineProvider;
+    }
+}

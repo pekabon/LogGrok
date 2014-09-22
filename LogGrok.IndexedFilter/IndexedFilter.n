@@ -1,0 +1,97 @@
+using Nemerle;
+using Nemerle.Assertions;
+using Nemerle.Collections;
+using Nemerle.Extensions;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+
+using LogGrok.Core;
+using LogGrok.IndexedFilter.Indexer;
+
+namespace LogGrok.IndexedFilter
+{
+    public class IndexedFilter : IFilter
+    {
+        [Record]
+        class FilteredLinesProvider : IFilteredLinesProvider
+        {
+            public GetLines(fromIndex : int) : IEnumerable[LineOrProgress]
+            {
+                _indexer.GetFilteredIndices(_exclusions)
+                    .SkipWhile(_ < fromIndex)
+                    .Select(x => LineOrProgress.Line(x))
+            }
+
+            private _exclusions : Dictionary.[string, array[Text]];
+            private _indexer : GenericIndexer; 
+        }
+
+        public this([NotNull] indexer : GenericIndexer, [NotNull] meta : MetaInformation)
+        {
+            _indexer = indexer;   
+            _meta = meta;
+
+            Changed += _ => {};
+        }
+
+        public event Changed : Action;
+
+        public SetExclusions(categoryKey : string, excludedCategories : IEnumerable[Text]) : void 
+        {
+            _exclusions[categoryKey] = excludedCategories.ToArray();
+            Changed();
+        }
+
+        public ExcludeAllExcept(categoryKey : string, includedCategories : IEnumerable[Text]) : void
+        {
+            def included = HashSet(includedCategories);
+            def excluded = _indexer.GetAllComponents(categoryKey).Where(category => !included.Contains(category));
+            SetExclusions(categoryKey, excluded);
+        }
+        
+        public AddExclusions(categoryKey : string, excludedCategories : IEnumerable[Text]) : void
+        {
+            GetExclusions(categoryKey).Concat(excludedCategories).Distinct() |> SetExclusions(categoryKey, _)
+        }
+
+        public ClearFilters() : void 
+        {
+            _exclusions.Clear();
+            Changed();
+        }
+
+        public GetFilteredItemsProvider() : IItemProvider[int]
+        {            
+            _indexer.GetFetcher(_exclusions)
+        }
+
+        public GetExclusions(categoryKey : string) : IEnumerable[Text]
+        {
+            if (_exclusions.ContainsKey(categoryKey)) 
+                _exclusions[categoryKey]
+            else 
+                []
+        }
+
+        public CanFilter : bool { get { _meta.Fields.Any(f => f.IsIndexed) } }
+
+        public Priority : int { get { int.MinValue } }
+
+        public Enabled : bool { get { _exclusions.SelectMany(kv => kv.Value).Any() } }
+
+        public GetFilteredLinesProvider() : IFilteredLinesProvider
+        {
+            FilteredLinesProvider(_exclusions, _indexer)
+        }
+
+        private _meta : MetaInformation;
+        private _indexer : GenericIndexer;
+
+        private _exclusions = Dictionary.[string, array[Text]]();
+    }
+}

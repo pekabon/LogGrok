@@ -1,0 +1,84 @@
+using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+using Nemerle.WPF;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Windows.Threading;
+
+using Nemerle.Extensions;
+
+using LogGrok.Infrastructure;
+using LogGrok.LogView;
+using LogGrok.Core;
+
+namespace LogGrok.Module.FileInfo
+{
+    [NotifyPropertyChanged]
+    public class FileInfoViewModel
+    {
+        public this(logProcessor : ILogProcessor)
+        {
+            def start = DateTime.Now;
+            
+            def Update(logInfo)
+            {
+                LineCount = logInfo.ProcessedLineCount : int;
+                
+                when (StartTime == TimeSpan() && LineCount > 0)
+                {
+					
+                    def time = logProcessor.GetLine(0).Time;
+					StartTime = TimeSpan(0, time.Hours, time.Minutes, time.Seconds)
+				}
+                
+                
+                def  timeSpan  = (DateTime.Now - start).TotalMilliseconds;
+                when (timeSpan != 0)
+                    LinePerSecond = (LineCount / timeSpan * 1000) :> int;
+                    
+
+                when (LineCount > 0)
+                {
+                    def lastLine = logProcessor.GetLine(LineCount - 1);
+                
+                    EndTime = TimeSpan(0, lastLine.Time.Hours, lastLine.Time.Minutes, lastLine.Time.Seconds);
+                    Progress = logInfo.LoadedPercent;
+                }
+            }
+            
+           
+            StartTime = TimeSpan();
+            def logInfo = logProcessor : ILogInfo;
+            FullPath = logInfo.FullPath;
+            Header   = logInfo.Header;
+            
+            Update(logInfo);
+            
+            unless(logInfo.IsLoaded)
+            {
+                _timer = WeakDispatcherTimer((_, _) => Update(logInfo), TimeSpan.FromSeconds(1));
+                logInfo.Loaded += (_, _) =>  { Update(logInfo); _timer.Stop(); }
+            }
+        }
+
+        public FullPath : string { get; private set; }
+
+        public Header   : string { get; private set; }
+        
+        public LineCount : int { get; private set; }
+        
+        public LinePerSecond : int { get; private set; }
+        
+        public StartTime : TimeSpan { get; private set; }
+        
+        public EndTime : TimeSpan { get; private set; }
+        
+        public Progress : double { get; private set; }
+        
+        private mutable _timer : WeakDispatcherTimer;
+    }
+}

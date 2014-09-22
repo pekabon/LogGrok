@@ -1,0 +1,21 @@
+using System.Windows;
+using System.Windows.Controls;
+using System.Linq;
+
+namespace LogGrok.Shell
+{
+	public partial class MainWindow 
+	{
+		public this()
+		{
+			InitializeComponent();
+		}
+		
+        public override OnApplyTemplate() : void
+        {
+            base.OnApplyTemplate();
+
+            (GetTemplateChild("PART_TitleBar") :> ContentControl).HorizontalAlignment = HorizontalAlignment.Center;
+        }        
+	}
+}

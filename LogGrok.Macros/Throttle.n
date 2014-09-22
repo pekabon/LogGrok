@@ -1,0 +1,49 @@
+using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Compiler;
+using Nemerle.Compiler.Parsetree;
+using Nemerle.Compiler.Typedtree;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Windows.Threading;
+
+namespace LogGrok.Macros
+{
+    [MacroUsage(MacroPhase.BeforeInheritance, MacroTargets.Method)]
+    macro Throttle(typeBuilder : TypeBuilder, method : ClassMember.Function, timeSpan : PExpr)
+    {
+        ThrottleImpl.DoTransform(Macros.ImplicitCTX(), typeBuilder, method, timeSpan)
+    }
+
+    module ThrottleImpl
+    {
+        public DoTransform(typer : Typer, typeBuilder : TypeBuilder, method : ClassMember.Function, timeSpan : PExpr) : void
+        {
+            Macros.DefineCTX(typer);
+            def throttleTimerName = Macros.NewSymbol("_throttleTimer");
+            _ = typeBuilder.DefineWithSource(<[decl : mutable $(throttleTimerName : name) : DispatcherTimer;]>);
+            
+            def body = 
+            <[
+                unless ($(throttleTimerName : name) == null)
+                {
+                    $(throttleTimerName : name).Stop();
+                }
+                
+                $(throttleTimerName : name) = DispatcherTimer(DispatcherPriority.Normal, Dispatcher.CurrentDispatcher);
+                $(throttleTimerName : name).Interval = $timeSpan;
+                $(throttleTimerName : name).Tick += (_, _) => { $(throttleTimerName : name).Stop(); $(throttleTimerName : name) = null; $(method.Body) };
+                $(throttleTimerName : name).Start();
+            ]>;
+            
+            method.Body = body;
+            
+            _ = typeBuilder.Compile();
+            _ = typeBuilder; _ = method; _ = timeSpan;
+        }
+    }
+}

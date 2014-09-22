@@ -1,0 +1,260 @@
+using Nemerle.Assertions;
+using Nemerle.Collections;
+using Nemerle.ComputationExpressions;
+using Nemerle.Text;
+using Nemerle.Utility;
+using Nemerle.WPF;
+
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.Linq;
+using System.Threading;
+using LogGrok.Core;
+
+namespace LogGrok.LogView.DataVirtualization
+{
+	[NotifyPropertyChanged]
+	public class VirtualList[T] : IList[T], IList, INotifyCollectionChanged 
+	{
+		public this([NotNull] itemProvider : IItemProvider[T], syncContext : SynchronizationContext)
+		{
+		    CollectionChanged += (_, _) => {};
+		    
+		    _itemProvider = itemProvider;
+			Count = _itemProvider.Count;
+			_itemProvider.CountChanged += 
+			    newCount => syncContext.Post( _ => 
+				{
+                    Count = newCount;
+					CollectionChanged(this, NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset))
+                }, null);
+		}
+
+		public UpdateCount() : void
+		{
+		    Count = _itemProvider.Count;
+		    CollectionChanged(this, NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+		}
+		
+		public GetEnumerablor() : IEnumerator[T]
+            implements IEnumerable[T].GetEnumerator
+		{
+			foreach (index in [0 .. Count])
+			{
+				yield (this : IList[T])[index]
+			}
+		}
+
+		public NonGenericGetEnumerator() : IEnumerator
+            implements IEnumerable.GetEnumerator
+		{
+			foreach (index in [0 .. Count - 1])
+			{
+				yield (this : IList[T])[index] : object
+			}
+		}
+
+		public Remove(_ : T) : bool
+		{
+			throw NotSupportedException()
+		}
+
+		public CopyTo(_ : array[T], _ : int) : void
+            implements System.Collections.Generic.ICollection[T].CopyTo
+		{
+			throw NotSupportedException()
+		}
+
+		public Contains(_ : T) : bool
+            implements System.Collections.Generic.ICollection[T].Contains
+		{
+			throw NotSupportedException()
+		}
+
+		public Clear() : void
+		{
+			throw NotSupportedException()
+		}
+
+		public Add(_ : T) :  void
+		{
+			throw NotSupportedException()
+		}
+
+		public IsReadOnly : bool
+		{
+			get { throw NotSupportedException() }
+		}
+
+		public Count : int { get ; private set; } 
+
+		public RemoveAt(_ : int) : void
+		{
+			throw NotSupportedException()
+		}
+
+		public Insert(_ : int, _ : T) : void
+            implements System.Collections.Generic.IList[T].Insert
+		{
+			throw NotSupportedException()
+		}
+
+		public IndexOf(t : T) : int
+            implements System.Collections.Generic.IList[T].IndexOf
+		{
+			def page = _pageCache.FirstOrDefault(p => p.Value[0].Contains(t));
+
+			if (page.Value[0] == null)
+                -1
+			else
+			page.Value[0].IndexOf(t)
+		}
+
+		[NotifyChangedOptions(HideSelfChanges)]
+		public Item[index : int] : T
+            implements IList[T].Item
+		{
+			get 
+			{ 
+				if (Count == 0) 
+					default(T)
+				else
+				{
+					def (pageIndex, page) = QueryPage(index);
+					page[pageIndex]
+				}
+			}
+
+			set 
+			{ 
+				ignore(value);
+				ignore(index);
+				throw NotSupportedException() 
+			}
+		}
+
+		public Remove(_ : object) : void
+		{
+			throw NotSupportedException() 
+		}
+
+		public CopyTo(_ : Array, _ : int) : void
+            implements ICollection.CopyTo
+		{
+			throw NotSupportedException() 
+		}
+
+		public Contains(_ : object) : bool
+            implements System.Collections.IList.Contains
+		{
+			true;
+		}
+
+		public Add(_ : object) : int
+		{
+			throw NotSupportedException() 
+		}
+
+		public Insert(_ : int, _ : object) : void
+            implements System.Collections.IList.Insert
+		{
+			throw NotSupportedException() 
+		}
+
+		public IndexOf(item : object) : int
+            implements System.Collections.IList.IndexOf
+		{
+			def page = _pageCache.FirstOrDefault(p => p.Value[0].Contains(item));
+
+			if (page.Value[0] == null)
+                -1
+			else
+			{
+				page.Value[0].IndexOf(item :> T)
+			}
+		}
+
+		public Item[_ : int] : object
+            implements IList.Item
+		{
+			set { _ = value; throw NotSupportedException() }
+		}
+
+		public IsSynchronized : bool
+		{
+			get { throw NotSupportedException() }
+		}
+
+		public SyncRoot : bool
+		{
+			get { throw NotSupportedException() }
+		}
+
+		public IsFixedSize : bool
+		{
+			get { throw NotSupportedException() }
+		}
+
+		public Insert(_ : object) : int
+		{
+			throw NotSupportedException()
+		}
+
+		public event CollectionChanged : NotifyCollectionChangedEventHandler;
+
+		private QueryPage(index : int) : (int * IList[T])
+		{
+			def pageIndex = index / PageSize;
+			def pageStart = pageIndex * PageSize;
+
+			mutable pageWithGeneration;
+
+			if (_pageCache.TryGetValue(pageIndex, out pageWithGeneration))
+			{
+			    def (page, _) = pageWithGeneration;
+			    
+			    when (index - pageStart >= page.Count)
+			    {
+					def newLines = _itemProvider.Fetch(pageStart + page.Count, Math.Min(pageStart + PageSize - 1, Count-1)); 
+					foreach (line in newLines)
+						page.Add(line);
+				}
+			    
+				(index - pageStart, page)
+			}
+			else
+			{
+				def tempPage = _itemProvider.Fetch(pageStart, Math.Min(pageStart + PageSize - 1, Count-1));
+				assert(tempPage.Count <= PageSize);
+
+				_pageCache[pageIndex] = (tempPage, pageCounter);
+				pageCounter ++;
+
+				CleanupCache();
+
+				assert(index - pageStart < tempPage.Count);
+
+				(index - pageStart, tempPage);
+			}
+		}
+
+		private CleanupCache() : void
+		{
+			while (_pageCache.Count > MaxCacheSize)
+			{
+				def oldestKey = _pageCache.OrderBy(pair => pair.Value[1]).First().Key;
+				_ = _pageCache.Remove(oldestKey);
+			}
+		}
+
+		private _pageCache : Dictionary[int, (IList[T] * int)] = Dictionary.[_, _]();
+		private _itemProvider : IItemProvider[T];
+
+		static mutable pageCounter : int;
+		static PageSize = 100;
+		static MaxCacheSize = 10;
+
+	}
+}

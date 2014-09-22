@@ -1,0 +1,60 @@
+using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace LogGrok.IndexedFilter.Index
+{
+    internal class IndexTree 
+    {
+        public this(pageFactory : PageFactory.[int, int, byte])
+        {
+            _treeHead = TreeNode.Empty(pageFactory.NodeSize);
+            _pageFactory =  pageFactory; 
+        }
+        
+        public Add(value: int) : void
+        {
+            _treeHead = _treeHead.Insert(Count, value, () => TreeNode.Leaf(_pageFactory.Create(), None()));
+            Count++;
+        }
+        
+        public GetIndices() : IEnumerable[int]
+        {
+            if (Count == 0) 
+                Enumerable.Empty() 
+            else 
+                _treeHead.GetLeafs().SelectMany(leaf => leaf.Enumerate())
+        }
+        
+        public GetIndices(startPosition : int) : IEnumerable[int]
+        {
+            GetIndices(startPosition, Count)
+        }
+        
+        public GetIndices(startPosition : int, count : int) : IEnumerable[int]
+        {
+            foreach (i in [startPosition..count-1])
+            {
+                yield Item[i]
+            }
+        }
+        
+        public Item[index : int] : int
+        {
+            get 
+            { 
+                _treeHead.FindValue(index)
+            }
+        }
+      
+        public Count : int { get; private set; }
+        
+        private mutable _treeHead : TreeNode;
+        private _pageFactory : PageFactory[int, int, byte];
+    }
+}

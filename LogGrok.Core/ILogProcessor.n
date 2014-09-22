@@ -1,0 +1,26 @@
+using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+using System.Threading;
+
+namespace LogGrok.Core
+{
+    public variant LineOrProgress
+    {
+        | Line     { index : int }
+        | Progress { value : double }
+    }
+    
+    public interface ILogProcessor : IDisposable, IIndexedLineProvider, ILogInfo
+    {
+        Load(indexedLineConsumers : IEnumerable[IIndexedLineConsumer]) : void;
+        
+        GetLineWithText(text: string, options : SearchOptions, fromIndex : int) : IEnumerable[LineOrProgress];
+    }
+}

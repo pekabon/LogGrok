@@ -1,0 +1,256 @@
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Globalization;
+using System.Linq;
+using SCG = System.Collections.Generic;
+
+using Nemerle.Peg;
+
+namespace LogGrok.Macros.LogParserGenerator
+{
+	[PegGrammar(Options = EmitDebugSources, start,
+    grammar
+    {
+        space                       = ' ' / '\t';
+		letter                      = ([Lu, Ll, Lt, Lm, Lo, Nl] / '_' / '$');
+        decimalDigit                = ['0'..'9'];
+        hexDigit                    = ['0'..'9', 'A'..'F', 'a'..'f'];
+        octalDigit                  = ['0'..'7'];
+
+        [InlineAllSubrules]
+        s : void = space*;
+
+        identifierPart              = letter / decimalDigit;
+        identifierBody              = letter identifierPart*;
+        identifier      : string    = identifierBody s;
+
+        unicodeEscapeSequence     : char = "\\u" hexDigit hexDigit hexDigit hexDigit;
+        simpleEscapeSequence      : char = "\\'" / "\\\"" / "\\\\" / "\\0" / "\\a" / "\\b" / "\\f" / "\\n" / "\\r" / "\\t" / "\\v";
+
+        singleRegularStringLiteralCharacter  : char   = !( "'" / "\\") [Any];
+        
+        regularStringLiteralPart             : char   = simpleEscapeSequence
+                                                        / unicodeEscapeSequence
+                                                        / singleRegularStringLiteralCharacter;
+                                                        
+        quotedLiteral : string = "'" regularStringLiteralPart* "'" s;
+        
+        // main rules
+        
+        count : Limit = '(' s  decimalDigit+ s ')';
+        
+        minMax : Limit = '(' s  decimalDigit+ s ',' s decimalDigit+ s ')';
+        
+        none : Limit = ('(' s ')')?;
+        
+        userFunction : Limit = '(' identifier ')';
+        
+        limits : Limit = (count / minMax /  userFunction / none) s;
+        
+        applyIdentifier : string = ':' s identifier s;
+        
+        isOptional : bool = ('?' s)?;
+        
+        isIndexed : bool = ('!' s)?;
+        
+        constant : Atom = quotedLiteral applyIdentifier? isOptional;
+        heximal : Atom = "hex" s limits applyIdentifier? isOptional;
+        decimal : Atom = "dec" s limits applyIdentifier? isOptional;
+        txt : Atom = "text" s limits applyIdentifier? isOptional isIndexed;
+        lazyTxt : Atom = "lazytext" s limits applyIdentifier? isOptional;
+        
+        timePart : TimeFormatItem = 'H'+ / 'm'+ / 'S'+ / 'f'+; //TODO:parse other chars
+        timeDelimiter : TimeFormatItem = (!timePart !')' ['\u0000'..'\uFFFF'])+; 
+        timeLimits : TimeFormat = '(' timePart (timeDelimiter? timePart)* ')';
+        time : Atom = "time" s timeLimits applyIdentifier? isOptional;
+        
+        variantDelimiter : void = '|';
+		variants : Atom = "variant" s '('  quotedLiteral s (variantDelimiter s quotedLiteral s)* ')' s applyIdentifier? isOptional;
+        
+        start : Line = (constant / heximal / decimal / txt / lazyTxt / time / variants)*;
+    })]
+    class Parser
+    {
+        #region helpers
+        
+		private HexDigit(t : NToken) : int
+		{
+		  unchecked {
+			def c = ParsingSource.Text[t.StartPos];
+			if('0' <= c && c <= '9')
+			  c :> int - '0' :> int
+			else if('a' <= c && c <= 'f')
+			  c :> int - 'a' :> int + 10
+			else if('A' <= c && c <= 'F')
+			  c :> int - 'A' :> int + 10
+			else
+			  0
+		  }
+		}
+
+		static ConvertUtf32(x : int) : char
+		{
+		  unchecked {
+			def x = x :> uint;
+			x :> char
+		  }
+		}
+        
+		//unicodeEscapeSequence   : string = "\\u" hexDigit hexDigit hexDigit hexDigit;
+		unicodeEscapeSequence(_u : NToken, d1 : NToken, d2 : NToken, d3 : NToken, d4 : NToken) : char
+		{
+		  unchecked {
+			def x =
+				  HexDigit(d1) << 12
+			  %|  HexDigit(d2) << 8
+			  %|  HexDigit(d3) << 4
+			  %|  HexDigit(d4);
+			ConvertUtf32(x)
+		  }
+		}
+		
+		//simpleEscapeSequence      : string = "\\'" / "\\\"" / "\\\\" / "\\0" / "\\a" / "\\b" / "\\f" / "\\n" / "\\r" / "\\t" / "\\v";
+		simpleEscapeSequence(seq : NToken) : char
+		{
+		  match(GetText(seq)) {
+			| "\\'"   => '\''
+			| "\\\""  => '\"'
+			| "\\\\"  => '\\'
+			| "\\0"   => '\0'
+			| "\\a"   => '\a'
+			| "\\b"   => '\b'
+			| "\\f"   => '\f'
+			| "\\n"   => '\n'
+			| "\\r"   => '\r'
+			| "\\t"   => '\t'
+			| "\\v"   => '\v'
+			| s => s[0]
+		  }
+		}
+		
+		singleRegularStringLiteralCharacter(c : NToken) : char
+		{
+		  ParsingSource.Text[c.StartPos]
+		}
+		
+        //quotedLiteral : Atom = "'" regularStringLiteralPart* "'" s ;
+		quotedLiteral(_ : NToken, chars : SCG.List[char], _ : NToken) : string
+		{
+			string(chars.ToArray())
+		}
+		
+		identifier(idValue : NToken) : string { GetText(idValue) }
+		
+		#endregion
+		
+        //count : Limit = '(' s  decimalDigit+ s ')'
+        count(_ : NToken, count : NToken,  _ : NToken) : Limit
+        {
+            Limit.Count(int.Parse(GetText(count)))
+        }
+        
+        //minMax : Limit = '(' s  decimalDigit+ s ',' s decimalDigit+ s ')';
+        minMax(_ : NToken, min : NToken,  _ : NToken, max : NToken,    _ : NToken) : Limit
+        {
+            Limit.MinMax(int.Parse(GetText(min)), int.Parse(GetText(max)))
+        }
+        
+        //none : Limit = '(' s ')';
+        none(_ :option[NToken * NToken]) : Limit
+        {
+            Limit.None()
+        }
+        
+        //userFunction : Limit = '(' identifier ')';
+        userFunction(_ : NToken, name : string,  _ : NToken) : Limit
+        {
+            Limit.UserFunction(name)
+        }
+        
+		applyIdentifier(_ : NToken, i : string) : string { i }
+		
+		
+        //isOptional : bool = ('?' s)?;
+		isOptional(token : NToken) : bool
+		{
+		    !token.IsEmpty
+		}
+		
+		//isIndexed : bool = ('!' s)?;
+		isIndexed(token : NToken) : bool
+		{
+		    !token.IsEmpty
+		}
+        
+		constant(literal : string, indetifier : option[string], isOptional : bool) : Atom
+		{
+		    Atom.Constant(indetifier, Limit.None(), isOptional, literal)
+		}
+		
+        //heximal : Atom = "hex" s limits applyIdentifier? isOptional;
+		heximal(_ : NToken, limit : Limit, indetifier : option[string], isOptional : bool) : Atom
+		{
+		    Atom.Heximal(indetifier, limit, isOptional)  
+		}
+		
+		//decimal : Atom = "dec" s limits applyIdentifier? isOptional;
+		decimal(_ : NToken, limit : Limit, indetifier : option[string], isOptional : bool) : Atom
+		{
+		    Atom.Decimal(indetifier, limit, isOptional)  
+		}
+        
+		//txt : Atom = "text" s limits applyIdentifier? isOptional;
+		txt(_ : NToken, limit : Limit, indetifier : option[string], isOptional : bool, isIndexed : bool) : Atom
+		{
+		    Atom.Text(indetifier, limit, isOptional, isIndexed)  
+		}
+		
+		//txt : Atom = "text" s limits applyIdentifier? isOptional;
+		lazyTxt(_ : NToken, limit : Limit, indetifier : option[string], isOptional : bool) : Atom
+		{
+		    Atom.LazyText(indetifier, limit, isOptional)  
+		}	
+		
+		
+		//timePart : TimeFormatItem = 'H'+ / 'm'+ / 'S'+ / 'f'+; //TODO:parse other chars
+	    timePart(token : NToken) : TimeFormatItem 
+	    {
+	        def text = GetText(token);
+	        match (text[0])
+	        {
+	            | 'H' => TimeFormatItem.Hours(text.Length)
+	            | 'm' => TimeFormatItem.Minutes(text.Length)
+	            | 'S' => TimeFormatItem.Seconds(text.Length)
+	            | 'f' => TimeFormatItem.SecondsFraction(text.Length)
+	            | _  => throw ArgumentException($"Invalid time format character '$(text[0])'");
+	        }
+	    }
+	    
+	    timeDelimiter(token : NToken) : TimeFormatItem { TimeFormatItem.Delimiter(GetText(token)); }
+	    
+        //timeLimits : TimeFormat = '(' timePart (timeDelimiter? timePart) ')';
+	    timeLimits( _ : NToken, head : TimeFormatItem, tail : SCG.List[option[TimeFormatItem]*TimeFormatItem], _ : NToken) : TimeFormat
+	    {
+	        [head].Concat(tail.SelectMany( (delim, item) => if (delim.HasValue) [delim.Value, item] else [item])).ToArray();
+	    }
+		
+        //time : Atom = "time" s timeLimits applyIdentifier? isOptional;
+		time(_ : NToken, limit : TimeFormat, indetifier : option[string], isOptional : bool) : Atom
+		{
+		    Atom.Time(indetifier, Limit.None(), isOptional, limit)  
+		}
+		
+		//variants : Atom = "variant" s '('  quotedLiteral s (variantDelimiter s quotedLiteral s)* ')' s applyIdentifier?  isOptional;
+		variants(_ : NToken, _ : NToken, first : string, others : SCG.List[string], _ : NToken, indetifier : option[string], isOptional : bool) : Atom
+		{
+		    def items = SCG.List(others);
+		    items.Insert(0, first);
+		    Atom.Variant(indetifier, Limit.None(), isOptional, items)
+		}
+		
+		start(atoms : SCG.List[Atom]) : Line { Line(atoms) }
+    }
+}

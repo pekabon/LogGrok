@@ -1,0 +1,125 @@
+using Nemerle.Collections;
+using Nemerle.ComputationExpressions;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Collections.Concurrent;
+
+using System.Linq;
+using System.Diagnostics.Contracts;
+
+using LogGrok.Infrastructure;
+
+using Microsoft.Practices.Unity;
+using System.Threading.Tasks;
+using System.Threading;
+
+using LogGrok.LogView;
+using LogGrok.Core;
+
+namespace LogGrok.FilterManager
+{
+    public class FilterManager
+    {
+        public this(filters : IEnumerable[IFilter])
+        {
+            _filters = filters;
+            
+            foreach(f in filters)
+            {
+                f.Changed += _ => UpdateLines();
+            }
+        }
+        
+        public RegisterClient(logFilter : ILineViewModelProviderAcceptor) : void
+        {
+            _clients.Add(logFilter);
+        }
+        
+        private UpdateLines() : void
+        {
+            _filter.Iter(_.CancelLoad());
+            
+            def enabledFilters = _filters.Filter(_.Enabled);
+            if (enabledFilters.IsEmpty())
+            {
+                _clients.Iter(_.ResetFilter());
+            }
+            else
+            {                                                         
+                def lineProviders = enabledFilters.OrderBy(_.Priority).Select(_.GetFilteredLinesProvider()).ToList();
+                                                
+                _filter = Some(DynamicFilteredLinesProvider(GetLines(lineProviders)));
+                
+                _clients.Iter(_.SetItemProvider(_filter.Value))
+            }
+        }
+        
+        private GetLines(lineProviders : IEnumerable[IFilteredLinesProvider]) : IEnumerable[LineOrProgress]
+        {
+            def lines = lineProviders.First().GetLines(0);
+            foreach (lineOrProgress in lineProviders.Skip(1).Aggregate(lines, (accum, lineProvider) => FilterLines(lineProvider, accum)))
+                yield lineOrProgress;
+            yield LineOrProgress.Progress(100)
+        }
+        
+        private FilterLines(filteredLineProvider : IFilteredLinesProvider, lines : IEnumerable[LineOrProgress]) : IEnumerable[LineOrProgress]
+        {
+            def linesEnum = lines.GetEnumerator();
+
+            mutable hasMoreToDo = linesEnum.MoveNext();
+            mutable filteredLinesEnum : option[IEnumerator[LineOrProgress]] = None();
+            while (hasMoreToDo)
+            {            
+                match (linesEnum.Current)
+                {
+                    | LineOrProgress.Progress => {
+                        yield linesEnum.Current;
+                        hasMoreToDo = linesEnum.MoveNext()
+                    }
+                    | LineOrProgress.Line(line) => {
+                        if (filteredLinesEnum.IsNone)
+                        {
+                            filteredLinesEnum = Some(filteredLineProvider
+                                                            .GetLines(line)
+                                                                .GetEnumerator());
+                            hasMoreToDo = filteredLinesEnum.Value.MoveNext()
+                        }
+                        else
+                        {
+                            match (filteredLinesEnum.Value.Current)
+                            {
+                                | LineOrProgress.Progress(progress) => {
+                                    yield LineOrProgress.Progress(progress);
+                                    hasMoreToDo = filteredLinesEnum.Value.MoveNext()
+                                }
+                                | LineOrProgress.Line(filteredLine) => {
+                                    if (line == filteredLine)
+                                    {
+                                        yield LineOrProgress.Line(line);
+                                        hasMoreToDo = linesEnum.MoveNext() && filteredLinesEnum.Value.MoveNext()
+                                    }
+                                    else if (line < filteredLine)
+                                    {
+                                        hasMoreToDo = linesEnum.MoveNext()
+                                    }
+                                    else
+                                    {
+                                        filteredLinesEnum = None();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }        
+        
+        private _filters : IEnumerable[IFilter];
+
+        private _clients = List.[ILineViewModelProviderAcceptor]();
+        private mutable _filter : option[DynamicFilteredLinesProvider] = None();
+    }
+}

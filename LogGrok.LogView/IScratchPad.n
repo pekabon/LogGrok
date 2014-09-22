@@ -1,0 +1,10 @@
+﻿using System;
+
+namespace LogGrok.LogView
+{
+    public interface IScratchPad
+    {
+        AddText(text : string) : void;
+        event TextAdded: EventHandler;
+    }
+}

@@ -1,0 +1,38 @@
+﻿using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+using Nemerle.Assertions;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+using Microsoft.Practices.Prism.Modularity;
+
+namespace LogGrok.Shell.Modularity
+{
+  public sealed class AggregatedModuleCatalog : ModuleCatalog
+  {
+      public this([NotNull] moduleCatalogs : IEnumerable.[IModuleCatalog])
+      {
+          _moduleCatalogs = moduleCatalogs;
+      }
+      
+      public override Modules : IEnumerable.[ModuleInfo]
+      {
+          get
+          {
+              base.Modules.Union(_moduleCatalogs.SelectMany(catalog => catalog.Modules));
+          }
+      }
+      
+      public override Initialize() : void
+      {
+          foreach (moduleCatalog in _moduleCatalogs)
+            moduleCatalog.Initialize();
+      }
+      
+      private _moduleCatalogs : IEnumerable.[IModuleCatalog];
+  }
+}

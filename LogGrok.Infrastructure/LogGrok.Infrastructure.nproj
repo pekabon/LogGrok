@@ -1,0 +1,337 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>8.0.30703</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>24e9ff55-6333-43cf-a309-b19e2ce31282</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>LogGrok.Infrastructure</RootNamespace>
+    <AssemblyName>LogGrok.Infrastructure</AssemblyName>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <NoStdLib>true</NoStdLib>
+    <NemerleVersion>Net-4.0</NemerleVersion>
+    <NemerleBinPathRoot Condition=" '$(NemerleBinPathRoot)' == '' ">$(ProgramFiles)\Nemerle</NemerleBinPathRoot>
+    <Nemerle Condition=" '$(Nemerle)' == '' ">$(NemerleBinPathRoot)\$(NemerleVersion)</Nemerle>
+    <Name>LogGrok.Infrastructure</Name>
+    <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\</SolutionDir>
+    <RestorePackages>true</RestorePackages>
+    <DocumentationFile />
+    <SccProjectName>SAK</SccProjectName>
+    <SccProvider>SAK</SccProvider>
+    <SccAuxPath>SAK</SccAuxPath>
+    <SccLocalPath>SAK</SccLocalPath>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <Optimize>false</Optimize>
+    <OutputPath>..\bin\Debug\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <RunDebugger>false</RunDebugger>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugSymbols>false</DebugSymbols>
+    <Optimize>true</Optimize>
+    <OutputPath>..\bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <DocumentationFile>
+    </DocumentationFile>
+    <RunDebugger>false</RunDebugger>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="MahApps.Metro, Version=0.14.0.0, Culture=neutral, PublicKeyToken=f4fb5a3c4d1e5b4f">
+      <Name>MahApps.Metro</Name>
+      <AssemblyName>MahApps.Metro.dll</AssemblyName>
+      <HintPath>..\packages\MahApps.Metro.0.14.0.0\lib\net45\MahApps.Metro.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Practices.Prism.Composition, Version=5.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35">
+      <Name>Microsoft.Practices.Prism.Composition</Name>
+      <AssemblyName>Microsoft.Practices.Prism.Composition.dll</AssemblyName>
+      <HintPath>..\packages\Prism.Composition.5.0.0\lib\NET45\Microsoft.Practices.Prism.Composition.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Practices.Prism.Interactivity, Version=5.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35">
+      <Name>Microsoft.Practices.Prism.Interactivity</Name>
+      <AssemblyName>Microsoft.Practices.Prism.Interactivity.dll</AssemblyName>
+      <HintPath>..\packages\Prism.Interactivity.5.0.0\lib\NET45\Microsoft.Practices.Prism.Interactivity.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Practices.Prism.Mvvm, Version=1.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35">
+      <Name>Microsoft.Practices.Prism.Mvvm</Name>
+      <AssemblyName>Microsoft.Practices.Prism.Mvvm.dll</AssemblyName>
+      <HintPath>..\packages\Prism.Mvvm.1.0.0\lib\net45\Microsoft.Practices.Prism.Mvvm.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Practices.Prism.Mvvm.Desktop, Version=1.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35">
+      <Name>Microsoft.Practices.Prism.Mvvm.Desktop</Name>
+      <AssemblyName>Microsoft.Practices.Prism.Mvvm.Desktop.dll</AssemblyName>
+      <HintPath>..\packages\Prism.Mvvm.1.0.0\lib\net45\Microsoft.Practices.Prism.Mvvm.Desktop.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Practices.Prism.PubSubEvents, Version=1.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35">
+      <Name>Microsoft.Practices.Prism.PubSubEvents</Name>
+      <AssemblyName>Microsoft.Practices.Prism.PubSubEvents.dll</AssemblyName>
+      <HintPath>..\packages\Prism.PubSubEvents.1.0.0\lib\portable-sl4+wp7+windows8+net40\Microsoft.Practices.Prism.PubSubEvents.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Practices.Prism.SharedInterfaces, Version=1.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35">
+      <Name>Microsoft.Practices.Prism.SharedInterfaces</Name>
+      <AssemblyName>Microsoft.Practices.Prism.SharedInterfaces.dll</AssemblyName>
+      <HintPath>..\packages\Prism.Mvvm.1.0.0\lib\net45\Microsoft.Practices.Prism.SharedInterfaces.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Practices.Prism.UnityExtensions, Version=5.0.1.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35">
+      <Name>Microsoft.Practices.Prism.UnityExtensions</Name>
+      <AssemblyName>Microsoft.Practices.Prism.UnityExtensions.dll</AssemblyName>
+      <HintPath>..\packages\Prism.UnityExtensions.5.0.1\lib\NET45\Microsoft.Practices.Prism.UnityExtensions.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Practices.ServiceLocation, Version=1.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35">
+      <Name>Microsoft.Practices.ServiceLocation</Name>
+      <AssemblyName>Microsoft.Practices.ServiceLocation.dll</AssemblyName>
+      <HintPath>..\packages\CommonServiceLocator.1.2\lib\portable-windows8+net40+sl5+windowsphone8\Microsoft.Practices.ServiceLocation.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Practices.Unity, Version=3.5.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35">
+      <Name>Microsoft.Practices.Unity</Name>
+      <AssemblyName>Microsoft.Practices.Unity.dll</AssemblyName>
+      <HintPath>..\packages\Unity.3.5.1404.0\lib\net45\Microsoft.Practices.Unity.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Practices.Unity.Configuration, Version=3.5.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35">
+      <Name>Microsoft.Practices.Unity.Configuration</Name>
+      <AssemblyName>Microsoft.Practices.Unity.Configuration.dll</AssemblyName>
+      <HintPath>..\packages\Unity.3.5.1404.0\lib\net45\Microsoft.Practices.Unity.Configuration.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Practices.Unity.RegistrationByConvention, Version=3.5.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35">
+      <Name>Microsoft.Practices.Unity.RegistrationByConvention</Name>
+      <AssemblyName>Microsoft.Practices.Unity.RegistrationByConvention.dll</AssemblyName>
+      <HintPath>..\packages\Unity.3.5.1404.0\lib\net45\Microsoft.Practices.Unity.RegistrationByConvention.dll</HintPath>
+    </Reference>
+    <Reference Include="mscorlib" />
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+      <Name>System.Drawing</Name>
+      <AssemblyName>System.Drawing.dll</AssemblyName>
+      <HintPath>..\..\..\..\..\..\..\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.5\System.Drawing.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Windows" />
+    <Reference Include="System.Windows.Interactivity, Version=4.5.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35">
+      <Name>System.Windows.Interactivity</Name>
+      <AssemblyName>System.Windows.Interactivity.dll</AssemblyName>
+      <HintPath>..\packages\MahApps.Metro.0.14.0.0\lib\net45\System.Windows.Interactivity.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Xaml" />
+    <Reference Include="Nemerle">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>$(Nemerle)\Nemerle.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <MacroReference Include="Nemerle.Wpf">
+      <HintPath>$(Nemerle)\Nemerle.WPF.dll</HintPath>
+    </MacroReference>
+    <Reference Include="WindowsBase" />
+    <Reference Include="Xceed.Wpf.AvalonDock, Version=2.2.0.0, Culture=neutral, PublicKeyToken=3e4669d2f30244f4">
+      <Name>Xceed.Wpf.AvalonDock</Name>
+      <AssemblyName>Xceed.Wpf.AvalonDock.dll</AssemblyName>
+      <HintPath>..\packages\Extended.Wpf.Toolkit.2.2.1\lib\net40\Xceed.Wpf.AvalonDock.dll</HintPath>
+    </Reference>
+    <Reference Include="Xceed.Wpf.AvalonDock.Themes.Aero, Version=2.2.0.0, Culture=neutral, PublicKeyToken=3e4669d2f30244f4">
+      <Name>Xceed.Wpf.AvalonDock.Themes.Aero</Name>
+      <AssemblyName>Xceed.Wpf.AvalonDock.Themes.Aero.dll</AssemblyName>
+      <HintPath>..\packages\Extended.Wpf.Toolkit.2.2.1\lib\net40\Xceed.Wpf.AvalonDock.Themes.Aero.dll</HintPath>
+    </Reference>
+    <Reference Include="Xceed.Wpf.AvalonDock.Themes.Metro, Version=2.2.0.0, Culture=neutral, PublicKeyToken=3e4669d2f30244f4">
+      <Name>Xceed.Wpf.AvalonDock.Themes.Metro</Name>
+      <AssemblyName>Xceed.Wpf.AvalonDock.Themes.Metro.dll</AssemblyName>
+      <HintPath>..\packages\Extended.Wpf.Toolkit.2.2.1\lib\net40\Xceed.Wpf.AvalonDock.Themes.Metro.dll</HintPath>
+    </Reference>
+    <Reference Include="Xceed.Wpf.AvalonDock.Themes.VS2010, Version=2.2.0.0, Culture=neutral, PublicKeyToken=3e4669d2f30244f4">
+      <Name>Xceed.Wpf.AvalonDock.Themes.VS2010</Name>
+      <AssemblyName>Xceed.Wpf.AvalonDock.Themes.VS2010.dll</AssemblyName>
+      <HintPath>..\packages\Extended.Wpf.Toolkit.2.2.1\lib\net40\Xceed.Wpf.AvalonDock.Themes.VS2010.dll</HintPath>
+    </Reference>
+    <Reference Include="Xceed.Wpf.DataGrid, Version=2.2.0.0, Culture=neutral, PublicKeyToken=3e4669d2f30244f4">
+      <Name>Xceed.Wpf.DataGrid</Name>
+      <AssemblyName>Xceed.Wpf.DataGrid.dll</AssemblyName>
+      <HintPath>..\packages\Extended.Wpf.Toolkit.2.2.1\lib\net40\Xceed.Wpf.DataGrid.dll</HintPath>
+    </Reference>
+    <Reference Include="Xceed.Wpf.Toolkit, Version=2.2.0.0, Culture=neutral, PublicKeyToken=3e4669d2f30244f4">
+      <Name>Xceed.Wpf.Toolkit</Name>
+      <AssemblyName>Xceed.Wpf.Toolkit.dll</AssemblyName>
+      <HintPath>..\packages\Extended.Wpf.Toolkit.2.2.1\lib\net40\Xceed.Wpf.Toolkit.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="AddingRegionAdapterBase.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="AvalonRegion.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Behaviors\BindPopupBehavior.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Behaviors\DataObjects\FileGroupDataObject.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Behaviors\DataObjects\FileSystemEntriesDataObject.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Behaviors\DragnDropBehavior.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Behaviors\ListMouseMultiSelectionBehavior.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Behaviors\ListMouseMultiSelectionBehaviorBackend\MouseMultiSelectionAdorner.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Behaviors\ListMouseMultiSelectionBehaviorBackend\MouseMultiSelectionController.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Behaviors\ListMouseMultiSelectionBehaviorBackend\MouseMultiSelectionTarget.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Behaviors\ListMouseMultiSelectionBehaviorBackend\SelectionAdorner.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Behaviors\ListMouseMultiSelectionBehaviorBackend\VisualTreeWalker.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Behaviors\RoutedCommandBehavior.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Behaviors\RoutedCommandToCommandBinding.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Behaviors\RoutedCommandToCommandBindingExtension.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Behaviors\SetFocusBehaivor.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Controls\ListView.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Controls\NavigateToLineBehavior.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Controls\NavigateToLineRequest.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Controls\SelectionLimitations.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Decoration\DecoratorContentControl.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Decoration\DecoratorControl.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Decoration\DecoratorRegionAdapter.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="DocumentContextMenu.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="DocumentView\DocumentViewsCollection.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="DocumentView\IDocumentViewsFactory.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="IListExtensions.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Interaction\MetroMessageBoxInteractionAction.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Interaction\ShowAnchorableLayoutAction.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Interaction\DialogInteractionAction.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="IViewCollection.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="LayoutDocumentPaneRegionAdapter.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="LayoutGroupRegionAdapter.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="MenuRegionAdapter.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="ModuleMetaInfoAttribute.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="PaneConentAttachedProperties.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Properties\AssemblyInfo.n" />
+    <Compile Include="HierarchicalRegionViewRegistry.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="RoutedCommands.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="UnityContainerExtensions.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="WeakDispatcherTimer.n">
+      <SubType>Code</SubType>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Behaviors\ListMouseMultiSelectionBehaviorBackend" />
+    <Folder Include="Behaviors\DataObjects" />
+    <Folder Include="Controls\" />
+    <Folder Include="Decoration" />
+    <Folder Include="Behaviors" />
+    <Folder Include="Interaction" />
+    <Folder Include="DocumentView" />
+    <Folder Include="Properties\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="packages.config">
+      <SubType>Content</SubType>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\LogGrok.Controls\LogGrok.Controls.nproj">
+      <Name>LogGrok.Controls</Name>
+      <Project>{d5607529-83ef-4f6c-bdbd-049b84ab5787}</Project>
+      <Private>True</Private>
+    </ProjectReference>
+    <ProjectReference Include="..\LogGrok.Core\LogGrok.Core.nproj">
+      <Name>LogGrok.Core</Name>
+      <Project>{f46dca13-ecf0-4e34-81f1-cadfc5a932c9}</Project>
+      <Private>True</Private>
+    </ProjectReference>
+    <MacroProjectReference Include="..\LogGrok.Macros\LogGrok.Macros.nproj">
+      <Name>LogGrok.Macros</Name>
+      <Project>{b5c80e41-f1f6-4ac0-a584-507808cba010}</Project>
+      <Private>False</Private>
+    </MacroProjectReference>
+    <ProjectReference Include="..\LogGrok.Diagnostics\LogGrok.Diagnostics.nproj">
+      <Name>LogGrok.Diagnostics</Name>
+      <Project>{eacc0308-9405-4511-a2f5-48fb438c9ea0}</Project>
+      <Private>True</Private>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(Nemerle)\Nemerle.MSBuild.targets" />
+  <Import Project="$(SolutionDir)\.nuget\NuGet.targets" Condition="Exists('$(SolutionDir)\.nuget\NuGet.targets')" />
+  <!--
+		To modify your build process, add your task inside one of the targets below and uncomment it. 
+		Other similar extension points exist, see Microsoft.Common.targets.
+
+	<Target Name="BeforeBuild">
+	</Target>
+	<Target Name="AfterBuild">
+	</Target>
+	-->
+</Project>

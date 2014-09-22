@@ -1,0 +1,104 @@
+using Nemerle;
+using Nemerle.Assertions;
+using Nemerle.Collections;
+using Nemerle.Extensions;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Windows.Controls;
+using System.Windows;
+
+using System.Linq;
+
+using Microsoft.Practices.Prism.Modularity;
+using Microsoft.Practices.Prism.Regions;
+using Microsoft.Practices.Prism.UnityExtensions;
+using Microsoft.Practices.Unity;
+
+using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+
+using Xceed.Wpf.AvalonDock.Layout;
+
+namespace LogGrok.Infrastructure
+{
+    [Record(Exclude = [_viewCollection])]
+    public class LayoutDocumentPaneRegionAdapter[T, U] : AddingRegionAdpaterBase[T, SingleActiveRegion]
+        where T : LayoutDocumentPane
+        where U : LayoutDocument, new()
+    {
+        protected override AddView(view : object, pane : T) : void
+        {
+            match(view)
+            {
+                | viewCollection is IViewCollection => AddViewCollection(viewCollection, pane)
+                | _ => _ = AddViewCore(view, pane)
+            }
+        }
+        
+        private AddViewCollection(collection : IViewCollection, pane : T) : void 
+        {
+            def AddView(view)
+            {
+                def layoutDocument = AddViewCore(view, pane);
+				layoutDocument.Closed += (_, _) => _ = collection.Views.Remove(view);
+                layoutDocument.IsActiveChanged += (_,_) => when (layoutDocument.IsActive) collection.Current = view;
+            }
+            
+            foreach(view in collection.Views)
+                AddView(view);
+                
+            def OnCollectionChanged(_, args)
+            {
+                match(args.Action)
+                {
+                    | NotifyCollectionChangedAction.Add => 
+                    {
+                        foreach(item in args.NewItems)
+                            AddView(item);
+                    }
+                    | NotifyCollectionChangedAction.Remove => {}
+                    | _   => throw NotSupportedException()
+                }
+            }
+                
+            collection.Views.CollectionChanged += OnCollectionChanged;
+            
+            collection.CurrentChanged += (_, _) => 
+            {
+                foreach(layoutDocument in pane.Children)
+                {
+                    if (layoutDocument.Content == collection.Current)
+                        layoutDocument.IsActive = true;
+                        else layoutDocument.IsActive = false;
+                }
+            }
+        }
+        
+        private AddViewCore(view : object, pane : T) : LayoutDocument
+        {
+            def element = view :> FrameworkElement;
+		    
+		    def u = U() <- 
+		    { 
+		        Content = element; 
+		        Title = PaneConentAttachedProperties.GetPaneTitle(element) ?? "Title"; 
+		        ToolTip = PaneConentAttachedProperties.GetPaneTitleToolTip(element);
+		    };
+		    
+		    PaneConentAttachedProperties.AddPaneTitleChangedHandler(
+                element, 
+                (_ , args) => u.Title = args.NewValue);
+                
+		    PaneConentAttachedProperties.AddPaneTitleToolTipChangedHandler(
+		        element, 
+		        (_, args) => u.ToolTip = args.NewValue);
+            
+		    pane.Children.Add(u);
+		    
+		    u
+        }
+    }
+}

@@ -1,0 +1,54 @@
+using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+using Nemerle.WPF;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Windows.Interactivity;
+using System.Windows.Controls;
+using System.Windows;
+using System.Windows.Input;
+
+using LogGrok.Controls;
+
+using Microsoft.Practices.Prism.Interactivity.InteractionRequest;
+
+namespace LogGrok.Infrastructure.Interaction
+{
+    public class DialogInteractionAction : TriggerAction[UserControl]
+    {
+        public static OkCommand : RoutedCommand = RoutedCommand("DialogInteractionActionOk", typeof(FrameworkElement));
+        public static CancelCommand : RoutedCommand = RoutedCommand("DialogInteractionActionCancel", typeof(FrameworkElement));
+        
+        [DependencyProperty]
+        public DialogView : FrameworkElement { get; set;}
+      
+        protected override Invoke(n : object) : void
+        {
+            def adorner = OverlayAdorner.Create(AssociatedObject, DialogView);
+            
+            def args = n:> InteractionRequestedEventArgs;
+            
+            def OnOk(_, _)
+            {
+                adorner.Dispose();
+                _ = DialogView.CommandBindings.Clear();
+                args.Callback();
+            }
+        
+            def OnCancel(_, _)
+            {
+                adorner.Dispose();
+                _ = DialogView.CommandBindings.Clear();
+            }
+
+            DialogView.DataContext = args.Context.Content;
+            
+            _ = DialogView.CommandBindings.Add(CommandBinding(OkCommand, OnOk));
+            _ = DialogView.CommandBindings.Add(CommandBinding(CancelCommand, OnCancel));
+        }
+    }
+}

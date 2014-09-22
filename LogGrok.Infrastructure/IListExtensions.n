@@ -1,0 +1,49 @@
+using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Nemerle.Imperative;
+
+namespace LogGrok.Infrastructure
+{
+    public module IListExtensions
+    {
+        public BinarySearch[T, V](this lst : IList[T], index : int, length : int, value : V, comparer : (T*V) -> int)  : int
+        {
+            mutable i = index;
+            mutable num = index + length - 1;
+
+            mutable result = 0;
+            while (i <= num)
+            {
+                def num2 = i + (num - i >> 1);
+                def num3 = comparer(lst[num2], value);
+                if (num3 == 0)
+                {
+                    result = num2;
+                    break;
+                }
+                else if (num3 < 0)
+                     {
+                         i = num2 + 1;
+                     }
+                     else
+                     {
+                         num = num2 - 1;
+                     }
+               result = ~i;
+            }
+
+            result;
+        }
+
+        public BinarySearch[T, V](this lst : IList[T], value : V, comparer : (T*V) -> int)  : int
+        {
+            lst.BinarySearch(0, lst.Count, value, comparer)
+        }
+    }
+}

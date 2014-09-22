@@ -1,0 +1,196 @@
+﻿using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+using Nemerle.Compiler;
+using Nemerle.Compiler.Parsetree;
+using Nemerle.Compiler.Typedtree;
+
+using System;
+using System.Diagnostics;
+using System.Collections.Generic;
+using System.Linq;
+
+using LogGrok.Diagnostics;
+
+namespace LogGrok.Macros.Diagnostics
+{   
+    [Nemerle.MacroUsage(Nemerle.MacroPhase.WithTypedMembers, Nemerle.MacroTargets.Class, Inherited = false, AllowMultiple = false)]
+	macro TraceMethods(
+	    typeBuilder : TypeBuilder, params options : list[PExpr])
+	{
+	    TraceLogic.TraceMethods(typeBuilder, options);
+	}
+    
+    [Nemerle.MacroUsage(Nemerle.MacroPhase.WithTypedMembers, Nemerle.MacroTargets.Method, Inherited = false, AllowMultiple = false)]
+	macro TraceMethod(
+	    typeBuilder : TypeBuilder, 
+	    methodBuilder : MethodBuilder,
+	    params options : list[PExpr])
+	{
+	    TraceLogic.TraceMethod(typeBuilder, methodBuilder, options);
+	}
+	
+	module TraceLogic
+    {
+        public TraceMethods(typeBuilder : TypeBuilder, exprOptions : list[PExpr]) : void
+        {
+            foreach (method in typeBuilder.GetMethods().OfType.[MethodBuilder]())
+            {
+                TraceMethod(typeBuilder, method, exprOptions);    
+            }
+        }
+        
+        public TraceMethod(
+            typeBuilder : TypeBuilder, 
+            methodBuilder : MethodBuilder, 
+            exprOptions : list[PExpr]) : void
+        {
+            def options = ReadTraceMethodOptions(exprOptions);
+            def component = options.Component ?? typeBuilder.NamespaceNode.GetDisplayName();
+            def description = options.Description ?? string.Empty;
+            def parameters = methodBuilder.GetParameters().Fold(<[[]]>, 
+                (parameter, acc) => <[$acc + [$(parameter.name : string) + ": " + $(parameter.name : usesite)] ]>);         
+                          
+            def makeParameters()
+            {
+                if (options.LogParameters) 
+                    <[ string.Join(", ", $(parameters)) ]>
+                 else
+                    <[ if ($(parameters).Any()) "..." else "" ]>
+            }
+            
+            def makeStartTimerCall()
+            {
+                if (options.LogExecutionTime) <[ def stopwatch = Stopwatch.StartNew() ]> else <[ ]>
+            }
+            
+            def makeLogExecutionTime()
+            {
+                if (options.LogExecutionTime) 
+                    <[ stopwatch.Stop();
+                       logger.Info("{0}.{1} execution time: {2}", $(typeBuilder.FullName : string), $(methodBuilder.Name : string), stopwatch.Elapsed); ]> 
+                else 
+                    <[ ]>
+            }
+            
+            def makeLogException()
+            {
+                if (options.LogResult) 
+                    <[ logger.Warn("{0}.{1} throws exception: {2}", $(typeBuilder.FullName : string), $(methodBuilder.Name : string), e) ]>
+                else
+                    <[ ]>
+            }
+            
+            def makeLogResult()
+            {
+                if (options.LogResult) 
+                    <[ def returnResult = if (object.ReferenceEquals(result, null)) "null" else result.ToString();
+                       logger.Info("{0}.{1} returns: {2}", $(typeBuilder.FullName : string), $(methodBuilder.Name : string), returnResult); ]>
+                else
+                    <[ ]>
+            }
+            
+            def makeLogComplete()
+            {
+                if (options.LogResult && !options.LogExecutionTime) 
+                    <[ logger.Info("{0}.{1} end", $(typeBuilder.FullName : string), $(methodBuilder.Name : string)); ]>
+                else
+                    <[ ]>
+            }
+              
+            def makeMethodCallWithLoggingResult()
+            {
+                if (methodBuilder.ReturnType.Equals(FixedType.Void()))
+                    <[ $(methodBuilder.Body);
+                       $(makeLogComplete()) ]>
+                else
+                    <[  def result = $(methodBuilder.Body);
+                        $(makeLogResult());
+                        result; ]>
+            }
+            
+            def makeMainBody()
+            {
+                if (options.LogResult || options.LogExecutionTime)
+                    <[ 
+                        try
+                        {  
+                            $(makeMethodCallWithLoggingResult());           
+                        }
+                        catch 
+                        {
+                            | e => $(makeLogException());
+                            throw;
+                        }
+                        finally
+                        {                    
+                            $(makeLogExecutionTime());
+                        }
+                    ]>
+                else
+                    <[ 
+                        $(makeMethodCallWithLoggingResult());
+                    ]>
+            }
+            
+            methodBuilder.Body = <[
+                def logger = LogGrok.Diagnostics.Logger.Get($(component));
+                def p = $(makeParameters());
+                logger.Info(
+                    "{0}.{1}({2}) {3}", 
+                    $(typeBuilder.FullName : string), 
+                    $(methodBuilder.Name : string), 
+                    p,
+                    string.Format($(description), p));
+                    
+                $(makeStartTimerCall());
+                $(makeMainBody());
+            ]>;
+        }    
+        
+        private ReadTraceMethodOptions(exprOptions : list[PExpr]) : TraceMethodOptions
+        {
+            def options = TraceMethodOptions(true, true, true, null, null);
+            foreach (e in exprOptions) 
+                ReadTraceMethodOption(options, e);
+            options;
+        }
+        
+        private ReadTraceMethodOption(options : TraceMethodOptions, exprOption : PExpr) : void
+        {
+            match (exprOption)
+            {
+                | <[ LogResult = $(logResult : bool) ]> => options.LogResult = logResult;
+                | <[ LogParameters = $(logParameters : bool) ]> => options.LogParameters = logParameters;
+                | <[ LogExecutionTime = $(logExecutionTime : bool) ]> => options.LogExecutionTime = logExecutionTime;
+                | <[ Component = $(component : string) ]> => options.Component = component;
+                | <[ Description = $(description : string) ]> => options.Description = description;
+                | e => Message.Error (
+                    e.Location, 
+                    $"unsupported argument '$e' in macro. Supported parameters: (LogResult : bool), (LogParameters : bool), (LogExecutionTime : bool), (Component : string), (Description : string)");
+            }
+        }
+        
+        [Record]
+        private class TraceMethodOptions
+        {
+            public mutable LogResult : bool;
+            public mutable LogParameters : bool;
+            public mutable LogExecutionTime : bool; 
+            public mutable Component : string;
+            public mutable Description : string;
+            
+            public override ToString() : string
+            {
+                string.Format(
+                    "LogResult = {0}, LogParameters = {1}, LogExecutionTime = {2}, Component = {3}, Description = {4}", 
+                    LogResult, 
+                    LogParameters, 
+                    LogExecutionTime,
+                    Component,
+                    Description);
+            }
+        }
+    }
+}

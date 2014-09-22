@@ -1,0 +1,75 @@
+using Nemerle.Assertions;
+using Nemerle.Collections;
+using Nemerle.Extensions;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Windows;
+
+using Microsoft.Practices.Prism.Modularity;
+using Microsoft.Practices.Unity;
+using Microsoft.Practices.Prism.Regions;
+
+using LogGrok.Core;
+using LogGrok.Infrastructure;
+
+namespace LogGrok.LogView
+{
+    [Record]
+    [Module(ModuleName = "LogViewModule")]
+    public class Module : IModule
+    {
+        public Initialize() : void 
+        {
+
+            _ = _container.RegisterType.[DocumentManager](ContainerControlledLifetimeManager());
+
+            _ = _container.RegisterType.[TextColorizerService](ContainerControlledLifetimeManager());
+            _ = _container.RegisterType.[TextColorizer](
+            HierarchicalLifetimeManager(),
+            InjectionFactory(c => {
+                             def meta = c.Resolve() : MetaInformation;
+                             def service  = c.Resolve() : TextColorizerService;
+                             service.CreateTextColorizer(meta.LogType)
+            }));        
+
+            _ = _container.RegisterType.[ILogNavigation, LogViewModel](HierarchicalLifetimeManager());
+            _ = _container.RegisterType.[ILogSelection, LogViewModel](HierarchicalLifetimeManager());
+            _ = _container.RegisterType.[ILogHighlight, LogViewModel](HierarchicalLifetimeManager());
+
+            _ = _container.RegisterType.[LogViewModel](HierarchicalLifetimeManager());
+            _container.RegisterView.[LogView, LogViewModel]();
+
+
+            _ = _container.RegisterType.[IDocumentViewModelFactory, DocumentViewModelFactory]();
+
+            _ = _container.RegisterType.[DataTemplate]("DocumentDataTemplate",
+                                                     InjectionFactory( c =>
+                                                                       DataTemplate() <- {VisualTree = FrameworkElementFactory(typeof(DocumentView)); DataType=typeof(Document);}));
+                                                                       
+            _ = _container.RegisterType.[IEnumerable[IIndexedLineConsumer]](
+                    HierarchicalLifetimeManager(), 
+                    InjectionFactory(c => c.ResolveAll.[IIndexedLineConsumer]() : IEnumerable[IIndexedLineConsumer]));
+
+            _ = _container.RegisterType.[ScratchPadViewModel](ContainerControlledLifetimeManager());
+            _ = _container.RegisterType.[IScratchPad, ScratchPadViewModel]();
+            _container.RegisterView.[ScratchPadView, ScratchPadViewModel]();
+
+            _ = _container.RegisterType.[IItemProvider[int] -> IItemProvider[LineViewModel]](HierarchicalLifetimeManager(),
+                                                                                             InjectionFactory( c=>
+                                {
+                                    (intProvider => 
+                                        LineViewModelProvider(intProvider, c.Resolve(), c.Resolve(), c.Resolve())) : IItemProvider[int] -> IItemProvider[LineViewModel]
+                                }
+                            ));
+
+            _ = _container.Resolve.[IRegionViewRegistry]().RegisterViewWithRegion("ScratchPad",
+                                                                                  () => _container.Resolve.[ScratchPadView](typeof(ScratchPadView).FullName));
+        }
+
+        _container : IUnityContainer;
+    }
+}

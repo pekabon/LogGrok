@@ -1,0 +1,61 @@
+using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using LogGrok.Core;
+using LogGrok.FilterManager;
+
+namespace LogGrok.Search
+{
+    public class SearchFilter : IFilter
+    {
+        [Record]
+        class FilteredLinesProvider : IFilteredLinesProvider
+        {
+            public GetLines(fromIndex : int) : IEnumerable[LineOrProgress]
+            {
+                _logProcessor
+                    .GetLineWithText(_searchText, _searchOptions, fromIndex)
+            }
+
+            private _searchOptions : SearchOptions;
+            private _searchText    : string;
+            private _logProcessor  : ILogProcessor;
+        }
+
+        public this(logProcessor : ILogProcessor)
+        {
+            _logProcessor  = logProcessor;
+            Changed += () => { };
+        }
+
+        internal Reset(searchText : string, searchOptions : SearchOptions) : void
+        {
+            _searchText    = searchText;
+            _searchOptions = searchOptions;
+            Changed();
+        }
+
+        public event Changed : Action;
+
+        public Enabled : bool { get { !_searchText.IsEmpty() } }
+
+        public Priority : int { get { int.MaxValue } }
+
+        public GetFilteredLinesProvider() : IFilteredLinesProvider
+        {
+            FilteredLinesProvider(_searchOptions, _searchText, _logProcessor)
+        }
+
+        private _logProcessor : ILogProcessor;
+
+        private mutable _searchOptions = SearchOptions.None;
+        private mutable _searchText    = "";
+    }
+
+}

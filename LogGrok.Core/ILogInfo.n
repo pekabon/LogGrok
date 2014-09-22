@@ -1,0 +1,18 @@
+using System;
+
+namespace LogGrok.Core
+{
+    public interface ILogInfo
+    {
+        FullPath : string { get; }
+        FileSize : long { get; }
+        Header : string { get; }
+        ParsedHeader : option[Header] { get; }
+        StartTime : TimeSpan { get; }
+        FinishTime : TimeSpan { get; }
+        ProcessedLineCount : int { get; }    
+        event Loaded : EventHandler;
+        LoadedPercent : double { get; } // form 0 to 100
+        IsLoaded : bool { get; }
+    }
+}

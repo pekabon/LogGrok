@@ -1,0 +1,45 @@
+using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+using Nemerle.WPF;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+using LogGrok.Core;
+
+namespace LogGrok.IndexedFilter
+{
+    [Record]
+    [NotifyPropertyChanged]
+    public class ElementViewModel
+    {
+        public Name : string 
+        { 
+            get; private set;
+        }
+
+        public Category : Text 
+        {
+            get; private set; 
+        }
+
+        public IsActive : bool 
+        { 
+            get; set; 
+        }
+
+        public Percent : int 
+        { 
+            get 
+            {
+                def percent = _percentGetter();
+                percent
+            }
+        }
+
+        private _percentGetter : void -> int;
+    }
+}

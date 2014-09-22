@@ -1,0 +1,104 @@
+﻿using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Utility;
+using Nemerle.Extensions;
+using Nemerle.Assertions;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.IO;
+using System.Windows.Media;
+using System.Windows;
+using System.Text.RegularExpressions;
+
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
+
+using LogGrok.Core;
+
+namespace LogGrok.LogView
+{
+    public class TextColorizerSettings
+    {
+        public this ([NotNull] metaInformation : IEnumerable[MetaInformation])
+        {
+            _defaults = metaInformation.ToDictionary(_.LogType, _.Settings);
+        }
+        
+        public LogRules[[NotNull] logType : string] : IEnumerable[ColorRule]
+        {
+            get
+            {
+                when (!_settings.ContainsKey(logType))
+                    _settings.Add(logType, TryLoad(logType).WithDefault(Load(Application.GetResourceStream(_defaults[logType]).Stream)));
+                _settings[logType]
+            }
+
+            set
+            {
+                def rules = _settings[logType];
+                rules.Clear();
+                rules.AddRange(value);
+            }
+        }
+        
+        public Save() : void
+        {
+            def path = GetSettingsPath();
+            _ = Directory.CreateDirectory(path);
+            foreach (kv in _settings)
+                using (writer = StreamWriter(GetSettingsFile(path, kv.Key)))
+                    GetJsonSerializer().Serialize(writer, kv.Value);            
+        }        
+             
+        static TryLoad(logType : string) : option[List[ColorRule]]
+        {
+            try
+            {
+                def file = GetSettingsFile(GetSettingsPath(), logType);
+                if (!File.Exists(file))
+                    None()
+                else
+                    using (stream = FileStream(file, FileMode.Open))
+                        Some(Load(stream))
+            }
+            catch
+            {
+                | e =>
+                {
+                    _ = MessageBox.Show($"Failed to load settings: $(e.ToString())");
+                    None()
+                }
+            }            
+        }
+        
+        static Load(stream : Stream) : List[ColorRule]
+        {
+            using (streamReader = StreamReader(stream))
+                using (jsonReader = JsonTextReader(streamReader))
+                    GetJsonSerializer().Deserialize.[List[ColorRule]](jsonReader);
+        }
+        
+        static GetJsonSerializer() : JsonSerializer
+        {
+            def serializer = JsonSerializer();
+            serializer.Formatting = Formatting.Indented;
+            serializer.Converters.Add(StringEnumConverter());
+            serializer
+        }
+        
+        static GetSettingsPath() : string
+        {
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "LogGrok")
+        }
+        
+        static GetSettingsFile(path : string, logType : string) : string
+        {
+            Path.Combine(path, $"$logType.colors.json")
+        }
+        
+        _settings : Dictionary[string, List[ColorRule]] = Dictionary();
+        _defaults : Dictionary[string, Uri]             = Dictionary();
+    }
+}

@@ -1,0 +1,30 @@
+﻿using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using Nemerle.WPF;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Windows.Interactivity;
+
+using MahApps.Metro.Controls;
+using MahApps.Metro.Controls.Dialogs;
+
+using Microsoft.Practices.Prism.Interactivity.InteractionRequest;
+
+namespace LogGrok.Infrastructure.Interaction
+{
+    public class MetroMessageBoxeInteractionAction : TriggerAction[MetroWindow]
+    {
+        protected override Invoke(o : object) : void
+        {
+            | args is InteractionRequestedEventArgs => 
+                    _ = DialogManager.ShowMessageAsync(AssociatedObject, args.Context.Title, args.Context.Content.ToString())
+            |  _ => 
+                    _ = DialogManager.ShowMessageAsync(AssociatedObject, "Invalid interaction request" , "Please use InteractionRequest[Notification] with MetroMessageBoxeInteractionAction");
+        }
+    }
+}

@@ -1,0 +1,33 @@
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Windows.Controls;
+using System.Windows;
+
+using Microsoft.Practices.Prism.Modularity;
+using Microsoft.Practices.Prism.Regions;
+using Microsoft.Practices.Prism.UnityExtensions;
+using Microsoft.Practices.Unity;
+
+
+namespace LogGrok.Infrastructure.Decoration
+{
+    [Record]
+    public class DecoratorRegionAdapter : AddingRegionAdpaterBase[DecoratorContentControl, AllActiveRegion]
+    {
+        protected override AddView(view : object, target : DecoratorContentControl) : void
+        {
+            | (DecoratorControl, _) => Decorate(view :> DecoratorControl, target)
+            | _              => throw NotSupportedException()
+        }
+        
+        private Decorate(view : DecoratorControl, target : DecoratorContentControl) : void
+        {
+            target.Decorator = view;
+        }
+    }
+}

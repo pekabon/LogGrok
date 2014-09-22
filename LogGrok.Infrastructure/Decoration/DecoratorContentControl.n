@@ -1,0 +1,66 @@
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+using Nemerle.WPF;
+using Nemerle.Extensions;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Windows.Controls;
+using System.Windows;
+
+namespace LogGrok.Infrastructure.Decoration
+{
+  public class DecoratorContentControl : ContentControl
+  {
+    static this()
+    {
+        def propertyChanged = ContentControl.ContentProperty.GetMetadata(typeof(ContentControl)).PropertyChangedCallback;
+        
+        ContentControl.ContentProperty.OverrideMetadata(
+            typeof(DecoratorContentControl), 
+            FrameworkPropertyMetadata(null, propertyChanged, CoerseContent));
+            
+        FrameworkElement.DataContextProperty.OverrideMetadata
+            (typeof(DecoratorContentControl),
+            FrameworkPropertyMetadata(null, OnDataContextChanged));
+    }
+
+    static private CoerseContent(d : DependencyObject, baseValue : object ) : object
+    {
+        def dcc = d :> DecoratorContentControl;
+        match (baseValue, dcc.Decorator)
+        {
+            | (null, _) => null
+            | (_, null) => baseValue
+            | _         =>
+            {
+                dcc.Decorator.Child = baseValue :> FrameworkElement;
+                dcc.Decorator.Child.DataContext = dcc.DataContext;
+                dcc.Decorator;
+            }
+        }
+    } 
+    
+    [DependencyProperty(Metadata = PropertyMetadata(null, OnDecoratorChanged))]
+    public Decorator : DecoratorControl  { get; set; }  
+      
+    static OnDecoratorChanged(d : DependencyObject, _ : DependencyPropertyChangedEventArgs ) : void
+    {
+        def dcc = d :> DecoratorContentControl;
+        dcc.CoerceValue(ContentProperty);
+    }
+    
+    private static OnDataContextChanged(d : DependencyObject , e : DependencyPropertyChangedEventArgs) : void 
+    {
+        def dcc = d :> DecoratorContentControl;
+        when (dcc.Decorator?.Child != null)
+            dcc.Decorator.Child.DataContext = e.NewValue;
+    }
+    
+    protected override OnContentChanged(oldContent : object, newContent : object) : void 
+    {
+        base.OnContentChanged(oldContent, newContent);
+    }
+  }
+}

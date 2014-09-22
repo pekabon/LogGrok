@@ -1,0 +1,70 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Windows.Documents;
+using System.Windows;
+using System.Windows.Media;
+using System.Diagnostics;
+using System.Windows.Controls;
+
+using Nemerle.Assertions;
+using Nemerle.WPF;
+
+using System.Windows.FrameworkPropertyMetadataOptions;
+
+namespace LogGrok.Infrastructure.Behaviors.ListMouseMultiSelectionBehaviorBackend
+{
+    public class SelectionAdorner : Adorner
+    {
+        public this([NotNull] adornedElement : UIElement)
+        {
+            base(adornedElement);
+            Opacity = 0.5;
+        }
+        
+        [DependencyProperty(Metadata=FrameworkPropertyMetadata(null, AffectsRender))]
+        public Brush : Brush { get; set; }
+        
+        [DependencyProperty(Metadata=FrameworkPropertyMetadata(null, AffectsRender))]
+        public Pen : Pen { get; set; }
+        
+        [DependencyProperty(Metadata=FrameworkPropertyMetadata(false, AffectsRender, OnIsSelectingChanged))]
+        public IsSelecting : bool { get; set; }
+        
+        [DependencyProperty(Metadata=FrameworkPropertyMetadata(Point(0, 0), AffectsRender, null, CorrectPosition))]
+        public StartPosition : Point { get; set; }
+        
+        [DependencyProperty(Metadata=FrameworkPropertyMetadata(Point(0, 0), AffectsRender, null, CorrectPosition))]
+        public EndPosition : Point { get; set; }
+        
+        private static OnIsSelectingChanged(sender : DependencyObject, e : DependencyPropertyChangedEventArgs) : void 
+        {
+            (sender :> SelectionAdorner).Visibility = 
+                if (e.NewValue :> bool) Visibility.Visible else Visibility.Collapsed;
+        }
+
+        protected override OnRender(drawingContext : DrawingContext) : void 
+        {
+            when (IsSelecting)
+            {
+                drawingContext.DrawRectangle(
+                    Brush, Pen, Rect(StartPosition, EndPosition));
+            }
+            base.OnRender(drawingContext);
+        }
+        
+        private static CorrectPosition(sender : DependencyObject, value : object) : object
+        {
+            def point = value :> Point;
+            def adorner = sender :> SelectionAdorner;
+            
+            point.X = Math.Max(point.X, 0);
+            point.X = Math.Min(point.X, adorner.ActualWidth);
+            point.Y = Math.Max(point.Y, 0);
+            point.Y = Math.Min(point.Y, adorner.ActualHeight);
+            
+            point;
+        }
+    }
+}

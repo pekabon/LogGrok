@@ -1,0 +1,15 @@
+using LogGrok.Infrastructure;
+using Microsoft.Practices.Prism.Regions;
+
+using Microsoft.Practices.ServiceLocation;
+using Microsoft.Practices.Unity;
+namespace LogGrok.LogView
+{
+    public partial class LogView
+    {
+        public this()
+        {
+            InitializeComponent();
+        }
+    }
+}

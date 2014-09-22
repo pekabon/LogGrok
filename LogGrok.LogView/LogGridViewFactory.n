@@ -1,0 +1,93 @@
+﻿using Nemerle;
+using Nemerle.Assertions;
+using Nemerle.Collections;
+using Nemerle.Extensions;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Data;
+
+using Microsoft.Practices.Prism.Commands;
+
+using LogGrok.Core;
+using LogGrok.Controls;
+using LogGrok.IndexedFilter;
+
+using Nemerle.WPF;
+
+namespace LogGrok.LogView
+{
+    public class LogGridViewFactory
+    {
+        [Record]
+        [NotifyPropertyChanged]
+        public class HeaderViewModel
+        {
+            public Header : string { get; private set; }
+            
+            public Filter : IndexedFilterView { get; private set; }
+        }
+        
+        public this([NotNull] meta : MetaInformation, [NotNull] indexedFilterViewFactory : string -> IndexedFilterView)
+        {
+            _meta = meta;
+            _indexedFilterViewFactory = indexedFilterViewFactory;
+        }
+
+        public CreateView(withIndices : bool) : ViewBase
+        {
+            def view = GridView();
+            
+            foreach(d in FieldDescriptor("Index", "Index", false) :: _meta.Fields)
+            {
+                def CreateCellTemplate()
+                {
+                    def frameworkElementFactory = FrameworkElementFactory(typeof(LogGridViewCell));
+                    _ = frameworkElementFactory.SetBinding(FrameworkElement.DataContextProperty, Binding($"[$(d.FieldName)]") );
+                    def dataTemplate = DataTemplate(typeof(DependencyObject));
+                    dataTemplate.VisualTree = frameworkElementFactory;
+                    dataTemplate
+                }
+
+                def CreateHeaderTemplate()
+                {
+                    if (d.IsIndexed && withIndices)
+                    {
+                        def frameworkElementFactory = FrameworkElementFactory(typeof(LogGridViewIndexedHeader));
+                        def dataTemplate = DataTemplate(typeof(DependencyObject));
+                        _ = frameworkElementFactory.SetValue(FrameworkElement.DataContextProperty, 
+                                                        HeaderViewModel(d.FieldHeader, _indexedFilterViewFactory(d.FieldName)));
+                        dataTemplate.VisualTree = frameworkElementFactory;
+                        dataTemplate
+                    }
+                    else
+                    {
+                        def frameworkElementFactory = FrameworkElementFactory(typeof(LogGridViewHeader));
+                        def dataTemplate = DataTemplate(typeof(DependencyObject));
+                        _ = frameworkElementFactory.SetValue(FrameworkElement.DataContextProperty, d.FieldHeader);
+     
+                        dataTemplate.VisualTree = frameworkElementFactory;
+                        dataTemplate
+                    }
+                }
+
+                view.Columns.Add(LogGridViewColumn() <- 
+                { 
+                        HeaderTemplate = CreateHeaderTemplate(); 
+                        CellTemplate = CreateCellTemplate(); 
+                });
+            }
+            view
+        }
+
+        private _meta : MetaInformation;
+        private _indexedFilterViewFactory : string -> IndexedFilterView
+    }
+}

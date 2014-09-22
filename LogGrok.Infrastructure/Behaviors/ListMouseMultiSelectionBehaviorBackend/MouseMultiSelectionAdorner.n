@@ -1,0 +1,139 @@
+using Nemerle;
+using Nemerle.Assertions;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+using Nemerle.WPF;
+
+using System;
+using System.Reflection;
+using System.Text;
+using System.Collections;
+using System.Collections.Specialized;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Linq;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Documents;
+using System.Windows.Input;
+using System.Windows.Media;
+
+namespace LogGrok.Infrastructure.Behaviors.ListMouseMultiSelectionBehaviorBackend
+{
+    public class MouseMultiSelectionAdorner
+    {
+        public this([NotNull] target : MouseMultiSelectionTarget)
+        {
+            _target = target;
+            
+            PreviewMouseDown += (_,_) => { };
+                     MouseUp += (_,_) => { };
+                   MouseMove += (_,_) => { };
+        }
+        
+        public event PreviewMouseDown : MouseButtonEventHandler;
+        
+        public event MouseUp : MouseButtonEventHandler;
+        
+        public event MouseMove : MouseEventHandler;
+        
+        public Brush : Brush 
+        {
+            get; set;   
+        }
+        
+        public Pen : Pen 
+        {
+            get; set;   
+        }
+        
+        public IsSelecting : bool
+        {
+            get { _adorner.IsSelecting; }
+            set { _adorner.IsSelecting = value; }
+        }
+        
+        public SelectionBounds : Rect
+        {
+            get { Rect(_adorner.StartPosition, _adorner.EndPosition); }
+            set { _adorner.StartPosition = value.TopLeft; _adorner.EndPosition = value.BottomRight; }
+        }
+        
+        public Attach() : void 
+        {
+            _isAttached = true;       
+            
+            _target.ScrollContentPresenterChanged += OnScrollContentPresenterChanged;
+            
+            def scrollContentPresenter = _target.ScrollContentPresenter;
+            when (scrollContentPresenter.HasValue)
+            {
+                def adornerScrollContentPresenter = scrollContentPresenter.Value;
+                def adorner = SelectionAdorner(adornerScrollContentPresenter); 
+                
+                adorner.Brush = Brush;
+                adorner.Pen = Pen;
+                adorner.PreviewMouseDown += OnAdornerPreviewMouseDown;
+                adorner.MouseUp += OnAdornerMouseUp;
+                adorner.MouseMove += OnAdornerMouseMove;
+                    
+                AdornerLayer.GetAdornerLayer(adornerScrollContentPresenter).Add(adorner);
+                    
+                _adorner = adorner;
+                _adornerScrollContentPresenter = adornerScrollContentPresenter;
+            }
+        }
+        
+        public Detach() : void
+        {
+            _isAttached = false;
+            
+            _target.ScrollContentPresenterChanged -= OnScrollContentPresenterChanged;
+            
+            when (_adorner != null)
+            {
+                _adorner.PreviewMouseDown -= OnAdornerPreviewMouseDown;
+                _adorner.MouseUp -= OnAdornerMouseUp;
+                _adorner.MouseMove -= OnAdornerMouseMove;
+                
+                def adornerLayer = AdornerLayer.GetAdornerLayer(_adornerScrollContentPresenter);
+                when (adornerLayer != null)
+                    adornerLayer.Remove(_adorner);
+                
+                _adorner = null;
+                _adornerScrollContentPresenter = null;
+            }
+        }
+        
+        private OnAdornerPreviewMouseDown(sender : object, e : MouseButtonEventArgs) : void
+        {
+            PreviewMouseDown(sender, e);
+        }
+        
+        private OnAdornerMouseUp(sender : object, e : MouseButtonEventArgs) : void
+        {
+            MouseUp(sender, e);
+        }
+        
+        private OnAdornerMouseMove(sender : object, e : MouseEventArgs) : void
+        {
+            MouseMove(sender, e);
+        }
+        
+        private OnScrollContentPresenterChanged(_ : object, _ : EventArgs) : void
+        {
+            when (_isAttached)
+            {
+                Detach();
+                Attach();    
+            }    
+        }
+        
+        private _target : MouseMultiSelectionTarget;
+        private mutable _adorner : SelectionAdorner;
+        private mutable _adornerScrollContentPresenter : ScrollContentPresenter;
+        private mutable _isAttached : bool;
+    }
+}

@@ -1,0 +1,30 @@
+using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+
+using LogGrok.Core;
+
+namespace LogGrok.Core
+{
+    public interface IFilter
+    {
+        event Changed : Action;
+        
+        Enabled : bool { get }
+        
+        Priority : int { get }
+        
+        GetFilteredLinesProvider() : IFilteredLinesProvider;
+    }
+    
+    public interface IFilteredLinesProvider
+    {
+        GetLines(fromIndex : int) : IEnumerable[LineOrProgress];
+    }
+}

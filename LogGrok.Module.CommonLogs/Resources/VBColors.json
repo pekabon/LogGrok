@@ -1,0 +1,47 @@
+[
+  {
+    "Name": "Error",
+    "Rule": {
+      "Pattern": "E",
+      "Options": "None"
+    },
+    "TextColor": {
+      "Foreground": "#FFFF0000",
+      "Background": "#00FFFFFF"
+    },
+    "SearchAreas": [
+      "Severity"
+    ],
+    "Usage": "ParsedAreas"
+  },
+  {
+    "Name": "Warning",
+    "Rule": {
+      "Pattern": "W",
+      "Options": "None"
+    },
+    "TextColor": {
+      "Foreground": "#FFD2691E",
+      "Background": "#00FFFFFF"
+    },
+    "SearchAreas": [
+      "Severity"
+    ],
+    "Usage": "ParsedAreas"
+  },
+  {
+    "Name": "Verbose",
+    "Rule": {
+      "Pattern": "V",
+      "Options": "None"
+    },
+    "TextColor": {
+      "Foreground": "#FF808080",
+      "Background": "#00FFFFFF"
+    },
+    "SearchAreas": [
+      "Severity"
+    ],
+    "Usage": "ParsedAreas"
+  }
+]

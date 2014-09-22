@@ -1,0 +1,35 @@
+using Nemerle;
+using Nemerle.Assertions;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading;
+
+using Microsoft.Practices.Unity;
+
+using Nemerle.WPF;
+
+namespace LogGrok.Core
+{   
+    [Record]
+    [NotifyPropertyChanged]
+    public class Document
+    {
+        public DocumentViewModel : object
+        {
+            [Memoize] get 
+            {
+                _documentViewModelFactory.CreateViewModel()
+            }
+        }
+        
+        public Context : IUnityContainer { get; private set; }
+        
+        private _documentViewModelFactory : IDocumentViewModelFactory;
+    }
+}

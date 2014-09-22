@@ -1,0 +1,127 @@
+using System;
+using System.IO;
+using System.Linq;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using System.Threading;
+using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Assertions;
+
+using LogGrok.Core;
+using LogGrok.LogParserBase;
+
+namespace LogGrok.LogParserBase
+{
+    public class LogProcessor : ILogProcessor
+    {
+        public this([NotNullOrEmpty] filePath : string,
+                    [NotNull] streamFactory : void -> Stream,
+                    [NotNull] lineReaderFactory : Stream -> ILineReader,
+                    [NotNull] fileSearcher : FileSearcher.GetOffsetsWithTextFunction,
+                    [NotNull] headerParser : Stream -> option[Header*string],
+                    beginOffset = 0l,
+                    endOffset = -1l)
+        {
+            _streamFactory = streamFactory;
+            _lineReaderFactory = lineReaderFactory;
+            _beginOffset = beginOffset;
+            _endOffset = endOffset;
+            FullPath = filePath;
+            _lineIndex = LineIndex();
+            _fileSearcher = fileSearcher;
+            Loaded += (_, _) => _lineIndex.OnLoaded();
+            
+            def stream = CreateSubStream();
+            _lineReader = _lineReaderFactory(stream);
+            FileSize = stream.Length;
+            StartTime =  _lineReader.First().Time;
+            FinishTime = _lineReader.GetLastLine().Time;
+            
+            def header = using (stream = streamFactory()) headerParser(stream);
+            ParsedHeader = header.Map( x => x[0] );
+            Header = header.Map( x => x[1] ).WithDefault(string.Empty);
+        }
+        
+        public Load(indexedLineConsumers : IEnumerable[IIndexedLineConsumer]) : void
+        {
+            _task = Task.Factory.StartNew( () => LoadCore(indexedLineConsumers, _cancellationTokenSource.Token) );
+        }
+        
+        public FullPath : string { get; private set; }
+        public FileSize : long { get; private set; }
+        public Header : string { get; private set; }
+        public StartTime : TimeSpan { get; private set; }
+        public FinishTime : TimeSpan { get; private set; }
+        public ProcessedLineCount : int { get; private set; }            
+        public LoadedPercent : double { get; private set; } // form 0 to 100
+        public IsLoaded : bool { get; private set; }
+        public ParsedHeader : option[Header] { get; private set; }
+        
+        public event Loaded : EventHandler;
+        
+        public GetLine(index : int) : ILine
+        {
+            match (ProcessedLineCount - index)
+            {
+                | 1 => _lineReader.ReadLineAt( _lineIndex.GetLineOffset(index), _lineIndex.LastLineOffset )
+                | x when x > 0 => 
+                    _lineReader.ReadLineAt( _lineIndex.GetLineOffset(index),  _lineIndex.GetLineOffset(index + 1))
+                | _ => throw ArgumentOutOfRangeException($"Try get line by index $index but have only $ProcessedLineCount processed line");
+            }
+        }
+        
+        public GetLineWithText(text: string, options : SearchOptions, fromIndex : int) : IEnumerable[LineOrProgress]
+        {
+            _lineIndex.GetLineLocations(fromIndex) |> _fileSearcher(CreateSubStream, text, options, _lineIndex.GetLineOffset(fromIndex))
+        }        
+        
+        public Dispose() : void
+        {
+            _cancellationTokenSource.Cancel();
+            _task.Wait();
+            _lineReader.Dispose();
+        }
+        
+        private LoadCore(indexedLineConsumers : IEnumerable[IIndexedLineConsumer], cancellationToken : CancellationToken) : void
+        {
+            assert(!IsLoaded);
+            
+            using (lineReader = _lineReaderFactory(CreateSubStream()))
+                foreach (line in lineReader.TakeWhile(_ => !cancellationToken.IsCancellationRequested))
+                {
+                    def index = _lineIndex.AddNextLine(line.Offset, line.EndOffset);
+                    foreach(indexedLineConsumer in indexedLineConsumers)
+                        indexedLineConsumer.Process(line, index);
+                        
+                    ++ProcessedLineCount;
+                    LoadedPercent = (line.Offset:double) / FileSize * 100.0;
+                }
+            
+            LoadedPercent  = 100;
+            IsLoaded = true;
+            Loaded(this, EventArgs.Empty);
+            
+            foreach(consumer in indexedLineConsumers)
+                consumer.Finish();
+        }
+        
+        private CreateSubStream() : Stream
+        {
+            if (_beginOffset == 0l && _endOffset == -1l)
+                _streamFactory()
+            else
+                ReadSubStream(_streamFactory(), _beginOffset, _endOffset);
+        }
+        
+        private _streamFactory : void -> Stream;
+        private _lineReaderFactory : Stream -> ILineReader;
+        private _lineReader : ILineReader;
+        private _lineIndex : LineIndex;
+        private _cancellationTokenSource = CancellationTokenSource();
+        private mutable _task : Task = Task.Factory.StartNew(() => {});
+        private _beginOffset : long;
+        private _endOffset : long;
+        private _fileSearcher : FileSearcher.GetOffsetsWithTextFunction;
+    }
+}

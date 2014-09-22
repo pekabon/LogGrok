@@ -1,0 +1,136 @@
+﻿using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Compiler;
+using Nemerle.Compiler.Parsetree;
+using Nemerle.Compiler.Typedtree;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace LogGrok.Macros
+{
+    [MacroUsage(MacroPhase.WithTypedMembers, MacroTargets.Method)]
+    macro ImplementDisposeFields(typeBuilder : TypeBuilder, method : MethodBuilder)
+    {
+        ImplementDisposeFieldsImpl.DoTransform(Macros.ImplicitCTX(), 
+                                               typeBuilder, method)
+    }
+
+    module ImplementDisposeFieldsImpl
+    {
+        public DoTransform(typer : Typer, typeBuilder : TypeBuilder, method : MethodBuilder) : void
+        {
+            Macros.DefineCTX(typer);
+
+            def iDisposableType = <[ ttype: System.IDisposable ]>;
+
+            def isMemberTypeImplementIDisposable(member : IMember) : bool 
+            {
+                member is IField && member.GetMemType().TryRequire(iDisposableType)
+            }
+
+            def members = typeBuilder.GetMembers(BindingFlags.DeclaredOnly
+                                                 | BindingFlags.Instance 
+                                                 | BindingFlags.Public 
+                                                 | BindingFlags.NonPublic)
+                                 .Filter(isMemberTypeImplementIDisposable); 
+
+            def exprs = members.Map(m => <[ (this.$(m.Name :  usesite) : System.IDisposable)?.Dispose() ]>);
+
+            method.Body = <[ { ..$exprs } ]>;
+        }
+    }
+
+    [MacroUsage(MacroPhase.BeforeTypedMembers, MacroTargets.Class)]
+    macro Disposable(typeBuilder : TypeBuilder, disposeManaged = <[ () ]>, disposeUnmanaged = <[ () ]>, disposeName = <[ Dispose ]>)
+    {
+        DisposableImpl.DoTransform(Macros.ImplicitCTX(), typeBuilder, 
+                                   disposeManaged, disposeUnmanaged, disposeName)
+    }
+
+    module DisposableImpl
+    {
+        public DoTransform(typer : Typer, typeBuilder : TypeBuilder, 
+    disposeManaged   : PExpr, 
+    disposeUnmanaged : PExpr, 
+    disposeName      : PExpr) : void
+        {
+            Macros.DefineCTX(typer);
+
+            def needUnmanagedDispose = !(disposeUnmanaged is <[ () ]>);
+            def iDisposableType = <[ ttype: System.IDisposable ]>;     
+            def needOverride = typeBuilder.BaseClass.TryRequire(iDisposableType);
+            def defineMember(ast) { _ = typeBuilder.DefineWithSource(ast) };
+
+            defineMember(<[ decl: [RecordIgnore] private mutable _disposed : bool; ]>); 
+
+            def disposeIDisposableFields = Macros.NewSymbol("DisposeIDisposableFields"); 
+
+            defineMember(<[ decl: [ImplementDisposeFields] private $(disposeIDisposableFields : name)() : void { } ]>);
+
+            def disposeImple =
+                                  if (needOverride) 
+          <[ decl:
+            protected override Dispose(disposing : bool) : void
+            {
+            unless (_disposed)
+            {
+                when (disposing)
+                {
+                $(disposeIDisposableFields : name)(); 
+
+                $disposeManaged;
+                }
+                $disposeUnmanaged;
+
+                base.Dispose(disposing);
+                _disposed = true;
+            }
+            } ]>
+        else
+          <[ decl: 
+            protected virtual Dispose(disposing : bool) : void
+            {
+            unless (_disposed)
+            {
+                when (disposing)
+                {
+                $(disposeIDisposableFields : name)();
+
+                $disposeManaged;
+                }
+
+                $disposeUnmanaged;
+
+                _disposed = true;
+            }
+            } ]>;
+
+            defineMember(disposeImple);
+
+            when (needUnmanagedDispose)
+                defineMember(<[ decl: protected override Finalize() : void { Dispose(false); } ]>);
+
+            unless (needOverride)
+            {
+                def disposeMethodName = 
+                                           match (disposeName) 
+                                           {
+                                               | <[ $(disposeMethodName : name) ]> => disposeMethodName
+                                               | _ =>
+            Message.Error(disposeName.Location, "Expected simple name");
+            Name("Dispose")
+                                           };
+                defineMember(<[ decl: public $(disposeMethodName : name)() : void 
+                                        implements IDisposable.Dispose
+                                {
+                                    Dispose(true);
+                                    GC.SuppressFinalize(this);
+                                } ]>);
+            }
+        }
+    }
+}

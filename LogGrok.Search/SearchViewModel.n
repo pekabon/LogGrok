@@ -1,0 +1,289 @@
+using Nemerle;
+using Nemerle.Assertions;
+using Nemerle.Collections;
+using Nemerle.Extensions;
+using Nemerle.Text;
+using Nemerle.Utility;
+using Nemerle.WPF;
+
+using System;
+using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Linq;
+using System.Threading;
+using System.Text.RegularExpressions;
+using System.Windows.Input;
+
+using LogGrok.LogView;
+using LogGrok.Core;
+
+using Microsoft.Practices.Prism.Commands;
+using Microsoft.Practices.Prism.PubSubEvents;
+
+using LogGrok.FilterManager;
+using LogGrok.LogView.DataVirtualization;
+using LogGrok.Macros;
+
+namespace LogGrok.Search
+{    
+    [NotifyPropertyChanged]
+    public class SearchViewModel : IDataErrorInfo
+    {
+        class SearchPattern
+        {
+            [Record]
+            class PatternValidationResult
+            {
+                public static GetValidResult(pattern : string) : PatternValidationResult
+                {
+                    PatternValidationResult(pattern, true, string.Empty)
+                }
+                
+                [Accessor] _pattern : string;
+                [Accessor] _isValidRegex : bool;
+                [Accessor] _errorMessage : string;
+            }
+            
+            public UseRegex : bool { get; set }
+            public Text : string { get; set }
+            
+            public IsValid : bool
+            {
+                public get 
+                {
+                    if (!UseRegex)
+                    {
+                        true
+                    }
+                    else
+                    {
+                        ValidateRegex();
+                        _patternValidationResult.IsValidRegex;
+                    }
+                }
+            }
+            
+            public ValidationError : string 
+            { 
+                get
+                {
+                    if (!UseRegex)
+                    {
+                        string.Empty
+                    }
+                    else
+                    {
+                        ValidateRegex();
+                        _patternValidationResult.ErrorMessage;
+                    }
+                }
+            }
+            
+            private ValidateRegex() : void
+            {
+                unless (_patternValidationResult.Pattern == Text)
+                {
+                    try
+                    {
+                        _ = Regex(Text??string.Empty);
+                        _patternValidationResult = PatternValidationResult.GetValidResult(Text);
+                    }
+                    catch
+                    {
+                        | e => _patternValidationResult = PatternValidationResult(Text, false, e.Message);
+                    }
+                }
+            }
+
+            mutable _patternValidationResult : PatternValidationResult = PatternValidationResult.GetValidResult(string.Empty);
+        }
+        
+        public Error : string
+        {
+            get { string.Empty }
+        }
+        
+        public Item[propertyName : string] : string
+        {
+            get 
+            { 
+                if (propertyName == "SearchText")
+                    _searchPattern.ValidationError;
+                else
+                    string.Empty;
+            }
+        }
+        
+        public this([NotNull] searchDocumentFactory : SearchDocumentFactory)
+        {
+            _documentFactory = searchDocumentFactory;
+            Documents = ObservableCollection();
+        }
+
+        [NotifyChangedOptions(Dependent = IsFilterEnabled)]
+        public SearchText : string
+        {
+            get 
+            { 
+                _searchPattern.Text
+            }
+            set 
+            {
+                _searchPattern.Text = value;
+                
+                when (_searchPattern.IsValid)
+                    GetOrCreateCurrentDocument().SearchText = value;
+            }
+        }
+        
+        public IsCaseSensitive : bool 
+        {
+            get
+            {
+                CurrentDocument.Map(d => d.IsCaseSensitive).WithDefault(false)
+            }
+            set
+            {
+                GetOrCreateCurrentDocument().IsCaseSensitive = value;
+            }
+        }
+
+        [NotifyChangedOptions(Dependent = [SearchText, IsFilterEnabled])]
+        public UseRegex : bool 
+        {
+            get
+            {
+                _searchPattern.UseRegex
+            }
+            set
+            {
+                _searchPattern.UseRegex = value;
+                
+                when (_searchPattern.IsValid)
+                    GetOrCreateCurrentDocument().UseRegex = value;
+            }
+        }
+
+        private GetOrCreateCurrentDocument() : SearchDocument
+        {
+            match(CurrentDocument)
+            {
+                | Some(document) => document
+                | None => 
+                {
+                    _currentDocument = Some(CreateNewDocument());
+                    _currentDocument.Value
+                }
+            }
+        }
+
+        public CloseDocument : ICommand
+        {
+            get 
+            {
+                DelegateCommand(d : SearchDocument =>
+                {
+                    _ = Documents.Remove(d);
+                    when (Documents.Count == 0)
+                    {
+                        SearchText = string.Empty;
+                        CurrentDocument = None();
+                    }
+                })
+            }
+        }
+
+        public AddNew : ICommand
+        {
+            get 
+            { 
+                DelegateCommand(() => AddNewDocument(SearchText));
+            }
+        }
+
+        public Documents : ObservableCollection[SearchDocument] { get; private set; }
+
+        [NotifyChangedOptions(Dependent = [SearchText, IsCaseSensitive, IsFilterEnabled])]
+        public CurrentDocument : option[SearchDocument]
+        { 
+            get 
+            { 
+                _currentDocument;
+            }
+
+            set
+            {
+                def Equals(document1, document2)
+                {
+                    | (Some(d1), Some(d2)) => Object.ReferenceEquals(d1, d2)
+                    | _ => false
+                }
+
+                unless (Equals(_currentDocument, value))
+                {
+                    _currentDocument = value;
+                    ActiveContent = _currentDocument.WithDefault(null);
+                }
+            } 
+        }
+
+        public ActiveContent : object
+        {
+            get
+            {
+                _activeContent
+            }
+
+            set 
+            {
+                unless (object.ReferenceEquals(_activeContent, value))
+                {
+                    _activeContent = value;
+                    match(value, Documents.Count)
+                    {
+                        | (document is SearchDocument, _) => CurrentDocument = Some(document)
+                        | (_, 0)                          => CurrentDocument = None()
+                        | (_, _)                          => CurrentDocument = Some(Documents.First());
+                    }
+                }
+
+            }
+        }
+
+        public IsFilterEnabled : bool 
+        { 
+            get 
+            {
+                !string.IsNullOrEmpty(SearchText) && _searchPattern.IsValid
+            }
+        }
+
+        public ClearSearchCommand : ICommand
+        {
+            get
+            {
+                DelegateCommand(() => SearchText = string.Empty)
+            }
+        }
+        
+        private AddNewDocument(searchText : string) : void
+        { 
+            CurrentDocument = Some(CreateNewDocument() 
+                                   <- { SearchText = searchText; IsCaseSensitive = IsCaseSensitive; });
+        }
+
+        private CreateNewDocument() : SearchDocument
+        {
+            def newSearchDocument = _documentFactory.Create();
+            Documents.Insert(0, newSearchDocument);
+            newSearchDocument            
+        }
+
+        private _documentFactory : SearchDocumentFactory;
+        private mutable _currentDocument : option[SearchDocument] = None();
+        private mutable _activeContent : object;
+        private mutable _searchPattern : SearchPattern = SearchPattern();
+    }
+}

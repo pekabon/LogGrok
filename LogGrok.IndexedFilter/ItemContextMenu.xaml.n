@@ -1,0 +1,10 @@
+namespace LogGrok.IndexedFilter
+{
+    public partial class ItemContextMenu
+    {
+        public this()
+        {
+            InitializeComponent();
+        }
+    }
+}

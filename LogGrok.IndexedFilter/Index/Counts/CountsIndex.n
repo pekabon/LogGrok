@@ -1,0 +1,42 @@
+using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+using LogGrok.Core;
+
+namespace LogGrok.IndexedFilter.Index.Counts
+{
+    internal class CountsIndex[T]
+    {
+        internal Add(lastIndex : int,  indices : IDictionary.[T, IndexTree]) : void
+        {
+            when ((lastIndex + 1) % Granularity == 0)
+            {
+                Snapshot(indices)
+            }
+        }
+        
+        internal Finish(indices : IDictionary.[T, IndexTree]) : void
+        {
+            Snapshot(indices)
+        }
+        
+        private Snapshot(indices : IDictionary.[T, IndexTree]) : void
+        {
+            _countIndices.Add(indices.Select(kv => (kv.Key, kv.Value.Count)).ToList());
+        }
+        
+        public Granularity : int { get { 65536 } }
+
+        public CountIndices : ConcurrentList.[List[(T) * int]] { get { _countIndices } } 
+        
+        public _countIndices : ConcurrentList.[List[(T) * int]] = ConcurrentList.[List[(T) * int]]();
+        
+        
+    }
+}

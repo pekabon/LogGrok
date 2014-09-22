@@ -1,0 +1,56 @@
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Console;
+using System.Linq;
+
+namespace LogGrok.Macros.LogParserGenerator
+{
+    module AstTools
+    {
+        internal Optimize(current : Atom, next : option[Atom]) : Atom
+        {
+            when (current is Atom.Variant)
+            {
+                def items = (current :> Atom.Variant).Value;
+                def min = items.Min( _.Length );
+                def max = items.Max( _.Length );
+                current.Limit = if (min == max) Limit.Count(min) else Limit.MinMax(min, max);
+            }
+            
+            when (current.Limit.Terminal.IsNone && next.HasValue && next.Value is Atom.Constant)
+                current.Limit.Terminal = Some((next.Value :> Atom.Constant).Value[0]);
+                
+            when (current.Limit is Limit.None && next.IsNone)
+                current.Limit = Limit.Last();
+            
+            current;
+        }
+        
+        internal Validate(current : Atom) : option[string]
+        {
+            if ( (current is Atom.LazyText || current is Atom.Text || current is Atom.Heximal || current is Atom.Decimal) &&
+                  current.Limit.Terminal.IsNone && 
+                 (current.Limit is Limit.None || current.Limit is Limit.MinMax || current.Limit is Limit.UserFunction))
+                Some($"imposible find end of atom $current")
+            else if (current is Atom.Constant && current.Name.IsSome)
+                Some("named constant does not supported")	
+            else if (current is Atom.Time)
+            {
+                (current :> Atom.Time).Format.Find( x =>
+                {
+                    | TimeFormatItem.Hours(count)
+                    | Minutes(count)
+                    | Seconds(count) => count != 2
+                    | SecondsFraction(count) => count > 5
+                    | Delimiter => false
+                }).Map(x => $"Unsupported time item '$x'")
+            }
+            else
+                None()
+        }
+    }
+}

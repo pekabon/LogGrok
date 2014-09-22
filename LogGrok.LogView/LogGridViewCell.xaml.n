@@ -1,0 +1,10 @@
+namespace LogGrok.LogView
+{
+    public partial class LogGridViewCell
+    {
+        public this()
+        {
+            InitializeComponent();
+        }
+    }
+}

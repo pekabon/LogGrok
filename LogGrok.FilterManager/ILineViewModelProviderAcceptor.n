@@ -1,0 +1,18 @@
+using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using LogGrok.LogView.DataVirtualization;
+using LogGrok.LogView;
+namespace LogGrok.FilterManager
+{
+  public interface ILineViewModelProviderAcceptor
+  {  
+        SetItemProvider(itemProvider : DynamicFilteredLinesProvider) : void;
+        ResetFilter() : void;
+  }
+}

@@ -1,0 +1,11 @@
+namespace LogGrok.Settings
+{
+	public partial class ColorSettingsDialog 
+	{
+	    public this(colorRules : ColorRulesViewModel)
+		{
+		    DataContext = colorRules;
+			InitializeComponent();
+		}
+	}
+}

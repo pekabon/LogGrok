@@ -1,0 +1,39 @@
+using Nemerle.Assertions;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+using Microsoft.Practices.Unity;
+using System.IO;
+
+using LogGrok.Core;
+using LogGrok.LogParserBase;
+
+namespace LogGrok.Module.CommonLogs
+{
+    [Record]
+    internal class VBLogProcessorFactory : BaseLogProcessorFactory
+    {
+       public override Create([NotNullOrEmpty] name : string, [NotNull] streamFactory : void -> Stream, [NotNull] container : IUnityContainer, startOffset : long, endOffset : long) : option[ILogProcessor*MetaInformation]
+        {
+            try
+            {
+                def processor = LogProcessor(name, streamFactory, VBLineReader, FileSearcher.GetOffsetsWithUtf8Text, _ => None(), startOffset, endOffset);
+                Some((processor, MetaInformation))
+            }
+            catch 
+            {
+                | _ => None()
+            }
+        }
+        
+        public static MetaInformation : MetaInformation = CreateMetaInformation(
+            "VB trace",
+            VBLineReader.GetFields(),
+            Uri($"pack://application:,,,/$(typeof(VBLogProcessorFactory).Assembly.GetName().Name);component/resources/VBColors.json"));
+    }
+}

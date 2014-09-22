@@ -1,0 +1,25 @@
+using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
+
+using Microsoft.Practices.Prism.PubSubEvents;
+
+namespace LogGrok.Infrastructure
+{
+    public interface IViewCollection
+    {
+        Views : ObservableCollection[object] { get; }
+
+        Current : object { get; set; }
+
+        event CurrentChanged : EventHandler[DataEventArgs[object]];
+        
+        Name : option[string] { get; }
+    }
+}

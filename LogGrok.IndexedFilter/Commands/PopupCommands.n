@@ -1,0 +1,24 @@
+using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Windows;
+using System.Windows.Input;
+using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Collections.Generic;
+using System.Linq;
+
+using Microsoft.Practices.Prism.Commands;
+
+namespace LogGrok.IndexedFilter.Commands
+{
+    public module PopupCommands
+    {
+        public Close : ICommand = DelegateCommand.[Popup](
+            popup => popup.IsOpen = false,
+            popup => popup.IsOpen);        
+    }
+}

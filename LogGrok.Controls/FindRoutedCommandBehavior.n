@@ -1,0 +1,35 @@
+﻿using System.Collections.Generic;
+using System.Windows;
+using System.Windows.Input;
+
+using Nemerle.Extensions;
+using Nemerle.WPF;
+
+namespace LogGrok.Controls
+{
+  public module FindRoutedCommandBehavior
+  {
+        [DependencyProperty(IsAttached, Metadata=FrameworkPropertyMetadata() <- { Inherits = true; OverridesInheritanceBehavior = true; PropertyChangedCallback = IsRoutedCommandTargetPropertyChanged })]
+        GetRoutedCommands(d : UIElement) : CommandBindingCollection;
+                                               
+        [DependencyProperty(IsAttached, Metadata=FrameworkPropertyMetadata() <- { Inherits = false; PropertyChangedCallback = IsRoutedCommandRootPropertyChanged})]
+        public GetIsRoutedCommandRoot(element : DependencyObject) : bool;
+        
+        [DependencyProperty(IsAttached, Metadata=FrameworkPropertyMetadata() <- { Inherits = false; PropertyChangedCallback = IsRoutedCommandTargetPropertyChanged})]
+        public GetIsRoutedCommandTarget(element : DependencyObject) : bool;
+        
+        private IsRoutedCommandRootPropertyChanged(d : DependencyObject, _ : DependencyPropertyChangedEventArgs) : void
+        {
+            d.SetValue(RoutedCommandsProperty, (d :> UIElement).CommandBindings);
+        }
+
+        IsRoutedCommandTargetPropertyChanged(d : DependencyObject, _ : DependencyPropertyChangedEventArgs) : void
+        {
+            when (GetIsRoutedCommandTarget(d) && d.GetValue(RoutedCommandsProperty) != null)
+            {
+                def commands = d.GetValue(RoutedCommandsProperty) :> CommandBindingCollection;
+               _ = commands.Add(CommandBinding(ApplicationCommands.Find, (_ , _) => _ = Keyboard.Focus(d :> IInputElement)));
+            }
+        }
+  }
+}

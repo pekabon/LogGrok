@@ -1,0 +1,21 @@
+using Nemerle;
+
+using System;
+using System.Collections.Generic;
+using System.IO;
+
+using LogGrok.Core;
+using LogGrok.Macros.LogParserGenerator;
+using LogGrok.LogParserBase;
+
+namespace LogGrok.Module.CommonLogs
+{
+    [LogParserGenerator(
+        byte, "\xd\xa", 
+        @"text(1):Severity! ', ' text:Process! ', ' text:Thread! ', ' text:Date ', ' time(HH:mm:SS.fff):Time ', ' text ', ' text:Message"
+        )]
+    class VBLineReader : Utf8BaseParser
+    {
+        public this(stream : Stream) { base(stream); }
+    }
+}

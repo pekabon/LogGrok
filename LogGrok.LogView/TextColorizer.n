@@ -1,0 +1,57 @@
+using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Extensions;
+using Nemerle.Text;
+using Nemerle.Utility;
+using Nemerle.WPF;
+using Nemerle.Assertions;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text.RegularExpressions;
+
+using System.Windows.Media;
+using System.Windows;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Xml.Serialization;
+using System.IO;
+
+using LogGrok.Core;
+
+namespace LogGrok.LogView
+{
+    public class TextColorizer
+    {
+        public this([NotNull] logType : string, [NotNull] settingsStorage : TextColorizerSettings)
+        {
+            _rules = settingsStorage.LogRules[logType];
+            SettingsChanged += (_,_) => {};
+        }
+        
+        public GetTextColor([NotNull] line : ILine) : option[TextColor]
+        {
+            def GetStringsToMatch(rule)
+            {
+                match (rule.Usage)
+                {
+                    | ColorRuleUsage.None        => []
+                    | ColorRuleUsage.Line        => [line.RawLine]
+                    | ColorRuleUsage.ParsedAreas => rule.SearchAreas.Select(area => line[area].ToString())
+                }
+            }
+            
+            _rules.Find(rule => GetStringsToMatch(rule).Any(rule.Rule.IsMatch(_))).Map(_.TextColor)
+        }
+        
+        public event SettingsChanged : EventHandler[EventArgs];
+        
+        internal RaiseSettingsChanged(_ : object, args : EventArgs) : void
+        {
+            SettingsChanged(this, args);
+        }
+                                        
+        _rules : IEnumerable[ColorRule];
+    }
+}

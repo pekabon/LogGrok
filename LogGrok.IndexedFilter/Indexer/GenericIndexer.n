@@ -1,0 +1,284 @@
+﻿using Nemerle;
+using Nemerle.Assertions;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Linq;
+
+using LogGrok.IndexedFilter;
+using LogGrok.IndexedFilter.Index;
+using LogGrok.IndexedFilter.Index.Counts;
+
+
+using LogGrok.Core;
+using Nemerle.Extensions;
+using LogGrok.Core.ByteArrayExtensions;
+
+namespace LogGrok.IndexedFilter.Indexer
+{
+    public class GenericIndexer : IIndexedLineConsumer
+    {
+        public this(meta : MetaInformation)
+        {
+            _keyFields = meta.Fields.Where(_.IsIndexed).Select(_.FieldName).ToList().ToNList();
+            _componentsMap = _keyFields.ToDictionary(k => k, _=> ComponentSet());
+
+            NewComponentFound += (_, _) => {}
+        }        
+
+        public Process(line : LogGrok.Core.ILine, index : int) : void
+        {
+            def keyBytes = array(_keyFields.Length);
+
+            foreach (keyField in _keyFields with idx)
+            {
+                keyBytes[idx] = (line[keyField] ?? Text.Empty) :> Text;
+            }
+
+            def key = ByteKey(keyBytes);
+
+            unless (key.Equals(_cachedKey))
+            {
+                _cachedKey = key;
+                _cachedIndex = _indices.GetOrAdd(key, _ => IndexTree(_pageFactory));
+            }
+
+            foreach(keyField in _keyFields)
+            {
+                def components = _componentsMap[keyField];
+                def component = (line[keyField] ?? Text.Empty) :> Text;
+
+                when (components.Insert(component))
+                    NewComponentFound(keyField, component)
+            }
+
+            def indexTree = _cachedIndex;
+
+            indexTree.Add(index);
+            _lastIndex = index;
+
+            _countsIndex.Add(index, _indices);
+        }
+
+        public event NewComponentFound : Action[string, Text];
+
+        private static Distinct[TSource](source : IEnumerable[TSource], comparer : IEqualityComparer[TSource]) : IEnumerable[TSource]
+        {
+            def hashSet = HashSet.[TSource](comparer);
+            foreach (element in source)
+            {
+                unless (hashSet.Contains(element))
+                {
+                    yield element;
+                    _ = hashSet.Add(element);
+                }
+            }
+        }
+        
+        public GetAllComponents(componentKey : string) : IEnumerable[Text]
+        {
+            def componentIndex =  _keyFields.IndexOf(componentKey);
+            
+            _indices.Select(keyValuePair => keyValuePair.Key.GetComponent(componentIndex)).Distinct().ToArray()
+        }
+
+        public GetIndexCountForComponent(componentKey : string, componentValue : Text) : int
+        {
+            def componentIndex = _keyFields.IndexOf(componentKey);
+            _indices
+                .Where(keyValuePair => keyValuePair.Key.GetComponent(componentIndex).Equals(componentValue))
+                .Sum(kv => kv.Value.Count)
+        }
+        
+        public GetFilteredIndices(excludedComponents : Dictionary[string, array[Text]]) : IEnumerable[int]
+        {
+            mutable finished;
+            mutable cursors = Dictionary.[ByteKey, TreeCursor]();
+            do
+            {
+                finished = _finished;
+                def (result, newCursors) = MergeIndicies(_lastIndex, excludedComponents, cursors);
+                
+                cursors = newCursors;
+                
+                foreach(i in result)
+                    yield i;
+                
+            } while (!finished);            
+        }
+        
+        public Finish() : void
+        {
+            _countsIndex.Finish(_indices);
+            _finished = true;
+        }
+        
+        public GetFetcher(excludedComponents : Dictionary[string, array[Text]]) : IItemProvider[int]
+        {
+            Fetcher(this, excludedComponents)
+        }
+                
+        private MergeIndicies(lastIndex : int, excludedComponents : Dictionary[string, array[Text]], cursors : Dictionary[ByteKey, TreeCursor]) : IEnumerable[int] * Dictionary[ByteKey, TreeCursor]
+        {
+            def TryAdd(dictionary, key, value) : void
+            {
+                when (!dictionary.ContainsKey(key))
+                {
+                    dictionary.Add(key, TreeCursor(value));
+                }
+            }
+            
+            foreach (indexTree in GetActiveIndicies(excludedComponents))
+            {
+                TryAdd(cursors, indexTree.Key, indexTree.Value.GetIndices().GetEnumerator());
+            }
+
+            def indicesCollections = cursors.Values.Select(cursor=> cursor.GetNextChunk(lastIndex));
+
+            (CollectionUtils.MergeSorted(indicesCollections,  (i1, i2) => i2 == i1 + 1), cursors)
+        }
+        
+        private GetActiveIndicies(excludedComponents : Dictionary[string, array[Text]]) : IEnumerable[KeyValuePair[ByteKey, IndexTree]]
+        {
+            def excludedComponentsByIndex = excludedComponents.Select(
+                    keyValuePair => new (ComponentIndex = _keyFields.IndexOf(keyValuePair.Key), ExcludedComponentValues = keyValuePair.Value));
+                
+            _indices.Where(kv =>
+                excludedComponentsByIndex.All(
+                    c => !c.ExcludedComponentValues.Contains(kv.Key.GetComponent(c.ComponentIndex))));
+        }
+        
+        private class Fetcher : IItemProvider[int]
+        {
+            public this([NotNull] indexer : GenericIndexer, excludedComponents : Dictionary[string, array[Text]])
+            {
+                _indexer = indexer;
+                CountChanged += _ => {}
+                Console.WriteLine(excludedComponents.ToList());
+                def excludedComponentsByIndex = excludedComponents.Select(
+                    keyValuePair => new (ComponentIndex = indexer._keyFields.IndexOf(keyValuePair.Key), ExcludedComponentValues = keyValuePair.Value));
+                
+                def predicate = key : ByteKey =>
+                    excludedComponentsByIndex.All(
+                    c => !c.ExcludedComponentValues.Contains(key.GetComponent(c.ComponentIndex)));
+                    
+                    
+                _countsIndexer = 
+                    FilteredCountIndicesProvider(
+                            
+                    
+                    
+                            predicate, indexer._countsIndex.CountIndices, indexer._countsIndex.Granularity);
+            }
+            
+            public Count : int 
+            { 
+                get
+                {
+                    _countsIndexer.Count
+                }
+            }
+            
+            public Search(value : int) : int
+            {
+              
+                if (value == 0)
+                    0
+                else
+                {
+                    def leaf = _countsIndexer.GetStartIndexesForValue(value);
+                    def result = GetEnumerableForLeaf(leaf).Select((v, i) => new (value = v, index = i)).Where(t => t.value >= value).FirstOrDefault();
+                    
+                    if (result == null) 
+                        Count - 1 
+                    else 
+                        result.index + leaf.TotalCount
+                }
+            }
+            
+            public Fetch(start : int, end : int) : IList[int]
+            {
+                def (enumerable, toSkip) = GetEnumerableFrom(start);
+                enumerable
+                    .Skip(toSkip)
+                    .Take(end - start + 1).ToList()
+            }
+            
+            private GetEnumerableFrom(start : int) : IEnumerable[int] * int
+            {
+                def leaf = _countsIndexer.GetStartIndexes(start);
+                def startCount = leaf.TotalCount;
+
+                (GetEnumerableForLeaf(leaf), start - startCount)
+            }
+            
+            private GetEnumerableForLeaf(leaf : CountsIndexLeaf[ByteKey]) : IEnumerable[int]
+            {
+                def startIndices = leaf.Counts.ToDictionary(i => i[0], i=> i[1]);
+                def indices = 
+                    _countsIndexer.GetAllKeys().Select(key =>
+                        {
+                            mutable startPosition;
+                            if (startIndices.TryGetValue(key, out startPosition))
+                                KeyValuePair(key, _indexer._indices[key].GetIndices(startPosition))
+                            else
+                                KeyValuePair(key, _indexer._indices[key].GetIndices())
+                        });
+                        
+                CollectionUtils.MergeSorted(indices.Select(kv => kv.Value), (i1, i2) => i2 == i1 + 1)
+            }
+            
+            public event CountChanged : Action[int];
+            
+            private _indexer : GenericIndexer;
+
+            private _countsIndexer : FilteredCountIndicesProvider[ByteKey];
+        }
+            
+        private class ComponentSet
+        {
+            public Insert(newComponent : Text) : bool
+            {
+                if (ByteArrayExtensions.Equals(newComponent, _last))
+                {
+                    false
+                }
+                else
+                {
+                    _last = newComponent;
+                    _components.Add(newComponent)
+                }
+            }
+
+            public GetAllComponents() : IEnumerable[Text]
+            {
+                _components
+            }
+
+
+            _components = HashSet.[Text]();
+            mutable _last : Text = null;
+        }
+
+        
+        
+
+        private _indices = ConcurrentDictionary.[ByteKey, IndexTree]();
+        private _countsIndex : CountsIndex[ByteKey] = CountsIndex();
+        private _componentsMap : Dictionary[string, ComponentSet] = Dictionary(); 
+
+        private _keyFields : list[string];
+
+        private _pageFactory : PageFactory[int, int, byte]  = PageFactory(256); //TODO
+
+        private mutable _cachedKey : ByteKey;
+        private mutable _cachedIndex : IndexTree;
+        private mutable _lastIndex : int;
+        private mutable _finished : bool;
+
+    }
+}

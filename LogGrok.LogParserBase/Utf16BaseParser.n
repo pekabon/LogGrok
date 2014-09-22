@@ -1,0 +1,132 @@
+using Nemerle;
+using Nemerle.Extensions;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Text;
+
+using LogGrok.Core; 
+
+namespace LogGrok.LogParserBase
+{
+	public class Utf16BaseParser: IDisposable  //TODO: add unchecked
+    {
+        public this(stream: Stream)
+        {
+            Stream = stream;
+            _buffer = UnionArray() <- { Bytes = array(1024 * 1024) }; //has to be more than max string length
+            Buffer = _buffer.UShorts;
+            BufferArrayLength = _buffer.Bytes.Length / 2;
+        }
+
+        public virtual Dispose() : void
+        {
+            Stream.Dispose();
+        }
+
+        protected Stream : Stream { get; private set; }
+        protected Buffer : array[ushort] { get ; private set; }
+        protected BufferLength : int { get; private set; }
+        protected BufferArrayLength : int { get; private set; }
+        protected BufferOffset : long { get; private set; }
+
+        protected Find(position : int, value : ushort) : int
+        {
+            if (Buffer[position] == value)
+                position
+            else
+                Find(position + 1, value)
+        }
+
+        protected ParseHeximal(beginPosition : int, endPisition : int) : int
+        {
+            mutable result = 0;
+            mutable pos = beginPosition;
+            while (pos != endPisition)
+            {
+                result <<= 4;
+                def b = Buffer[pos]; 
+                result |= 
+                    if (b >= AByte)
+                        b - AByte + 0xa
+                    else if (b >= ABigByte)
+                        b - ABigByte + 0xa
+                    else 
+                        b - ZeroByte;
+                pos++;
+            }
+           result
+        }
+
+        protected ParseDecimal(beginPosition : int, endPisition : int) : int
+        {
+            mutable result = 0;
+            mutable pos = beginPosition;
+            while (pos != endPisition)
+            {
+                result *= 10;
+                result += Buffer[pos] - ZeroByte;
+                pos++;
+            }
+            result            
+        }
+
+        protected ParseText(beginPosition : int, endPisition : int) : string
+        {
+            Encoding.Unicode.GetString(_buffer.Bytes, beginPosition*2, (endPisition - beginPosition)*2);
+        }
+
+        protected MoveBufferEndToBegin(position : int) : void
+        {
+            System.Array.Copy(_buffer.Bytes, position * 2, _buffer.Bytes, 0, (BufferLength - position)*2);
+        } 
+        
+        protected TryReadBuffer(bufferOffset = 0) : bool
+        {
+            unchecked 
+            {
+                when (bufferOffset >= BufferArrayLength)
+                    throw ParseException($"Too long string at offset $BufferOffset");
+                
+                BufferOffset = Stream.Position - bufferOffset * 2;
+                def read = Stream.Read(_buffer.Bytes, bufferOffset * 2, _buffer.Bytes.Length - bufferOffset * 2);
+                BufferLength = read / 2 + bufferOffset;
+                def result = read > 0 && BufferLength > 0;
+                result
+            }
+        }
+
+        protected CreateLazyText(begin: int, end : int) : LazyText16 { LazyText16(begin*2, end*2, _buffer.Bytes) }
+        
+        protected CreateTextBytes(begin : int, end : int) : Text { Text16(begin*2, end*2, _buffer.Bytes) }
+
+        protected static MakeConstant(v : char) : ushort
+        {
+            def result = Text.Encoding.Unicode.GetBytes(array[v]);
+            assert(result.Length == 2);
+            BitConverter.ToUInt16(result, 0);
+        }
+
+        static this()
+        {
+            AByte = MakeConstant('a');
+            ABigByte = MakeConstant('A');
+            ZeroByte = MakeConstant('0');
+        }
+
+        private _buffer : UnionArray;
+        private static AByte : ushort;
+        private static ABigByte : ushort;
+        private static ZeroByte : ushort;
+
+        [StructLayout(LayoutKind.Explicit)]
+        struct UnionArray
+        {
+            [FieldOffset(0)]
+            public mutable Bytes : array[byte];
+            [FieldOffset(0)]
+            public UShorts : array[ushort];
+        }
+    }
+}

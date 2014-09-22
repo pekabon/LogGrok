@@ -1,0 +1,41 @@
+using Nemerle.Assertions;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+using Microsoft.Practices.Unity;
+using System.IO;
+
+using LogGrok.Core;
+using LogGrok.LogParserBase;
+
+namespace LogGrok.Module.CommonLogs
+{
+    [Record]
+    public class GenericUtf16LogProcessorFactory : BaseLogProcessorFactory
+    {
+        public override Create([NotNullOrEmpty] name : string, [NotNull] streamFactory : void -> Stream, [NotNull] container : IUnityContainer, startOffset : long, endOffset : long) : option[ILogProcessor*MetaInformation]
+        {
+            try
+            {
+                def processor = LogProcessor(name, streamFactory, GenericUtf16LineReader, FileSearcher.GetOffsetsWithUtf16Text, _ => None(), startOffset, endOffset);
+               
+                
+                Some((processor, MetaInformation))
+            }
+            catch 
+            {
+                | _ => None()
+            }
+        }
+        
+        public static MetaInformation : MetaInformation = CreateMetaInformation(
+            "Generic utf16 trace",
+            GenericUtf16LineReader.GetFields(),
+            Uri($"pack://application:,,,/$(typeof(GenericUtf16LogProcessorFactory).Assembly.GetName().Name);component/resources/GenericUTF16Colors.json"));
+    }
+}

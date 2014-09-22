@@ -1,0 +1,28 @@
+﻿using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+using Nemerle.WPF;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace LogGrok.LogView
+{
+    [NotifyPropertyChanged]
+    class ScratchPadViewModel :  IScratchPad
+    {
+        public this() { Text = string.Empty; }
+        
+        virtual public AddText(text : string) : void
+        {
+            Text += text + "\n";
+            TextAdded(this, EventArgs.Empty);
+        }
+        
+        public event TextAdded: EventHandler;
+        
+        public Text : string { get; private set }
+    }
+}

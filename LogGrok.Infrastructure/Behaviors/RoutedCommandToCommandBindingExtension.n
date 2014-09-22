@@ -1,0 +1,52 @@
+using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
+
+using System.Windows.Data;
+using System.Windows.Input;
+using System.Windows.Markup;
+
+namespace LogGrok.Infrastructure.Behaviors
+{
+    public class RoutedCommandToCommandBindingExtension : MarkupExtension
+    {
+        public RoutedCommand : RoutedCommand { get; set; }
+        
+        public Command : Binding { get; set; }
+        
+        public override ProvideValue(serviceProvider : IServiceProvider) : object
+        {
+            if (Command != null)
+            {
+                Command.Converter = InnerConverter(RoutedCommand);
+                Command.ProvideValue(serviceProvider);
+            }
+            else
+            {
+                null
+            }
+        }
+        
+        [Record]
+        private class InnerConverter : IValueConverter
+        {
+             public Convert(value : object, _ : Type, _ : object, _ : CultureInfo) : object 
+             {
+                RoutedCommandToCommandBinding(_routedCommand, value :> ICommand)
+             }
+             
+             public ConvertBack(_ : object, _ : Type , _ : object , _ : CultureInfo) : object 
+             {
+                throw NotSupportedException()
+             }
+             
+             private _routedCommand : RoutedCommand;
+        }
+    }
+}

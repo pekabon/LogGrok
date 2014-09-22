@@ -1,0 +1,140 @@
+using Nemerle;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Windows.Media;
+using Nemerle.WPF;
+using Nemerle.Collections;
+
+using LogGrok.Core;
+using LogGrok.Infrastructure;
+using System.Text.RegularExpressions;
+using System.Windows;
+
+namespace LogGrok.LogView
+{
+    [NotifyPropertyChanged]
+    public class LineViewModel : IEquatable[LineViewModel]
+    {  
+        class LineWithNonLazyRawLine : ILine
+        {
+            public this (lineFactory : Func[ILine])
+            {
+                _line   = lineFactory();
+                RawLine = _line.RawLine;
+            }
+            
+            public Item[s : string] : object
+            {
+                get { _line[s] }
+            }
+        
+            public Time : TimeSpan { get { _line.Time } }
+        
+            public RawLine : string { get; private set; }
+            
+            private _line : ILine;
+        }
+    
+        public this(index : int, lineFactory : Func[ILine], meta : MetaInformation, textColorizer : TextColorizer)
+        {
+            _index  = index;
+            
+            _line = LineWithNonLazyRawLine(lineFactory);
+            _fields = meta.Fields
+                            .Select(field => field.FieldName).ToDictionary(name => name, name => _line[name]);
+            _textColorizer = textColorizer;
+                        
+            Time = string.Format(@"{0:hh\:mm\:ss\.fff}", _line.Time);
+            
+            RawLine = _line.RawLine;
+            
+            WeakEventManager.[TextColorizer, EventArgs].AddHandler(textColorizer, "SettingsChanged", UpdateColors);
+            UpdateColors(this, EventArgs.Empty)            
+        }
+        
+        public Item[s : string] : object
+        {
+            [Memoize]
+            get
+            {
+                match(s)
+                { 
+                    | "Index" => Index : object
+                    | "Time" => Time
+                    | _ => _fields[s]
+                }
+            }
+        }
+        
+        private UpdateColors(_ : object, _ : EventArgs) : void
+        {
+            def textColor = _textColorizer.GetTextColor(_line);
+            HasTextColor = textColor.IsSome;
+            when (HasTextColor)
+            {
+                Background = textColor.Value.Background;
+                Foreground = textColor.Value.Foreground;
+            }                
+        }        
+        
+        public Background : Color
+        {
+            get; private set;
+        }
+        
+        public Foreground : Color
+        {
+            get; private set;
+        }
+        
+        public HasTextColor : bool
+        {
+            get; private set;
+        }
+        
+        private TextColor : option[TextColor]
+        {
+            get { _textColorizer.GetTextColor(_line) }
+        }
+        
+        public Index : int 
+        { 
+            get { _index }
+        }
+        
+        public Time : string 
+        { 
+            get; private set;
+        }
+        
+        public RawLine : string { get; private set; }
+        
+        public Equals(other : LineViewModel) : bool
+            implements IEquatable[LineViewModel].Equals
+        {
+            Index == other.Index
+        }
+        
+        public override Equals(other : object) : bool 
+        {
+            | l is LineViewModel => Index == l.Index
+            | _ => false
+        }
+        
+        public override GetHashCode() : int
+        {
+            Index.GetHashCode()
+        }
+        
+        public override ToString() : string { RawLine }
+        
+        private _index : int;
+        private _fields : Dictionary[string, object];
+        private _textColorizer : TextColorizer;
+        private _line : ILine;
+    }
+}

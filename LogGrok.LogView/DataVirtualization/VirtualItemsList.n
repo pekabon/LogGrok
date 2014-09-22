@@ -1,0 +1,221 @@
+﻿using Nemerle.Assertions;
+using Nemerle.Collections;
+using Nemerle.ComputationExpressions;
+using Nemerle.Text;
+using Nemerle.Utility;
+using Nemerle.WPF;
+
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.Linq;
+using System.Threading;
+using LogGrok.Core;
+
+namespace LogGrok.LogView.DataVirtualization
+{
+    [NotifyPropertyChanged]
+	public class VirtualItemsList[T, TVirtualItem] : IList[TVirtualItem], IList, INotifyCollectionChanged 
+	    where T : class
+	    where TVirtualItem : VirtualItem[T]
+    {
+        public this(
+            [NotNull] sourceList : IList[T], 
+            [NotNull] notifications : INotifyCollectionChanged,
+            [NotNull] virtualItemFactory : Func[IList[T], int, TVirtualItem])
+		{
+		    _sourceList = sourceList;
+		    _notifications = notifications;
+		    _virtualItemFactory = virtualItemFactory;
+		    
+		    Count = _sourceList.Count;
+		    CollectionChanged += (_,_) => {};
+		    
+		    notifications.CollectionChanged += OnSourceCollectionChanged;
+		}
+		
+		public GetEnumerablor() : IEnumerator[TVirtualItem]
+            implements IEnumerable[TVirtualItem].GetEnumerator
+		{
+			foreach (index in [0 .. Count])
+			{
+				yield (this : IList[TVirtualItem])[index]
+			}
+		}
+
+		public NonGenericGetEnumerator() : IEnumerator
+            implements IEnumerable.GetEnumerator
+		{
+			foreach (index in [0 .. Count - 1])
+			{
+				yield (this : IList[TVirtualItem])[index] : object
+			}
+		}
+
+		public Remove(_ : TVirtualItem) : bool
+		{
+			throw NotSupportedException()
+		}
+
+		public CopyTo(_ : array[TVirtualItem], _ : int) : void
+            implements System.Collections.Generic.ICollection[TVirtualItem].CopyTo
+		{
+			throw NotSupportedException()
+		}
+
+		public Contains(_ : TVirtualItem) : bool
+            implements System.Collections.Generic.ICollection[TVirtualItem].Contains
+		{
+			throw NotSupportedException()
+		}
+
+		public Clear() : void
+		{
+			throw NotSupportedException()
+		}
+
+		public Add(_ : TVirtualItem) :  void
+		{
+			throw NotSupportedException()
+		}
+
+		public IsReadOnly : bool
+		{
+			get { throw NotSupportedException() }
+		}
+
+		public Count : int { get ; private set; } 
+
+		public RemoveAt(_ : int) : void
+		{
+			throw NotSupportedException()
+		}
+
+		public Insert(_ : int, _ : TVirtualItem) : void
+            implements System.Collections.Generic.IList[TVirtualItem].Insert
+		{
+			throw NotSupportedException()
+		}
+
+		public IndexOf(t : TVirtualItem) : int
+            implements System.Collections.Generic.IList[TVirtualItem].IndexOf
+		{
+		    t.Index;		    
+		}
+
+		[NotifyChangedOptions(HideSelfChanges)]
+		public Item[index : int] : TVirtualItem
+            implements IList[TVirtualItem].Item
+		{
+			get 
+			{ 
+				if (Count == 0) 
+					default(TVirtualItem)
+				else
+					GetVirtualItem(index);
+			}
+
+			set 
+			{ 
+				ignore(value);
+				ignore(index);
+				throw NotSupportedException() 
+			}
+		}
+
+		public Remove(_ : object) : void
+		{
+			throw NotSupportedException() 
+		}
+
+		public CopyTo(_ : Array, _ : int) : void
+            implements ICollection.CopyTo
+		{
+			throw NotSupportedException() 
+		}
+
+		public Contains(_ : object) : bool
+            implements System.Collections.IList.Contains
+		{
+			true;
+		}
+
+		public Add(_ : object) : int
+		{
+			throw NotSupportedException() 
+		}
+
+		public Insert(_ : int, _ : object) : void
+            implements System.Collections.IList.Insert
+		{
+			throw NotSupportedException() 
+		}
+
+		public IndexOf(item : object) : int
+            implements System.Collections.IList.IndexOf
+		{
+		    IndexOf(item :> TVirtualItem)
+		}
+
+		public Item[_ : int] : object
+            implements IList.Item
+		{
+			set { _ = value; throw NotSupportedException() }
+		}
+
+		public IsSynchronized : bool
+		{
+			get { throw NotSupportedException() }
+		}
+
+		public SyncRoot : bool
+		{
+			get { throw NotSupportedException() }
+		}
+
+		public IsFixedSize : bool
+		{
+			get { throw NotSupportedException() }
+		}
+
+		public Insert(_ : object) : int
+		{
+			throw NotSupportedException()
+		}
+		
+		private OnSourceCollectionChanged(_ : object, _ : NotifyCollectionChangedEventArgs) : void
+		{
+		    UpdateCount();
+		}
+
+		private UpdateCount() : void
+		{
+		    Count = _sourceList.Count;
+		    CollectionChanged(this, NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+		}
+				
+		private GetVirtualItem(index : int) : TVirtualItem
+		{
+		    def cacheIndex = index % _virtualItemsCache.Length;
+		    def cachedItem = _virtualItemsCache[cacheIndex];
+		    if (ReferenceEquals(cachedItem, null) || cachedItem.Index != index)
+		    {
+		        def virtualItem = _virtualItemFactory(_sourceList, index);
+		        _virtualItemsCache[cacheIndex] = virtualItem;
+		        virtualItem;
+		    }
+		    else
+		    {
+		        cachedItem;
+		    }
+		}
+
+		public event CollectionChanged : NotifyCollectionChangedEventHandler;
+		
+		private _virtualItemsCache : array[TVirtualItem] = array(10000);
+		private _sourceList : IList[T];
+		private _notifications : INotifyCollectionChanged;
+		private _virtualItemFactory : Func[IList[T], int, TVirtualItem];
+    }
+}

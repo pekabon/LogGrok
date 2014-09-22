@@ -1,0 +1,37 @@
+using Nemerle.Collections;
+using Nemerle.ComputationExpressions;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+using LogGrok.Core;
+using LogGrok.LogView.DataVirtualization;
+
+
+namespace LogGrok.LogView
+{
+	[Record]
+	internal class OriginalLineProvider : IItemProvider[int]
+	{
+	    public Count : int { get { _logInfo.ProcessedLineCount } }
+	    
+		public Fetch(beginIndex : int, endIndex : int) : IList[int]
+		{
+			$[beginIndex..endIndex].ToList()
+		}
+		
+		public Search(l : int) : int
+		{
+		    l
+		}
+		
+		public event CountChanged : Action[int] ;
+		
+		private _indexedLineProvider : IIndexedLineProvider;
+		
+		private _logInfo : ILogInfo;
+	}
+}

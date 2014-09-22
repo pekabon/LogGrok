@@ -1,0 +1,357 @@
+using Nemerle;
+using Nemerle.Assertions;
+using Nemerle.Collections;
+using Nemerle.Extensions;
+using Nemerle.Text;
+using Nemerle.Utility;
+using Nemerle.WPF;
+
+using System;
+using System.ComponentModel;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.Diagnostics;
+using System.IO.Path;
+using System.IO;
+using System.Windows.Threading;
+using System.Windows.Input;
+using System.Threading;
+using System.Linq;
+using System.Windows;
+using System.Windows.Controls;
+
+using LogGrok.Core;
+using LogGrok.Infrastructure;
+using LogGrok.LogView.DataVirtualization;
+using LogGrok.Infrastructure.Controls;
+using LogGrok.IndexedFilter;
+
+using Microsoft.Practices.Prism.Commands;
+using Microsoft.Practices.Prism.Interactivity.InteractionRequest;
+
+namespace LogGrok.LogView
+{
+    [NotifyPropertyChanged]
+    public class LogViewModel : ILogNavigation, ILogSelection, ILogHighlight
+    {
+        [Record]
+        private class LineProvider : IItemProvider[LineViewModel]
+        {
+            public Count : int 
+            { 
+                get
+                {
+                    _fetcher.Count;
+                }
+            }
+
+            public Fetch(start : int, end : int) : IList[LineViewModel]
+            {
+                _fetcher.Fetch(start, end).Select(i => LineViewModel(i, () => _documentLineProvider.GetLine(i), _meta,  _textColorizer)).ToList()
+            }
+
+            public Search(l : LineViewModel) : int
+            {
+                _fetcher.Search(l.Index);
+            }
+
+            public event CountChanged : Action[int];   
+
+            private _fetcher :  IItemProvider[int];
+            private _documentLineProvider : IIndexedLineProvider;
+            private _textColorizer : TextColorizer;
+            private _meta  : MetaInformation;
+
+        }
+        
+        public this([NotNull] logProcessor : ILogProcessor,
+                    [NotNull] lineConsumers : IEnumerable[IIndexedLineConsumer], 
+                    [NotNull] metaInformation : MetaInformation,
+                    [NotNull] textColorizer : TextColorizer, 
+                    [NotNull] gridViewFactory : LogGridViewFactory, 
+                    [NotNull] scratchPad : IScratchPad, 
+                    [NotNull] indexedFilter : IndexedFilter,
+                    [NotNull] syncContext : SynchronizationContext)
+        {
+            NavigateToLineRequest = NavigateToLineRequest();
+            GotoLineRequest = InteractionRequest.[Notification]();
+            _syncContext = syncContext;
+
+            _documentLineProvider  = logProcessor;
+            _logInfo      = logProcessor;
+            _textColorizer = textColorizer;
+            _gridViewFactory = gridViewFactory;
+            _meta = metaInformation;
+            _indexedFilter = indexedFilter;
+
+            logProcessor.Load(lineConsumers);
+            
+            indexedFilter.Changed +=
+                () => 
+                {
+                    SetItemProvider(indexedFilter.GetFilteredItemsProvider());
+                    RaisePropertyChanged(IsFiltersEnabled)
+                };
+
+            AddToScratchPad = DelegateCommand(o => (o : IEnumerable[object])
+                .Cast.[VirtualItem[LineViewModel]]()
+                .Select(_.SourceItem)
+                .Iter(x => scratchPad.AddText(x.RawLine)) );
+
+            _indexProvider = OriginalLineProvider(_documentLineProvider, _logInfo);
+            
+            UpdateLines();
+
+            if (_logInfo.IsLoaded)
+            {
+                Progress = 100;
+            }
+            else
+            {
+                def timer = WeakDispatcherTimer((_,_) => 
+                    {
+                        Lines.UpdateCount();
+                        Progress = _logInfo.LoadedPercent :> int;
+			        },	TimeSpan.FromSeconds(2));
+
+                _logInfo.Loaded += (_,_) => 
+                    {
+                        _syncContext.Post( _ => Lines.UpdateCount(), null);
+                        Progress = 100;
+                        timer.Stop();
+                    }                    
+            }
+
+            
+            
+            def titlePrefix = match(_logInfo.ParsedHeader)
+                                 {
+                                     | Some(header) => $<#$(header.Mode) (0x$(header.Pid.ToString("X"))) #>
+                                     | None()       => GetFileName(_logInfo.FullPath);
+                                 }
+
+            Title = (titlePrefix ?? string.Empty) + 
+                     if (_logInfo.StartTime == _logInfo.FinishTime && _logInfo.StartTime == TimeSpan()) 
+                         string.Empty
+                     else
+                         _logInfo.StartTime.ToString("g") + " - " + _logInfo.FinishTime.ToString("g");
+
+            Header = _logInfo.FullPath + Environment.NewLine + _logInfo.Header.Trim();            
+        }
+
+        public MetaInformation : MetaInformation
+        {
+            get
+            {
+                _meta
+            }
+        }
+
+        public OpenContainingFolderCommand : ICommand
+        {
+            get
+            {
+                def OpenFolder()
+                {                 
+                    if (File.Exists(_logInfo.FullPath))
+                    {
+                      _ = Process.Start("explorer.exe", $<#/select, $(_logInfo.FullPath)#>);
+                    }
+                    else
+                    {
+                      def parentDir = Directory.GetParent(_logInfo.FullPath).FullName;
+                       _ = Process.Start("explorer.exe", $<#/select, $parentDir#>);
+                    }
+                  }
+                
+                  DelegateCommand(() => OpenFolder())
+            }
+        }
+        
+        public CopyFullPathCommand : ICommand
+        {
+            get
+            {
+                DelegateCommand(() => Clipboard.SetText(_logInfo.FullPath))
+        }
+        }
+
+        public ExcludeCommand : ICommand
+        {
+            get
+            {
+                def command(p : object)
+                {
+                    | componentKey is string => 
+                        _indexedFilter.AddExclusions(componentKey, GetComponentsInSelectedLines(componentKey))
+                    | _ => throw InvalidOperationException()
+                }
+
+                DelegateCommand(command)
+            }
+        }
+
+        public IncludeCommand : ICommand
+        {
+            get
+            {
+                def command(p : object)
+                {
+                    | componentKey is string => _indexedFilter.ExcludeAllExcept(componentKey, GetComponentsInSelectedLines(componentKey))
+                    | _ => throw InvalidOperationException()
+                }
+
+                DelegateCommand(command)
+            }
+        }
+
+        public ClearFiltersCommand : ICommand
+        {
+            get
+            {
+                DelegateCommand(() =>_indexedFilter.ClearFilters())
+            }
+        }
+        
+        public CanFilter : bool
+        {
+            get
+            {
+                _indexedFilter.CanFilter
+            }
+        }
+        
+        public IsFiltersEnabled : bool
+        {
+            get
+            {
+                _indexedFilter.Enabled
+            }
+        }
+
+        private class GotoLineContext
+        {
+            public LineNumber : int { get; set; }
+        }
+
+        public GotoLine : ICommand 
+        {
+            get
+            {
+                DelegateCommand(() => 
+                    { 
+                        def context = GotoLineContext();
+
+                        def callback = _ => NavigateTo(context.LineNumber);
+                        GotoLineRequest.Raise(Notification() <- { Content = context }, callback)
+                    })
+            }
+        }
+
+        public CustomView : ViewBase 
+        {
+            get
+            {
+                _gridViewFactory.CreateView(true)
+            }
+        }
+
+
+        public IsGeneric : bool 
+        { 
+            get; private set;
+        }
+
+        public NavigateTo(position : int) : void 
+        {
+            def indexToNavigate = _indexProvider.Search(position);
+            when (indexToNavigate > 0)
+            {
+                NavigateToLineRequest.Raise(indexToNavigate);
+                SelectedIndex = indexToNavigate;
+            }
+        } 
+
+        public GotoLineRequest : InteractionRequest[Notification] { get; private set; }
+
+        public NavigateToLineRequest : NavigateToLineRequest { get; private set; }
+
+        public SelectedIndex : int { get; set; }
+
+        public Lines : VirtualList[LineViewModel] { get; private set;}
+        
+        public VirtualLines : VirtualItemsList[LineViewModel, VirtualLineViewModel] { get; private set;}
+
+        public Title : string { get; private set; }
+
+        public Header : string { get; private set; }
+
+        public SetItemProvider(itemProvider : IItemProvider[int]) : void
+        {
+            _indexProvider = itemProvider;
+            def line = if (SelectedIndex > 0 && SelectedIndex < Lines.Count) Lines[SelectedIndex] else null : LineViewModel;
+            
+            UpdateLines();
+
+            when (line != null)
+                _syncContext.Post(_ => NavigateTo(line.Index), null);
+        }
+
+        public HighlightedText : string { get; private set; }
+
+        public IsCaseSensitive : bool { get; private set; }
+
+        public Progress : int { get; private set; }
+
+        public ResetFilter() : void
+        {
+            _indexProvider = OriginalLineProvider(_documentLineProvider, _logInfo);
+            UpdateLines();
+        }
+
+        public Select(_line : IEnumerable[long]) : void { }
+
+        public SetTextForHighlight(text : string, searchOptions : SearchOptions) : void
+        {
+            _syncContext.Post(_ => 
+                {
+                    HighlightedText = text;
+                    IsCaseSensitive = searchOptions.HasFlag(SearchOptions.CaseSensitive)
+                },
+                null);
+        }
+
+        public SelectedItems : IEnumerable[object]
+        {
+            get; set;
+        }
+
+        public GetSelectedLines() : IEnumerable[LineViewModel]
+        {
+            (SelectedItems ?? []).Cast.[VirtualItem[LineViewModel]]().Select(_.SourceItem);
+        }
+
+        public AddToScratchPad : ICommand { get; private set; }
+        
+        private GetComponentsInSelectedLines(componentKey : string) : IEnumerable[Text]
+        {
+            GetSelectedLines().Select(line => line[componentKey]).Cast.[Text]().Distinct()
+        }
+        
+        private UpdateLines() : void
+        {
+            Lines = VirtualList(LineProvider(_indexProvider, _documentLineProvider, _textColorizer, _meta), _syncContext);
+            VirtualLines = VirtualItemsList(Lines, Lines, (l, i) => VirtualLineViewModel(l, i));
+        }
+
+        private mutable _indexProvider : IItemProvider[int];
+        private _documentLineProvider : IIndexedLineProvider;
+        private _gridViewFactory : LogGridViewFactory;
+        private mutable _logInfo      : ILogInfo;
+        private _syncContext : SynchronizationContext;
+        private _textColorizer : TextColorizer;
+        private _meta : MetaInformation;
+        private _indexedFilter : IndexedFilter;
+    }   
+}

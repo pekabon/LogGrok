@@ -1,0 +1,76 @@
+using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+using Nemerle.WPF;
+
+using System;
+using System.Reflection;
+using System.Text;
+using System.Collections;
+using System.Collections.Specialized;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Linq;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Data;
+using System.Windows.Input;
+
+namespace LogGrok.Infrastructure.Behaviors
+{
+    public module BindPopupBehavior
+    {
+        [DependencyProperty(IsAttached, Metadata=PropertyMetadata(null, OnToggleButtonChanged))]
+        public GetToToggleButton(_ : Popup) : ToggleButton { get; set; }
+        
+        [DependencyProperty(IsAttached, Metadata=PropertyMetadata(null))]
+        GetBindedPopup(_ : ToggleButton) : Popup { get; set; }
+        
+        OnToggleButtonChanged(d : DependencyObject, args : DependencyPropertyChangedEventArgs) : void 
+        {
+            def popup = d :> Popup;
+            def newToggleButton = args.NewValue :> ToggleButton;
+            def oldToggleButton = args.OldValue :> ToggleButton;
+            
+            when (oldToggleButton != null)
+            {
+                SetBindedPopup(newToggleButton, null);
+                newToggleButton.PreviewMouseDown -= OnToggleButtonPreviewMouseDown;       
+                BindingOperations.ClearBinding(popup, Popup.IsOpenProperty)
+            }
+            
+            when (newToggleButton != null)
+            {              
+                def binding = Binding();
+                binding.Source = newToggleButton;
+                binding.Path = PropertyPath("IsChecked");
+                binding.Mode = BindingMode.TwoWay;
+            
+                SetBindedPopup(newToggleButton, popup);
+                newToggleButton.PreviewMouseDown += OnToggleButtonPreviewMouseDown;                
+                _ = popup.SetBinding(Popup.IsOpenProperty, binding);
+            }
+        }        
+        
+        OnToggleButtonPreviewMouseDown(s : object, _ : MouseButtonEventArgs) : void
+        {
+            def toggleButton = s :> ToggleButton;
+            def popup = GetBindedPopup(toggleButton);
+            when (toggleButton.IsEnabled && !popup.StaysOpen && popup.IsOpen)
+            {
+                toggleButton.IsEnabled = false;
+                popup.Closed += OnPopupClosed;
+            }
+        }
+        
+        OnPopupClosed(s : object, _ : EventArgs) : void
+        {
+            def popup = s :> Popup;
+            def toggleButton = GetToToggleButton(popup);
+            toggleButton.IsEnabled = true;
+            popup.Closed -= OnPopupClosed;
+        }
+    }
+}

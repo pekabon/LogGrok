@@ -1,0 +1,151 @@
+using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Extensions;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Diagnostics;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
+using System.Windows.Input;
+using System.Windows;
+
+using Microsoft.Win32;
+using Microsoft.Practices.Prism.Commands;
+using Microsoft.Practices.Prism.Interactivity.InteractionRequest;
+
+using Nemerle.WPF;
+using LogGrok.Core;
+using LogGrok.LogView;
+using LogGrok.Settings;
+using LogGrok.Diagnostics;
+using LogGrok.Macros.Diagnostics;
+
+using MahApps.Metro;
+
+namespace LogGrok.Shell
+{
+    [NotifyPropertyChanged]
+    public class MainWindowViewModel
+    {
+        public this(documentManager : DocumentManager, templateSelector : DocumentViewTemplateSelector, colorSettingsFactory : Func[ColorSettingsDialog], scratchPad : IScratchPad)
+        {            
+            def CreateDialog()
+            {
+                OpenFileDialog() <-
+                            {                               
+                                DefaultExt  = "log"; 
+                                Filter      = "Log files(*.log)|*.log";
+                                Multiselect = true;
+                            }
+            }
+
+            def OpenFile()
+            {
+                def dialog = CreateDialog();
+                when (dialog.ShowDialog().GetValueOrDefault())
+                {
+                    TryOpenFiles(dialog.FileNames)
+                }
+            }
+
+            def OpenFilePartially()
+            {
+                def dialog = CreateDialog();
+                when (dialog.ShowDialog().GetValueOrDefault())
+                {
+                    foreach(file in dialog.FileNames)
+                    {
+                        def partiallyDialog = PartiallyFileOpenDialog();
+                        def viewModel = PartiallyFileOpenViewModel(dialog.FileName, partiallyDialog);
+                        partiallyDialog.DataContext = viewModel;
+                        when (partiallyDialog.ShowDialog().GetValueOrDefault())
+                        {
+                            TryOpenFile(dialog.FileName)
+                        }
+                    }
+                }
+            }
+
+            _documentManager = documentManager;
+            _documentManager.CannotOpenFile += fileName => MessageRequest.Raise( Notification() <- { Title = "Error"; Content = $"Cannot open file '$fileName'" });
+            DocumentTemplateSelector = templateSelector;
+            
+            OpenFileCommand = DelegateCommand(OpenFile);
+
+            EditColorsCommand = DelegateCommand(() => 
+            {
+                                                def x = colorSettingsFactory();
+                                                x.Owner = Application.Current.MainWindow;
+                                                x.Show();
+                                                _ = x.Activate()
+            });
+
+            OpenFilePartiallyCommand = DelegateCommand(OpenFilePartially);
+            ExitCommand = DelegateCommand(() => Application.Current.Shutdown());
+
+            ProvideFeedbackCommand = DelegateCommand(() => _ = Process.Start("https://LogGrok.uservoice.com/"));
+            ShowScratchPadRequest = InteractionRequest();
+            MessageRequest = InteractionRequest();
+            ShowScratchPadCommand = DelegateCommand(() => ShowScratchPadRequest.Raise(Notification() <- { Content = true; /* Unhide autohidden */ } ));
+            scratchPad.TextAdded += (_, _) => ShowScratchPadRequest.Raise(Notification());
+        }
+        
+        public Documents : ObservableCollection[Document]  
+        {
+            get 
+            {
+                _documentManager.Documents
+            }
+        }
+        
+        public DocumentTemplateSelector : DocumentViewTemplateSelector
+        {
+            get; private set;
+        }
+
+        public OpenFileCommand : ICommand { get; private set; }
+
+        public OpenFilePartiallyCommand : ICommand  { get; private set; }
+
+        public ShowScratchPadCommand : ICommand { get; private set; }
+
+        public ExitCommand : ICommand { get; private set; }
+
+        public EditColorsCommand : ICommand { get; private set; }
+
+        public ProvideFeedbackCommand : ICommand { get; private set; }
+
+        public DropCommand : ICommand 
+        {
+            get 
+            { 
+                DelegateCommand(TryOpenFiles) 
+            }
+        }
+
+        public MessageRequest : InteractionRequest[Notification] { get; set; }
+
+        public ShowScratchPadRequest: InteractionRequest[Notification] { get; set; }
+
+        private TryOpenFiles(files : IEnumerable[string]) : void
+        {
+            foreach (file in files)
+            {
+                TryOpenFile(file);
+            }
+        }
+
+        [TraceMethod]
+        private TryOpenFile(file : string) : void
+        {
+            _ = _documentManager.LoadNew(file);
+        }
+
+        private _documentManager : DocumentManager;
+
+        private static _logger : Logger = Logger.Get();
+    }
+}

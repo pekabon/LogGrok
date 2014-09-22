@@ -1,0 +1,39 @@
+<MenuItem x:Class="LogGrok.IndexedFilter.ItemContextMenu"
+          xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+          xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+          Header="Exclude"
+          IsEnabled="{Binding IsEnabled}">
+    <MenuItem.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Controls.ContextMenu.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        </ResourceDictionary>
+    </MenuItem.Resources>
+    <MenuItem.Style>
+        <StaticResource ResourceKey="MetroMenuItem" />
+    </MenuItem.Style>
+
+    <MenuItem x:Name="ComponentItem"
+              Command="{Binding ExcludeComponentCommand}"
+              Header="Component"
+              Visibility="{Binding IsEnabled,
+                                   RelativeSource={RelativeSource Self},
+                                   Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+    <MenuItem x:Name="ThreadItem"
+              Command="{Binding ExcludeThreadCommand}"
+              Header="Thread"
+              Visibility="{Binding IsEnabled,
+                                   RelativeSource={RelativeSource Self},
+                                   Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+    <MenuItem x:Name="SeverityItem"
+              Command="{Binding ExcludeSeverity}"
+              Header="Severity"
+              Visibility="{Binding IsEnabled,
+                                   RelativeSource={RelativeSource Self},
+                                   Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+</MenuItem>

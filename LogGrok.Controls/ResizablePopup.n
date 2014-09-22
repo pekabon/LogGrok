@@ -1,0 +1,84 @@
+using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Extensions;
+using Nemerle.Text;
+using Nemerle.Utility;
+using Nemerle.WPF;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Documents;
+using System.Math;
+using System.Windows.Media;
+using System.Windows.Input;
+using System.Windows.Markup;
+namespace LogGrok.Controls
+{
+    [ContentProperty("Child")]
+    public class ResizablePopup : Popup
+    {
+        static this()
+        {
+            def defaultMetadata = Popup.ChildProperty.GetMetadata(typeof(Popup));
+            
+            Popup.ChildProperty.OverrideMetadata(typeof(ResizablePopup), 
+                FrameworkPropertyMetadata(
+                    defaultMetadata.DefaultValue, 
+                    defaultMetadata.PropertyChangedCallback, 
+                    CoerceValueCallback(CoerceChild)))
+        }        
+        
+        public this()
+        {
+            def OnDragDelta(_, args)
+            {
+                def e = args :> DragDeltaEventArgs;
+                
+                match (e.OriginalSource)
+                {
+                    | source is Thumb when source.Name=="PART_Thumb" => 
+                    {
+                        Height = Math.Max(Height + e.VerticalChange, MinHeight);
+                        Width = Math.Max(Width + e.HorizontalChange, MinWidth);    
+                    }
+                    | _ => ()
+                }
+            }
+            
+            def OnDragStarted(_, e)
+            {
+                match (e.OriginalSource)
+                {
+                    | source is Thumb when source.Name=="PART_Thumb" => source.Cursor = Cursors.SizeNWSE;
+                    | _ => ()
+                }
+            }
+
+            def OnDragCompleted(_, e)
+            {
+                match (e.OriginalSource)
+                {
+                    | source is Thumb when source.Name=="PART_Thumb" => source.Cursor = null;
+                    | _ => ()
+                }
+            }
+   
+            AddHandler(Thumb.DragStartedEvent, RoutedEventHandler(OnDragStarted));
+            
+            AddHandler(Thumb.DragCompletedEvent, RoutedEventHandler(OnDragCompleted));
+            
+            AddHandler(Thumb.DragDeltaEvent, RoutedEventHandler(OnDragDelta));
+        }
+                
+        private static CoerceChild(_ : DependencyObject, value : object) : object
+        {
+            ResizeablePopupContent() <- { Content = value; }
+        }
+       
+    }
+}

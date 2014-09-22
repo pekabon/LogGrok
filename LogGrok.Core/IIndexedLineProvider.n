@@ -1,0 +1,7 @@
+namespace LogGrok.Core
+{
+    public interface IIndexedLineProvider
+    {
+        GetLine(index : int) : ILine
+    }
+}

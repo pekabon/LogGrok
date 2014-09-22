@@ -1,0 +1,87 @@
+using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Extensions;
+using Nemerle.Text;
+using Nemerle.Utility;
+using Nemerle.WPF;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Documents;
+using System.Windows.Media;
+using System.Text.RegularExpressions;
+
+namespace LogGrok.Controls
+{
+    public class HighlightedTextBlock : ContentControl
+    {
+        [DependencyProperty(IsAttached, Metadata=FrameworkPropertyMetadata(string.Empty, 
+                                        FrameworkPropertyMetadataOptions.Inherits, OnTextChanged))]
+        public static GetHighlightedText(d : DependencyObject) : string;
+
+        [DependencyProperty(IsAttached, Metadata=FrameworkPropertyMetadata(false, 
+                                        FrameworkPropertyMetadataOptions.Inherits, OnTextChanged))]
+        public static GetIsCaseSensitive(d : DependencyObject) : bool;
+
+        [DependencyProperty]
+        public Highlighting : bool { get; set; };
+
+        [DependencyProperty(Metadata=FrameworkPropertyMetadata(string.Empty, OnTextChanged))]
+        public Text : string { get; set; }
+
+        public this()
+        {
+            Content = _textBlock;
+        }
+
+        private static OnTextChanged(d : DependencyObject, _ : DependencyPropertyChangedEventArgs) : void
+        {
+            | (control is HighlightedTextBlock, _) => control.Update()
+            | _ => ()
+        }
+
+        private Update() : void
+        {
+            when(!Highlighting)
+            {
+                Highlighting = true;
+                try
+                {
+                    def highlighted = GetHighlightedText(this);
+                    match(Text, highlighted)
+                    {
+                        | _ when string.IsNullOrEmpty(highlighted)
+                        | _ when string.IsNullOrEmpty(Text)         => _textBlock.Text = Text
+                        | _ =>   
+                        {
+                                def regex = Regex($"($(Regex.Escape(highlighted)))", if (GetIsCaseSensitive(this)) RegexOptions.None else RegexOptions.IgnoreCase);
+
+                                def substrings = regex.Split(Text);
+
+                                _textBlock.Inlines.Clear();
+
+                                foreach (substring in substrings)
+                                {
+                                    if (regex.Match(substring).Success)
+                                        _textBlock.Inlines.Add(Run(substring) <- { Background = Brushes.Moccasin })
+                                    else
+                                        _textBlock.Inlines.Add(substring)
+                                }
+                        }
+                    }
+                }
+                finally
+                {
+                    Highlighting = false;
+                }
+            }
+        }
+
+        _textBlock : TextBlock = TextBlock();
+
+    }
+}

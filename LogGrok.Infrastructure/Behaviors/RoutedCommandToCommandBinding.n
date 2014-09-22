@@ -1,0 +1,20 @@
+using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Windows.Input;
+
+namespace LogGrok.Infrastructure.Behaviors
+{
+    [Record]
+    public class RoutedCommandToCommandBinding 
+    {
+        public RoutedCommand : RoutedCommand { get; private set; }
+
+        public Command : ICommand { get; private set; }
+    }
+}

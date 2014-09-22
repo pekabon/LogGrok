@@ -1,0 +1,30 @@
+﻿using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+using Microsoft.Practices.Prism.Logging;
+
+namespace LogGrok.Diagnostics.Adapters
+{
+  public class LoggerToLoggerFacadeApdater : ILoggerFacade
+  {
+      public Log(message : string, category : Category, _ : Priority) : void
+      {
+        match (category)
+        {
+            | Category.Debug => _logger.Debug(message);
+            | Category.Info => _logger.Info(message);
+            | Category.Warn => _logger.Warn(message);
+            | Category.Exception => _logger.Error(message);
+            | _ => {};
+        }
+      }
+      
+      private static _logger : Logger = Logger.Get(DiagnosticsComponent.Name);
+  }
+}

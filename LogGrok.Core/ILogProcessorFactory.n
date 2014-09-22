@@ -1,0 +1,26 @@
+using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+
+using Microsoft.Practices.Unity;
+using System.Windows.Controls;
+
+namespace LogGrok.Core
+{
+    public interface ILogProcessorFactory
+    {
+        Priority : int { get; }
+
+        LogType : string { get; }
+
+        Create(fileName : string, streamFactory : void -> Stream, container : IUnityContainer, startOffset = 0l, endOffset = -1l) 
+            : option[ILogProcessor * MetaInformation];
+
+    }
+}

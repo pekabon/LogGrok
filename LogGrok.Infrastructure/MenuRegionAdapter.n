@@ -1,0 +1,28 @@
+using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using System.Windows.Controls;
+
+using Microsoft.Practices.Prism.Modularity;
+using Microsoft.Practices.Prism.Regions;
+using Microsoft.Practices.Prism.UnityExtensions;
+using Microsoft.Practices.Unity;
+
+namespace LogGrok.Infrastructure
+{
+    [Record]
+    public class MenuRegionAdapter : AddingRegionAdpaterBase[Menu, AllActiveRegion]
+    {
+        protected override AddView(view : object, menu : Menu) : void
+        {   
+            | (viewCollection is IEnumerable[object], menu) => viewCollection.Iter(view => _ = menu.Items.Add(view));
+            | _ => _ = menu.Items.Add(view);
+        }
+    }
+}

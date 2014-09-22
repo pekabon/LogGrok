@@ -1,0 +1,74 @@
+using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using LogGrok.Storage;
+using System.Runtime.InteropServices;
+
+namespace LogGrok.IndexedFilter.Index
+{
+    internal class PageFactory[TKey, TValue, TRange] 
+    {
+        public this (leafSize : int)
+        {
+            _leafSize = leafSize;
+            
+            def (keysSize, valuesSize, rangesSize) = GetSizes();
+            _pagedStorage = PagedStorage(keysSize + valuesSize + rangesSize);
+        }
+        
+        public NodeSize : int { get { _leafSize } } 
+                
+        private static Store(pagedStorage : PagedStorage, sizes : int * int * int,  payload : LeafPayload[TKey, TValue, TRange]) : int
+        {
+            def (keysSize, valuesSize, rangesSize) = sizes;
+            def bytes = array(keysSize + valuesSize + rangesSize);
+                
+            Buffer.BlockCopy(payload.Keys, 0, bytes, 0, keysSize);
+            Buffer.BlockCopy(payload.Values, 0, bytes, keysSize, valuesSize);
+            Buffer.BlockCopy(payload.RangeLength, 0, bytes, keysSize + valuesSize, rangesSize);
+                
+            def page = pagedStorage.ReservePage();
+            pagedStorage.StorePage(page, bytes);
+            
+            page
+        }
+        
+        private static Load(pagedStorage : PagedStorage, count : int, sizes : int * int * int, page : int) : LeafPayload[TKey, TValue, TRange]
+        {
+            def (keysSize, valuesSize, rangesSize) = sizes;
+            def bytes = pagedStorage.LoadPage(page);
+                
+            def keys = array(count);
+            def values = array(count);
+            def ranges = array(count);
+                
+            Buffer.BlockCopy(bytes, 0, keys, 0, keysSize);
+            Buffer.BlockCopy(bytes, keysSize, values, 0, valuesSize);
+            Buffer.BlockCopy(bytes, keysSize + valuesSize, ranges, 0, rangesSize);
+            
+            LeafPayload(keys, values, ranges)
+        }
+            
+        
+        public Create() : Page[LeafPayload[TKey, TValue, TRange]]
+        {
+            def payload = LeafPayload(array(_leafSize), array(_leafSize), array(_leafSize));
+            
+            Page.Memory(payload, Store(_pagedStorage, GetSizes(), _), Load(_pagedStorage, _leafSize, GetSizes(), _))
+        }
+
+        [Memoize]
+        private GetSizes() : int * int * int
+        {
+            (Marshal.SizeOf(typeof(TKey)) * _leafSize, Marshal.SizeOf(typeof(TValue)) * _leafSize, Marshal.SizeOf(typeof(TRange)) * _leafSize)
+        }
+        
+        private _leafSize : int;
+        private _pagedStorage : PagedStorage;
+    }
+}

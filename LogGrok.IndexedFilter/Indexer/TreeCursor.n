@@ -1,0 +1,45 @@
+﻿using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace LogGrok.IndexedFilter.Indexer
+{
+    [Record]
+    internal class TreeCursor
+    {
+        private Enumerate(maxIndexValue : int) : IEnumerable[int]
+        {
+            while( enumerator.MoveNext())
+            {
+                if (enumerator.Current <= maxIndexValue)
+                    yield enumerator.Current;
+                else 
+                    stored = Some(enumerator.Current);
+            }
+        }
+
+        public GetNextChunk(maxIndexValue : int) : IEnumerable[int]
+        {
+            match(stored)
+            {
+                | Some(firstValue) when firstValue <= maxIndexValue => 
+                            {         
+                        yield firstValue;
+                        foreach (v in Enumerate(maxIndexValue)) yield v;
+                            }
+                | None => foreach (v in Enumerate(maxIndexValue)) yield v;
+                | _ => throw InvalidOperationException(stored.ToString());
+            }
+        }
+
+        [RecordIgnore]
+        private mutable stored : option[int] = None();
+
+        private enumerator : IEnumerator[int];
+    }
+}

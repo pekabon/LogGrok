@@ -1,0 +1,18 @@
+using Nemerle;
+
+using System;
+using System.Collections.Generic;
+using System.IO;
+
+using LogGrok.Core;
+using LogGrok.Macros.LogParserGenerator;
+using LogGrok.LogParserBase;
+
+namespace LogGrok.Module.CommonLogs
+{
+    [LogParserGenerator( ushort, "\xd\xa", "text:Message" )]
+    class GenericUtf16LineReader : Utf16BaseParser
+    {
+        public this(stream : Stream) { base(stream); }
+    }
+}

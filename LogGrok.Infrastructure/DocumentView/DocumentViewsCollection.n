@@ -1,0 +1,141 @@
+﻿using Nemerle;
+using Nemerle.Assertions;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.Linq;
+
+using Microsoft.Practices.Prism.PubSubEvents;
+
+using LogGrok.Infrastructure;
+using LogGrok.Core;
+
+namespace LogGrok.Infrastructure
+{
+    public class DocumentViewsCollection : IViewCollection 
+    {
+        public this(name : option[string], [NotNull] documentManager : DocumentManager, [NotNull] factory : IDocumentViewsFactory[Document])
+        {
+            def ProcessViewChanged(args)
+            {
+                when (args.Action == NotifyCollectionChangedAction.Remove)
+                {
+                    def oldDocs = args.OldItems.Cast().Select(x => pairs.Single(y => y[1] == x)).Select(x => x[0]).ToArray();
+                    foreach (doc in oldDocs) 
+						documentManager.Close(doc);
+                }
+            }
+            
+            Views = ObservableCollection.[object]();
+            Views.CollectionChanged += (_, args) => ProcessViewChanged(args);
+            pairs = [];
+            _name = name;
+            
+            def AddDocumentView(document) 
+            {
+                def view = factory.CreateDocumentView(document);
+                pairs =   (document, view):: pairs ;
+                Views.Add(view);
+                view
+            }
+            
+            def AddDocuments(documents : IEnumerable[Document])
+            {
+                foreach (document in documents)
+                {
+                    def view = AddDocumentView(document);
+                    when (documentManager.CurrentDocument == document)
+                    {
+                        Current = view
+                    }
+                }
+            }
+
+            def OnDocumentsChanged(_, args)
+            {
+                match(args.Action)
+                {
+                    | NotifyCollectionChangedAction.Add => 
+                        {
+                            def documents : IEnumerable[Document] = args.NewItems.Cast.[Document]();
+                            AddDocuments(documents)
+                        }
+                    | NotifyCollectionChangedAction.Remove => 
+						foreach (doc in args.OldItems) 
+						{
+						    def docViewPair = pairs.Single( x => x[0] == doc);
+						    
+							when(Views.Contains(docViewPair[1]))
+							    _ = Views.Remove(docViewPair[1]);
+							    
+						    pairs = pairs.Remove(docViewPair);
+						}
+                        
+                    | _   => throw NotSupportedException()
+                
+                }
+            }
+
+            def OnCurrentDocumentChanged(_, args)
+            {
+                Current = args.Value.Map(x => pairs.Single((d, _) => d == x)[1] ).WithDefault(null);
+            }
+            
+            def OnCurrentViewChanged(_, args)
+            {
+                def pred(p)
+                {
+                    def (_, view) = p;
+                    view == args.Value
+                }
+                
+                match(pairs.Find(pred))
+                {
+                    | Some((document, _)) => documentManager.CurrentDocument = Some(document);
+                    | _                   => ()
+                }
+            }
+            
+            AddDocuments(documentManager.Documents);
+            
+            documentManager.Documents.CollectionChanged += OnDocumentsChanged;
+            documentManager.CurrentDocumentChanged += OnCurrentDocumentChanged;
+            
+            CurrentChanged += OnCurrentViewChanged;
+        }
+        
+        public Views : ObservableCollection[object] { get; private set; }
+
+        public Current : object 
+        { 
+            get
+            {
+                _current
+            }
+            
+            set
+            {
+                when (_current != value)
+                {
+                    _current = value;
+                    CurrentChanged(this, DataEventArgs(value));
+                }
+            }
+        }
+        
+        public event CurrentChanged : EventHandler[DataEventArgs[object]];
+        
+        public Name : option[string] { get { _name } }
+        
+        private mutable _current : object;        
+        
+        private mutable pairs : list[Document * object];
+        
+        private _name : option[string];
+    }
+}

@@ -1,0 +1,111 @@
+using Nemerle;
+
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Runtime.CompilerServices;
+
+using LogGrok.Core;
+using LogGrok.Macros;
+
+namespace LogGrok.LogParserBase
+{
+    [Disposable]
+	public class Utf8BaseParser: IDisposable  //TODO: add unchecked
+    {
+        public this(stream: Stream)
+        {
+            Stream = stream;
+            Buffer = array(1024 * 1024); //has to be more than max string length or ParseException will be thrown
+            BufferArrayLength = Buffer.Length;
+        }
+        
+        protected mutable Stream :  Stream;// { get; private set; }
+        protected Buffer : array[byte];// { get ; private set; }
+        protected mutable BufferLength : int;// { get; private set; }
+        protected BufferArrayLength : int;// { get; private set; }
+        protected mutable BufferOffset : long;// { get; private set; }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        protected Find(position : int, value : byte) : int
+        {
+            if (Buffer[position] == value)
+                position
+            else
+                Find(position + 1, value)
+        }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        protected ParseHeximal(beginPosition : int, endPisition : int) : int
+        {
+            mutable result = 0;
+            mutable pos = beginPosition;
+            while (pos != endPisition)
+            {
+                result <<= 4;
+                def b = Buffer[pos]; 
+                result |= 
+                    if (b >= AByte)
+                        b - AByte + 0xa
+                    else if (b >= ABigByte)
+                        b - ABigByte + 0xa
+                    else 
+                        b - ZeroByte;
+                pos++;
+            }
+           result
+        }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        protected ParseDecimal(beginPosition : int, endPisition : int) : int
+        {
+            mutable result = 0;
+            mutable pos = beginPosition;
+            while (pos != endPisition)
+            {
+                result *= 10;
+                result += Buffer[pos] - ZeroByte;
+                pos++;
+            }
+            result            
+        }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        protected ParseText(beginPosition : int, endPisition : int) : string
+        {
+            Text.Encoding.UTF8.GetString(Buffer, beginPosition, endPisition - beginPosition);
+        }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        protected MoveBufferEndToBegin(position : int) : void
+        {
+            System.Array.Copy(Buffer, position, Buffer, 0, BufferLength - position);
+        }
+        
+        protected TryReadBuffer(bufferOffset = 0) : bool
+        {
+            unchecked 
+            {
+                when (bufferOffset >= Buffer.Length)
+                    throw ParseException($"Too long string at offset $BufferOffset");
+                
+                BufferOffset = Stream.Position - bufferOffset;
+                def read = Stream.Read(Buffer, bufferOffset, Buffer.Length - bufferOffset);
+                BufferLength = read + bufferOffset;
+                def result = read > 0 && BufferLength > 0;
+                result
+            }
+        }
+ 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        protected CreateLazyText(begin: int, end : int) : LazyText { LazyText(begin, end, Buffer) }
+        
+        protected CreateTextBytes(begin : int, end : int) : Text { Text8(begin, end, Buffer) }
+        
+        protected static MakeConstant(v : char) : byte { Convert.ToByte(v) }
+        
+        private static AByte = Convert.ToByte('a');
+        private static ABigByte = Convert.ToByte('A');
+        private static ZeroByte = Convert.ToByte('0');
+    }
+}

@@ -1,0 +1,74 @@
+using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Reflection;
+using System.Text;
+using System.Collections;
+using System.Collections.Specialized;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Linq;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Input;
+
+using Nemerle.WPF;
+
+namespace LogGrok.IndexedFilter.Behaviors
+{
+    public module ItemsFilteringBehavior
+    {        
+        [DependencyProperty(IsAttached, Metadata=PropertyMetadata(null, TextFilterChanged))]
+        public GetTextFilter(_ : ItemsControl) : string { get; set; }
+        
+        [DependencyProperty(IsAttached, Metadata=PropertyMetadata(null))]
+        public GetFilteredProperty(_ : ItemsControl) : string { get; set; }
+        
+        TextFilterChanged(dependencyObject : DependencyObject, args : DependencyPropertyChangedEventArgs ) : void
+        {
+            def itemsControl = dependencyObject :> ItemsControl;
+            def filteredPropertyName = GetFilteredProperty(itemsControl);
+
+            def items = 
+            match (itemsControl.ItemsSource) 
+            {
+                | itemsSource is ICollectionView => itemsSource.SourceCollection
+                | itemsSource => itemsSource
+            }              
+            
+            match(items.GetType().GetEnumerationType())
+            {
+                | None           => ()
+                | Some(itemType) => 
+                {
+                    def filteredProperty = itemType.GetProperty(filteredPropertyName);
+                    
+                    when (filteredProperty != null)
+                    {                     
+                        def textFilter = args.NewValue :> string;
+                        itemsControl.Items.Filter = CreateItemsFilter(textFilter, filteredProperty);
+                        itemsControl.Items.Refresh();                
+                    }
+                }
+            }
+        }
+        
+        CreateItemsFilter(textFilter : string, filteredProperty : PropertyInfo) : Predicate.[object]
+        {
+            def Filter(item)
+            {
+                match(filteredProperty.GetValue(item, null))
+                {
+                    | null => false
+                    | value => value.ToString().IndexOf(textFilter, StringComparison.OrdinalIgnoreCase) >= 0;
+                }
+            }
+            
+            if (!string.IsNullOrWhiteSpace(textFilter)) Filter else null
+         }
+    }
+}

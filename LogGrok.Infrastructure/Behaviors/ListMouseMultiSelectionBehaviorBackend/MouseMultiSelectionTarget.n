@@ -1,0 +1,248 @@
+using Nemerle;
+using Nemerle.Assertions;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+using Nemerle.WPF;
+
+using System;
+using System.Reflection;
+using System.Text;
+using System.Collections;
+using System.Collections.Specialized;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Linq;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Input;
+using System.Windows.Media;
+
+using LogGrok.Infrastructure.Controls;
+
+namespace LogGrok.Infrastructure.Behaviors.ListMouseMultiSelectionBehaviorBackend
+{
+    public class MouseMultiSelectionTarget
+    {
+        public this([NotNull] listView : ListView)
+        {
+            _listView = listView;
+            
+            ScrollContentPresenterChanged += (_,_) => { };
+        }
+        
+        public event ScrollChanged : RoutedEventHandler
+        {
+            add { _listView.AddHandler(ScrollViewer.ScrollChangedEvent, value); }
+            remove { _listView.RemoveHandler(ScrollViewer.ScrollChangedEvent, value); }
+        }
+        
+        public event SizeChanged : RoutedEventHandler
+        {
+            add { _listView.AddHandler(ListView.SizeChangedEvent, value); }
+            remove { _listView.RemoveHandler(ListView.SizeChangedEvent, value); }
+        }
+        
+        public event MouseDown : RoutedEventHandler
+        {
+            add { _listView.AddHandler(ListView.MouseDownEvent, value); }
+            remove { _listView.RemoveHandler(ListView.MouseDownEvent, value); }
+        }
+        
+        public event PreviewMouseDown : MouseButtonEventHandler
+        {
+            add { _listView.AddHandler(ListView.PreviewMouseDownEvent, value); }
+            remove { _listView.RemoveHandler(ListView.PreviewMouseDownEvent, value); }
+        }
+        
+        public event MouseUp : MouseButtonEventHandler
+        {
+            add { _listView.AddHandler(ListView.MouseUpEvent, value); }
+            remove { _listView.RemoveHandler(ListView.MouseUpEvent, value); }
+        }
+        
+        public event MouseMove : MouseEventHandler
+        {
+            add { _listView.AddHandler(ListView.MouseMoveEvent, value); }
+            remove { _listView.RemoveHandler(ListView.MouseMoveEvent, value); }
+        }
+        
+        public event ScrollContentPresenterChanged : EventHandler;
+        
+        public SelectedIndex : int
+        {
+            get { _listView.SelectedIndex; }
+        }
+        
+        public ItemsCount : int
+        {
+            get { _listView.Items.Count; }
+        }
+        
+        public ScrollContentPresenter : option[ScrollContentPresenter]
+        {
+            get { _scrollContentPresenter; }
+        }
+        
+        public Attach() : void
+        {
+            _listView.Loaded += OnListViewLoaded;
+            _listView.Unloaded += OnListViewUnloaded;
+            
+            ViewPropertyDescriptor.AddValueChanged(_listView, OnListViewChanged);
+                        
+            UpdateScrollContentPresenter();
+        }
+        
+        public Detach() : void
+        {
+            _listView.Loaded -= OnListViewLoaded;
+            _listView.Unloaded -= OnListViewUnloaded;
+            
+            ViewPropertyDescriptor.RemoveValueChanged(_listView, OnListViewChanged);
+        }
+        
+        public IsChild(obj : DependencyObject) : bool
+        {
+            def objAncestor = obj.FindAncestor.[ListView]();
+            objAncestor.IsSome && objAncestor.Value.Equals(_listView);   
+        }
+        
+        public GetMousePosition() : option[Point]
+        {
+            def scrollContentPresenter = ScrollContentPresenter;
+            if (scrollContentPresenter.IsSome) Some(Mouse.GetPosition(scrollContentPresenter.Value)) else None();            
+        }
+        
+        public GetItemUnderMouse() : option[ListViewItem]
+        {            
+            def mousePosition = GetMousePosition();
+            if (mousePosition.IsSome) GetItemUnderPoint(mousePosition.Value) else None();            
+        }
+        
+        public GetItemUnderPoint(p : Point) : option[ListViewItem]
+        {
+            def scrollContentPresenter = ScrollContentPresenter;
+            def hitTestResult = if (scrollContentPresenter.IsSome) VisualTreeHelper.HitTest(scrollContentPresenter.Value, p) else null;
+            if (hitTestResult != null) hitTestResult.VisualHit.FindAncestor.[ListViewItem](scrollContentPresenter.Value) else None();
+        }
+        
+        public GetItemIndex(item : ListViewItem) : option[int]
+        {
+            def index = if (item != null) _listView.ItemContainerGenerator.IndexFromContainer(item) else -1;
+            if (index >= 0) Some(index) else None();            
+        }
+        
+        public GetItemByIndex(index : int) : option[ListViewItem]
+        {
+            def item = if (index >= 0) _listView.ItemContainerGenerator.ContainerFromIndex(index) else null;
+            if (item != null) Some(item :> ListViewItem) else None();        
+        }
+        
+        public GetScrollbarPosition() : option[Point]
+        {
+            def scrollContentPresenter = ScrollContentPresenter;
+            def scrollViewer = if (scrollContentPresenter.IsSome) scrollContentPresenter.Value.FindAncestor.[ScrollViewer]() else None();
+            if (scrollViewer.IsSome) 
+                Some(Point(
+                    _listView.ActualWidth  / scrollViewer.Value.ViewportWidth  * scrollViewer.Value.HorizontalOffset,
+                    _listView.ActualHeight / scrollViewer.Value.ViewportHeight * scrollViewer.Value.VerticalOffset))
+                else
+                    None();
+        }
+                
+        public UnselectAllItems() : void
+        {
+            _listView.SelectedItems.Clear();
+        }
+        
+        public SelectItem(item : ListViewItem) : void
+        {
+            _listView.SelectedItems.Clear();
+            item.IsSelected = true;
+        }
+        
+        public SelectItems(items : IEnumerable.[ListViewItem]) : void
+        {
+            _listView.SelectedItems.Clear();
+            foreach (item in items)
+                item.IsSelected = true;
+        }
+        
+        public SelectItems(startIndex : int, endIndex : int) : void
+        {   
+            def truncate = (startIndex, endIndex) => 
+            {
+                def itemsCount = (endIndex - startIndex);
+                if (itemsCount > SelectionLimitations.MaxItemsCount)
+                    endIndex - (itemsCount - SelectionLimitations.MaxItemsCount);
+                else
+                    endIndex;
+            };
+        
+            def maxVisibleItems = 1000;
+            def start = Math.Min(startIndex, endIndex);
+            def end = truncate(startIndex, Math.Max(startIndex, endIndex));
+            
+            def newSelectedItems = List();
+            for (mutable i = start; i <= end; i++)
+                newSelectedItems.Add(_listView.Items[i]);
+            
+            if ((end - start) > maxVisibleItems)
+            {
+                _listView.SelectItems(newSelectedItems);
+            }
+            else
+            {
+                def containers = newSelectedItems.Select(a => _listView.ItemContainerGenerator.ContainerFromItem(a)).ToArray();
+                def isAnyItemContainerNotDisplayed = containers.Any(o => o == null);
+                if (isAnyItemContainerNotDisplayed)
+                    _listView.SelectItems(newSelectedItems);
+                else
+                    SelectItems(containers.OfType.[ListViewItem]());
+            }
+        }
+        
+        public Focus() : void
+        {
+            _ = _listView.Focus();   
+        }
+        
+        UpdateScrollContentPresenter() : void
+        {
+            _scrollContentPresenter = match (
+                _listView.GetVisualChildren.[ScrollContentPresenter]()
+                .Where(c => c.Content is ItemsPresenter)
+                .Where(c => object.ReferenceEquals((c.Content :> ItemsPresenter).TemplatedParent, _listView))
+                .FirstOrDefault())
+            {
+                | child when child != null => Some(child);
+                | _                        => None();
+            }
+            
+            ScrollContentPresenterChanged(this, EventArgs.Empty);
+        }
+        
+        OnListViewLoaded(_ : object, _ : RoutedEventArgs) : void
+        {
+            UpdateScrollContentPresenter();
+        }
+        
+        OnListViewChanged(_ : object, _ : EventArgs) : void
+        {
+            UpdateScrollContentPresenter();
+        }
+        
+        OnListViewUnloaded(_ : object, _ : RoutedEventArgs) : void
+        {
+            Detach();
+        }
+        
+        private static ViewPropertyDescriptor : DependencyPropertyDescriptor = DependencyPropertyDescriptor.FromProperty(
+           ListView.ViewProperty, typeof(ListView));
+        
+        private _listView : ListView;
+        private mutable _scrollContentPresenter : option[ScrollContentPresenter];
+    }
+}

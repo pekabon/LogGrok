@@ -1,0 +1,43 @@
+using Nemerle;
+using Nemerle.Assertions;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace LogGrok.IndexedFilter.Index
+{
+    
+    public class Weak[T] 
+    {
+        public this(Value : T, [NotNull] fallback :  void -> T)
+        {
+            _fallback = fallback;
+            _storage = WeakReference(Value);
+        }
+        
+        public Value : T
+        {
+            get
+            {
+                def value = _storage.Target;
+                if (_storage.IsAlive)
+                {
+                    value :> T
+                }
+                else
+                {
+                    def newValue = _fallback();
+                    _storage.Target = newValue;
+                    newValue
+                }
+            }
+        }
+
+        private _storage : WeakReference;
+        private _fallback : void -> T;
+    }
+}

@@ -1,0 +1,64 @@
+using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+
+using LogGrok.Storage;
+
+namespace LogGrok.IndexedFilter.Index
+{
+    public variant Page[TPayload]
+    {
+        | Memory 
+            { 
+                public override Payload : TPayload 
+                { 
+                    get 
+                    { 
+                        _payload 
+                    } 
+                }
+                
+                public Store() : Storage
+                {
+                    def load = _load;     
+                    def store = _store;
+                    
+                    def pageNumber = store(Payload);
+                                        
+                    def loadFunc = load;
+                                  
+                    
+                    Storage(Weak.[TPayload](Payload, () =>loadFunc(pageNumber)))
+                }
+                
+                private _payload : TPayload;
+                private _store : TPayload -> int;
+                private _load: int -> TPayload;
+            }
+
+        | Storage
+            { 
+                public override Payload : TPayload 
+                { 
+                    get
+                    {
+                        _storage.Value
+                    }
+                }
+                
+                private _storage :  Weak[TPayload] { get; }
+            }
+
+        public abstract Payload : TPayload
+        {
+            get;
+        }
+            
+    }
+}

@@ -1,0 +1,31 @@
+namespace LogGrok.Macros.LogParserGenerator
+{
+    variant TimeFormatItem
+    {
+        | Hours 
+        {
+            Count: int; 
+            public override ToString() : string { $"H($Count)" };
+        }
+        | Minutes 
+        {
+            Count: int; 
+            public override ToString() : string { $"m($Count)" };
+        }
+        | Seconds 
+        { 
+            Count : int;
+            public override ToString() : string { $"S($Count)" };
+        }
+        | SecondsFraction 
+        { 
+            Count : int; 
+            public override ToString() : string {$"f($Count)" };
+        }
+        | Delimiter 
+        { 
+            Value: string; 
+            public override ToString() : string { $"'$Value'" }
+        }
+    }
+}
