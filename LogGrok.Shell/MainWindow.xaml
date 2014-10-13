@@ -157,8 +157,8 @@
             </avalonDock:DockingManager.LayoutItemContainerStyle>
 
             <infra:DocumentContextMenu.AdditionalContextMenuItems>
-                <MenuItem Command="{Binding Model.DataContext.OpenContainingFolderCommand}" Header="Open Containing Folder..." />
-                <MenuItem Command="{Binding Model.DataContext.CopyFullPathCommand}" Header="Copy Full Path" />
+                <MenuItem Command="{Binding Model.DocumentViewModel.OpenContainingFolderCommand}" Header="Open Containing Folder..." />
+                <MenuItem Command="{Binding Model.DocumentViewModel.CopyFullPathCommand}" Header="Copy Full Path" />
                 <Separator />
             </infra:DocumentContextMenu.AdditionalContextMenuItems>
             <avalonDock:LayoutRoot>
