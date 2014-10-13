@@ -13,14 +13,13 @@ namespace LogGrok.Core
 {
     public class DocumentManager
     {
-        public this(logProcessorFactories : IEnumerable[ILogProcessorFactory], container : IUnityContainer)
+        public this(logProcessorFactories : IEnumerable[ILogProcessorFactory], errorPresenter : ErrorPresenter, container : IUnityContainer)
         {
             _logProcessorFactories = logProcessorFactories;
             CurrentDocumentChanged += (_,_) => {};
             Documents = ObservableCollection();
             _container = container;
-            
-            CannotOpenFile += _ => {};
+            _errorPresenter = errorPresenter;
         }
 
         public LoadNew(fileName : string) : void
@@ -35,7 +34,7 @@ namespace LogGrok.Core
             match(document)
             {
                 | Some(doc) => Documents.Add(doc); CurrentDocument = document;
-                | _         => CannotOpenFile(fileName);
+                | _         => _errorPresenter.ShowError($"Cannot open file '$fileName'");
             }
         }
 
@@ -68,8 +67,6 @@ namespace LogGrok.Core
             _ = _documentContextMapping.Remove(doc);
         }
                 
-        public event CannotOpenFile : Action[string];
-
         public SupportedLogTypes : IEnumerable[string]
         {
             get { _logProcessorFactories.Select(_.LogType) }
@@ -105,5 +102,6 @@ namespace LogGrok.Core
         mutable _currentDocument : option[Document] = None();
         
         _documentContextMapping : Dictionary.[Document, IUnityContainer] = Dictionary.[Document, IUnityContainer]();
+        _errorPresenter : ErrorPresenter;
     }
 }

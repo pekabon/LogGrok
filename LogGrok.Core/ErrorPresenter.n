@@ -1,0 +1,26 @@
+﻿using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace LogGrok.Core
+{
+    public class ErrorPresenter
+    {
+        public ShowError(message : string) : void
+        {
+            _errorHandler(message);
+        }
+        
+        public SetErrorHandler(handler : Action[string]) : void
+        {
+            _errorHandler = handler;
+        }
+        
+        private mutable _errorHandler : Action[string];
+    }
+}

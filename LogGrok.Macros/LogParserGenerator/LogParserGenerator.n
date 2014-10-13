@@ -349,11 +349,19 @@ namespace LogGrok.Macros.LogParserGenerator
 
         _ = type.DefineWithSource( <[ decl: CreateLine(index : int, begin : int, end : int) : LogGrok.LogParserBase.Line  //TODO: optimize for single pattern line text
             { 
-                def line = $createLine;
-                line.Offset = BufferOffset + begin * $size;
-                line.EndOffset = BufferOffset + end * $size;
-                line.RawLine = CreateLazyText(begin, end);
-                line
+                try
+                {
+                    def line = $createLine;
+                    line.Offset = BufferOffset + begin * $size;
+                    line.EndOffset = BufferOffset + end * $size;
+                    line.RawLine = CreateLazyText(begin, end);
+                    line
+                }
+                catch
+                {
+                    | e => throw LogGrok.LogParserBase.ParseException(
+                        string.Format("Parse error at position {0}: {1}", BufferOffset + begin * $size, e.Message))
+                }
             }; ]> );   
 
         type.Define( <[ decl:
@@ -374,6 +382,7 @@ namespace LogGrok.Macros.LogParserGenerator
                             yield CreateLine(lineFormat, beginPosition, lineEndPosition); 
                             ReadLines(nextlineFormat, lineEndPosition + EolLength)
                     }
+
                 }
 
                 _ = Stream.Seek(0, System.IO.SeekOrigin.Begin);
