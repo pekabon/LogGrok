@@ -80,8 +80,9 @@ namespace LogGrok.Core
             def context = _container.CreateChildContainer();
             
             def optionalResult =
-                    _logProcessorFactories.Select(_.Create(fileName, () => LogFile.OpenRead(fileName), context, startOffset, endOffset))
-                        .FirstOrDefault(result => result.HasValue);
+                    _logProcessorFactories.OrderByDescending(_.Priority)
+                                          .Select(_.Create(fileName, () => LogFile.OpenRead(fileName), context, startOffset, endOffset))
+                                          .FirstOrDefault(result => result.HasValue);
                         
             match(optionalResult)
             {
