@@ -153,9 +153,11 @@ namespace LogGrok.Shell
                     InjectionFactory(c => DocumentViewTemplateSelector(c.ResolveAll.[DataTemplate]())));
 
             _ = Container.RegisterView.[MainWindow, MainWindowViewModel]();
+            
+            _ = Container.RegisterType.[ErrorPresenter](ContainerControlledLifetimeManager());
 
             _ = Container.RegisterType.[DocumentManager](
-                    InjectionFactory(c => DocumentManager(c.ResolveAll.[ILogProcessorFactory](), c)));
+                    InjectionFactory(c => DocumentManager(c.ResolveAll.[ILogProcessorFactory](), c.Resolve.[ErrorPresenter](), c)));
         }
 
         protected override CreateModuleCatalog() : IModuleCatalog

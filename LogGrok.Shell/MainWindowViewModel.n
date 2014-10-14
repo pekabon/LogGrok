@@ -11,6 +11,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows.Input;
 using System.Windows;
+using System.Threading;
 
 using Microsoft.Win32;
 using Microsoft.Practices.Prism.Commands;
@@ -30,7 +31,9 @@ namespace LogGrok.Shell
     [NotifyPropertyChanged]
     public class MainWindowViewModel
     {
-        public this(documentManager : DocumentManager, templateSelector : DocumentViewTemplateSelector, colorSettingsFactory : Func[ColorSettingsDialog], scratchPad : IScratchPad)
+        public this(documentManager : DocumentManager, templateSelector : DocumentViewTemplateSelector,
+                    colorSettingsFactory : Func[ColorSettingsDialog], scratchPad : IScratchPad,
+                    errorPresenter : ErrorPresenter, syncContext : SynchronizationContext)
         {            
             def CreateDialog()
             {
@@ -70,7 +73,8 @@ namespace LogGrok.Shell
             }
 
             _documentManager = documentManager;
-            _documentManager.CannotOpenFile += fileName => MessageRequest.Raise( Notification() <- { Title = "Error"; Content = $"Cannot open file '$fileName'" });
+            errorPresenter.SetErrorHandler( 
+                message => syncContext.Post( _ => MessageRequest.Raise( Notification() <- { Title = "Error"; Content = message; }), null) );
             DocumentTemplateSelector = templateSelector;
             
             OpenFileCommand = DelegateCommand(OpenFile);

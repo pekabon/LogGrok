@@ -8,6 +8,8 @@ using Nemerle;
 using Nemerle.Collections;
 using Nemerle.Assertions;
 
+using Microsoft.Practices.Unity;
+
 using LogGrok.Core;
 using LogGrok.LogParserBase;
 
@@ -20,6 +22,7 @@ namespace LogGrok.LogParserBase
                     [NotNull] lineReaderFactory : Stream -> ILineReader,
                     [NotNull] fileSearcher : FileSearcher.GetOffsetsWithTextFunction,
                     [NotNull] headerParser : Stream -> option[Header*string],
+                    [NotNull] container : IUnityContainer,
                     beginOffset = 0l,
                     endOffset = -1l)
         {
@@ -30,6 +33,7 @@ namespace LogGrok.LogParserBase
             FullPath = filePath;
             _lineIndex = LineIndex();
             _fileSearcher = fileSearcher;
+            _errorPresenter = container.Resolve.[ErrorPresenter]();
             Loaded += (_, _) => _lineIndex.OnLoaded();
             
             def stream = CreateSubStream();
@@ -87,18 +91,25 @@ namespace LogGrok.LogParserBase
         {
             assert(!IsLoaded);
             
-            using (lineReader = _lineReaderFactory(CreateSubStream()))
-                foreach (line in lineReader.TakeWhile(_ => !cancellationToken.IsCancellationRequested))
-                {
-                    def index = _lineIndex.AddNextLine(line.Offset, line.EndOffset);
-                    foreach(indexedLineConsumer in indexedLineConsumers)
-                        indexedLineConsumer.Process(line, index);
-                        
-                    ++ProcessedLineCount;
-                    LoadedPercent = (line.Offset:double) / FileSize * 100.0;
-                }
-            
-            LoadedPercent  = 100;
+            try
+            {
+                using (lineReader = _lineReaderFactory(CreateSubStream()))
+                    foreach (line in lineReader.TakeWhile(_ => !cancellationToken.IsCancellationRequested))
+                    {
+                        def index = _lineIndex.AddNextLine(line.Offset, line.EndOffset);
+                        foreach(indexedLineConsumer in indexedLineConsumers)
+                            indexedLineConsumer.Process(line, index);
+                            
+                        ++ProcessedLineCount;
+                        LoadedPercent = (line.Offset:double) / FileSize * 100.0;
+                    }
+                
+                LoadedPercent  = 100;
+            }
+            catch 
+            {
+                | e is Exception => _errorPresenter.ShowError($"Load file failed : $(e.Message)");
+            }
             IsLoaded = true;
             Loaded(this, EventArgs.Empty);
             
@@ -123,5 +134,6 @@ namespace LogGrok.LogParserBase
         private _beginOffset : long;
         private _endOffset : long;
         private _fileSearcher : FileSearcher.GetOffsetsWithTextFunction;
+        private _errorPresenter : ErrorPresenter;
     }
 }

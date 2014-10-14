@@ -47,7 +47,6 @@
     <MacroReference Include="Nemerle.WPF">
       <HintPath>$(Nemerle)\Nemerle.WPF.dll</HintPath>
     </MacroReference>
-
     <Reference Include="Microsoft.Practices.Prism.Composition, Version=5.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35">
       <Name>Microsoft.Practices.Prism.Composition</Name>
       <AssemblyName>Microsoft.Practices.Prism.Composition.dll</AssemblyName>
@@ -147,6 +146,9 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="DocumentViewTemplateSelector.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="ErrorPresenter.n">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="FieldDescriptor.n">

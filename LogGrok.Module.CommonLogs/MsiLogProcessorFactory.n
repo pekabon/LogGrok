@@ -18,11 +18,13 @@ namespace LogGrok.Module.CommonLogs
     [Record]
     internal class MsiLogProcessorFactory : BaseLogProcessorFactory
     {
-       public override Create([NotNullOrEmpty] name : string, [NotNull] streamFactory : void -> Stream, [NotNull] container : IUnityContainer, startOffset : long, endOffset : long) : option[ILogProcessor * MetaInformation]
-        {
+       public override Create([NotNullOrEmpty] name : string, [NotNull] streamFactory : void -> Stream, [NotNull] container : IUnityContainer,
+                              startOffset : long, endOffset : long) : option[ILogProcessor * MetaInformation]
+       {
             try
             {
-                def processor = LogProcessor(name, streamFactory, MsiLineReader, FileSearcher.GetOffsetsWithUtf16Text, _ => None(), startOffset, endOffset);
+                def processor = LogProcessor(name, streamFactory, MsiLineReader, FileSearcher.GetOffsetsWithUtf16Text, _ => None(), container,
+                                             startOffset, endOffset);
                 Some((processor, MetaInformation))
             }
             catch 
