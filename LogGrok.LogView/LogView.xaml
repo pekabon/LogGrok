@@ -13,9 +13,9 @@
              xmlns:tookit="clr-namespace:Xceed.Wpf.Toolkit;assembly=Xceed.Wpf.Toolkit"
              be:RoutedCommandBehavior.RoutedCommandToCommandBinding="{be:RoutedCommandToCommandBinding Command={Binding GotoLine},
                                                                                                        RoutedCommand={x:Static infra:RoutedCommands.GotoLineCommand}}"
+             controls:FindRoutedCommandBehavior.IsRoutedCommandRoot="True"
              infra:PaneConentAttachedProperties.PaneTitle="{Binding Title}"
-             infra:PaneConentAttachedProperties.PaneTitleToolTip="{Binding Header}"
-             controls:FindRoutedCommandBehavior.IsRoutedCommandRoot="True">
+             infra:PaneConentAttachedProperties.PaneTitleToolTip="{Binding Header}">
     <UserControl.Resources>
 
         <ResourceDictionary>

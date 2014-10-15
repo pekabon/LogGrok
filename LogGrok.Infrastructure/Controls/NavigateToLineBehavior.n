@@ -18,32 +18,37 @@ namespace LogGrok.Infrastructure.Controls
     {
         [DependencyProperty(IsAttached, Metadata=PropertyMetadata(null, OnRequestChanged))]
         public GetNavigateToLineRequest(panel : VirtualizingStackPanel)  : NavigateToLineRequest;
-        
+
         private OnRequestChanged(d : DependencyObject, args : DependencyPropertyChangedEventArgs) : void
         {
             match (d)
             {
                 | (panel is VirtualizingStackPanel) => 
-                  {
-                        when (args.OldValue != null)
-                        {
-                            def request = args.OldValue:> NavigateToLineRequest;
-                            request.Navigate -= RequestNavigate(_, _, panel);
-                        }
-                        
-                        when (args.NewValue != null)
-                        {
-                            def request = args.NewValue :> NavigateToLineRequest;
-                            request.Navigate += RequestNavigate(_, _, panel);
-                        }
-                  }
+                {
+                    when (args.OldValue != null)
+                    {
+                        def request = args.OldValue:> NavigateToLineRequest;
+                        _ = _subscribersMap.Remove(request);
+                        request.Navigate -= RequestNavigate;
+                    }
+
+                    when (args.NewValue != null)
+                    {
+                        def request = args.NewValue :> NavigateToLineRequest;
+                        _subscribersMap[request] = panel;
+                        request.Navigate += RequestNavigate;
+                    }
+                }
             }
         }
-        
-        private static RequestNavigate(_ : object, args : DataEventArgs[int], panel : VirtualizingStackPanel) : void
+
+        private static RequestNavigate(sender : object, args : DataEventArgs[int]) : void
         {
+            def panel = _subscribersMap[sender :> NavigateToLineRequest];
             panel.BringIndexIntoViewPublic(args.Value)
         }
-        
+
+        private _subscribersMap = 
+            Dictionary.[NavigateToLineRequest, VirtualizingStackPanel]();
     }
 }

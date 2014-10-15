@@ -234,10 +234,6 @@
       <SubType>Code</SubType>
       <DependentUpon>ScratchPadView.xaml</DependentUpon>
     </Compile>
-    <Compile Include="DocumentView.xaml.n">
-      <SubType>Code</SubType>
-      <DependentUpon>DocumentView.xaml</DependentUpon>
-    </Compile>
     <Compile Include="LogView.xaml.n">
       <SubType>Code</SubType>
       <DependentUpon>LogView.xaml</DependentUpon>
@@ -305,10 +301,6 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="ScratchPadView.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="DocumentView.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>

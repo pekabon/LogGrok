@@ -8,6 +8,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
 
 using Microsoft.Practices.Prism.Modularity;
 using Microsoft.Practices.Unity;
@@ -24,6 +26,8 @@ namespace LogGrok.LogView
     {
         public Initialize() : void 
         {
+            
+            
 
             _ = _container.RegisterType.[DocumentManager](ContainerControlledLifetimeManager());
 
@@ -46,9 +50,20 @@ namespace LogGrok.LogView
 
             _ = _container.RegisterType.[IDocumentViewModelFactory, DocumentViewModelFactory]();
 
-            _ = _container.RegisterType.[DataTemplate]("DocumentDataTemplate",
-                                                     InjectionFactory( c =>
-                                                                       DataTemplate() <- {VisualTree = FrameworkElementFactory(typeof(DocumentView)); DataType=typeof(Document);}));
+            _ = _container.RegisterType.[DataTemplate]("LogViewDataTemplate",
+                InjectionFactory( c =>
+                {
+                    def contentControlFactory = FrameworkElementFactory(typeof(ContentControl));
+                    contentControlFactory.SetBinding(ContentControl.ContentProperty, Binding("DocumentViewModel"));
+                    contentControlFactory.SetBinding(AvalonRegion.ContextProperty, Binding("Context"));
+                    
+                    def logViewFactory = FrameworkElementFactory(typeof(LogView));
+                    def logViewDataTemplate = DataTemplate() <- { VisualTree = logViewFactory; };
+                    
+                    contentControlFactory.SetValue(ContentControl.ContentTemplateProperty, logViewDataTemplate);
+                    
+                    DataTemplate() <- { VisualTree = contentControlFactory; DataType = typeof(Document);}
+                }),);
                                                                        
             _ = _container.RegisterType.[IEnumerable[IIndexedLineConsumer]](
                     HierarchicalLifetimeManager(), 
@@ -56,6 +71,7 @@ namespace LogGrok.LogView
 
             _ = _container.RegisterType.[ScratchPadViewModel](ContainerControlledLifetimeManager());
             _ = _container.RegisterType.[IScratchPad, ScratchPadViewModel]();
+            
             _container.RegisterView.[ScratchPadView, ScratchPadViewModel]();
 
             _ = _container.RegisterType.[IItemProvider[int] -> IItemProvider[LineViewModel]](HierarchicalLifetimeManager(),

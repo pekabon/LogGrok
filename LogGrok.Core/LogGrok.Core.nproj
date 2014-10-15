@@ -190,6 +190,9 @@
     <Compile Include="MetaInformation.n">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="ObservableCollectionFactoryLink.n">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Properties\AssemblyInfo.n" />
     <Compile Include="SearchOptions.n">
       <SubType>Code</SubType>

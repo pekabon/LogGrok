@@ -158,7 +158,6 @@
                     <Setter Property="ToolTip" Value="{Binding Model.DocumentViewModel.Title}" />
                 </Style>
             </avalonDock:DockingManager.LayoutItemContainerStyle>
-
             <infra:DocumentContextMenu.AdditionalContextMenuItems>
                 <MenuItem Command="{Binding Model.DocumentViewModel.OpenContainingFolderCommand}" Header="Open Containing Folder..." />
                 <MenuItem Command="{Binding Model.DocumentViewModel.CopyFullPathCommand}" Header="Copy Full Path" />

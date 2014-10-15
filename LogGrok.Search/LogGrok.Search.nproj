@@ -243,16 +243,16 @@
       <Project>{24e9ff55-6333-43cf-a309-b19e2ce31282}</Project>
       <Private>True</Private>
     </ProjectReference>
-    <ProjectReference Include="..\LogGrok.LogView\LogGrok.LogView.nproj">
-      <Name>LogGrok.LogView</Name>
-      <Project>{236ada26-ef7b-4aa8-a1cf-1eb5f69d9a0d}</Project>
-      <Private>True</Private>
-    </ProjectReference>
     <MacroProjectReference Include="..\LogGrok.Macros\LogGrok.Macros.nproj">
       <Name>LogGrok.Macros</Name>
       <Project>{b5c80e41-f1f6-4ac0-a584-507808cba010}</Project>
       <Private>False</Private>
     </MacroProjectReference>
+    <ProjectReference Include="..\LogGrok.LogView\LogGrok.LogView.nproj">
+      <Name>LogGrok.LogView</Name>
+      <Project>{236ada26-ef7b-4aa8-a1cf-1eb5f69d9a0d}</Project>
+      <Private>True</Private>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(Nemerle)\Nemerle.MSBuild.targets" />
   <Import Project="$(SolutionDir)\.nuget\NuGet.targets" Condition="Exists('$(SolutionDir)\.nuget\NuGet.targets')" />
