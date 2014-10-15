@@ -95,6 +95,11 @@ namespace LogGrok.Shell
             MessageRequest = InteractionRequest();
             ShowScratchPadCommand = DelegateCommand(() => ShowScratchPadRequest.Raise(Notification() <- { Content = true; /* Unhide autohidden */ } ));
             scratchPad.TextAdded += (_, _) => ShowScratchPadRequest.Raise(Notification());
+            
+            _documentManager.CurrentDocumentChanged += (_, args) => CurrentDocument = args.Value.WithDefault(null);
+
+            CurrentDocument = _documentManager.CurrentDocument.WithDefault(null)
+ 
         }
         
         public Documents : ObservableCollection[Document]  
@@ -105,6 +110,23 @@ namespace LogGrok.Shell
             }
         }
         
+        public CurrentDocument : Document
+        {
+            get
+            {
+                _currentDocument;
+            }
+            
+            set
+            {
+                when (!Object.ReferenceEquals(_currentDocument, value))
+                {
+                    _currentDocument = value;
+                    _documentManager.CurrentDocument = if (value == null) None() else Some(value);
+                } 
+            }
+        }
+
         public DocumentTemplateSelector : DocumentViewTemplateSelector
         {
             get; private set;
@@ -149,6 +171,8 @@ namespace LogGrok.Shell
         }
 
         private _documentManager : DocumentManager;
+        
+        private mutable _currentDocument : Document;
 
         private static _logger : Logger = Logger.Get();
     }
