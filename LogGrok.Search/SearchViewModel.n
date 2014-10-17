@@ -205,7 +205,7 @@ namespace LogGrok.Search
 
         public Documents : ObservableCollection[SearchDocument] { get; private set; }
 
-        [NotifyChangedOptions(Dependent = [SearchText, IsCaseSensitive, IsFilterEnabled])]
+        [NotifyChangedOptions(Dependent = [SearchText, IsCaseSensitive, UseRegex, IsFilterEnabled])]
         public CurrentDocument : option[SearchDocument]
         { 
             get 
@@ -225,6 +225,11 @@ namespace LogGrok.Search
                 {
                     _currentDocument = value;
                     ActiveContent = _currentDocument.WithDefault(null);
+                    _searchPattern = SearchPattern() <- 
+                    { 
+                        UseRegex = _currentDocument.Map(_.UseRegex).WithDefault(false);
+                        Text = _currentDocument.Map(_.SearchText).WithDefault(string.Empty);
+                    }
                 }
             } 
         }
@@ -271,7 +276,7 @@ namespace LogGrok.Search
         private AddNewDocument(searchText : string) : void
         { 
             CurrentDocument = Some(CreateNewDocument() 
-                                   <- { SearchText = searchText; IsCaseSensitive = IsCaseSensitive; });
+                                   <- { SearchText = searchText; IsCaseSensitive = IsCaseSensitive; UseRegex = UseRegex; });
         }
 
         private CreateNewDocument() : SearchDocument
