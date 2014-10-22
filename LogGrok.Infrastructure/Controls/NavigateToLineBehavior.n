@@ -39,6 +39,7 @@ namespace LogGrok.Infrastructure.Controls
                         request.Navigate += RequestNavigate;
                     }
                 }
+                | _ => throw InvalidOperationException($"Unsupported targetType: $(d.GetType)")
             }
         }
 

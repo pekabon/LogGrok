@@ -105,7 +105,7 @@ namespace LogGrok.Infrastructure.Behaviors.DataObjects
         }
         
         [Flags]
-        private enum FileDescriptorFlags : uint
+        public enum FileDescriptorFlags : uint
         {
             | FD_CLSID = 0x00000001 
             | FD_SIZEPOINT = 0x00000002 

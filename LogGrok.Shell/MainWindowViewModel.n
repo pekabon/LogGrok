@@ -132,6 +132,17 @@ namespace LogGrok.Shell
             get; private set;
         }
 
+        public CloseDocument : ICommand
+        {
+            get 
+            {
+                DelegateCommand(d : Document =>
+                {
+                    _documentManager.Close(d);
+                })
+            }
+        }
+        
         public OpenFileCommand : ICommand { get; private set; }
 
         public OpenFilePartiallyCommand : ICommand  { get; private set; }

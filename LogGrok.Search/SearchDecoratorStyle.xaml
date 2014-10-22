@@ -5,6 +5,7 @@
                     xmlns:be="clr-namespace:LogGrok.Search.Behaviors"
                     xmlns:controls="clr-namespace:LogGrok.Controls;assembly=LogGrok.Controls"
                     xmlns:infra="clr-namespace:LogGrok.Infrastructure;assembly=LogGrok.Infrastructure"
+                    xmlns:infrabe="clr-namespace:LogGrok.Infrastructure.Behaviors;assembly=LogGrok.Infrastructure"
                     xmlns:infracontrols="clr-namespace:LogGrok.Infrastructure.Controls;assembly=LogGrok.Infrastructure"
                     xmlns:metroControls="clr-namespace:MahApps.Metro.Controls;assembly=MahApps.Metro"
                     xmlns:toolkit="clr-namespace:Xceed.Wpf.Toolkit;assembly=Xceed.Wpf.Toolkit">
@@ -111,11 +112,11 @@
                                                         NotifyOnValidationError=True,
                                                         ValidatesOnDataErrors=True,
                                                         Mode=TwoWay}"
+                                         controls:FindRoutedCommandBehavior.IsRoutedCommandTarget="True"
                                          metroControls:TextboxHelper.ButtonCommand="{Binding ClearSearchCommand,
                                                                                              Mode=OneWay}"
                                          metroControls:TextboxHelper.SelectAllOnFocus="True"
-                                         metroControls:TextboxHelper.Watermark="Search..."
-                                         controls:FindRoutedCommandBehavior.IsRoutedCommandTarget="True">
+                                         metroControls:TextboxHelper.Watermark="Search...">
                                     <TextBox.InputBindings>
                                         <KeyBinding Key="Escape" Command="{Binding ClearSearchCommand}" />
                                     </TextBox.InputBindings>
@@ -159,12 +160,15 @@
                                         </Style.Triggers>
                                     </Style>
                                 </Border.Style>
-                                <avalonDock:DockingManager ActiveContent="{Binding ActiveContent,
-                                                                                   Mode=TwoWay,
-                                                                                   UpdateSourceTrigger=PropertyChanged}"
-                                                           DocumentsSource="{Binding Documents}"
-                                                           be:CloseDocumentBehavior.Command="{Binding CloseDocument}">
-                                    <avalonDock:DockingManager.LayoutItemTemplate>
+                                <avalonDock:DockingManager infrabe:DocumentCollectionBindingBehavior.CurrentDocument="{Binding ActiveContent}"
+                                                           infrabe:DocumentCollectionBindingBehavior.DocumentsSource="{Binding Documents}"
+                                                           infrabe:DocumentCollectionBindingBehavior.OnDocumentCloseCommand="{Binding CloseDocument}">
+                                    <avalonDock:DockingManager.LayoutItemContainerStyle>
+                                        <Style TargetType="{x:Type avalonDock:LayoutItem}">
+                                            <Setter Property="Title" Value="{Binding Model.Content.SearchText}" />
+                                        </Style>
+                                    </avalonDock:DockingManager.LayoutItemContainerStyle>
+                                    <infrabe:DocumentCollectionBindingBehavior.DocumentViewTemplate>
                                         <DataTemplate>
                                             <Grid>
                                                 <Grid.RowDefinitions>
@@ -212,7 +216,7 @@
                                                 </infra:ListView>
                                             </Grid>
                                         </DataTemplate>
-                                    </avalonDock:DockingManager.LayoutItemTemplate>
+                                    </infrabe:DocumentCollectionBindingBehavior.DocumentViewTemplate>
                                     <avalonDock:DockingManager.DocumentPaneControlStyle>
                                         <Style BasedOn="{StaticResource AvalonDock_ThemeMetro_DocumentPaneControlStyle}" TargetType="{x:Type avalonDock:LayoutDocumentPaneControl}">
                                             <Setter Property="Control.Template">
@@ -318,11 +322,6 @@
                                             </Setter>
                                         </Style>
                                     </avalonDock:DockingManager.DocumentPaneControlStyle>
-                                    <avalonDock:DockingManager.DocumentHeaderTemplate>
-                                        <DataTemplate>
-                                            <TextBlock Text="{Binding Content.SearchText}" />
-                                        </DataTemplate>
-                                    </avalonDock:DockingManager.DocumentHeaderTemplate>
                                     <avalonDock:LayoutRoot>
                                         <avalonDock:LayoutPanel Orientation="Horizontal">
                                             <avalonDock:LayoutDocumentPane />

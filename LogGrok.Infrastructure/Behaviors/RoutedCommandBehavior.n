@@ -25,30 +25,17 @@ namespace LogGrok.Infrastructure.Behaviors
         private static CommandChanged(d : DependencyObject, _ : DependencyPropertyChangedEventArgs ) : void
         {
             def binding = GetRoutedCommandToCommandBinding(d);
-            
-            def command = binding.Command;
-            def routedCommand = binding.RoutedCommand;
-
-            when(command != null && routedCommand != null)
+            when (binding != null)
             {
-                def commandBinding = CommandBinding(routedCommand, Executed, CanExecute);
-                def uiElement = d :> UIElement;
-                _ = uiElement.CommandBindings.Add(commandBinding);
-            }
-        }
-        
-        private static CommandsChanged(d : DependencyObject, _ : DependencyPropertyChangedEventArgs ) : void
-        {
-            def binding = GetRoutedCommandToCommandBinding(d);
-            
-            def command = binding.Command;
-            def routedCommand = binding.RoutedCommand;
+                def command = binding.Command;
+                def routedCommand = binding.RoutedCommand;
 
-            when(command != null && routedCommand != null)
-            {
-                def commandBinding = CommandBinding(routedCommand, Executed, CanExecute);
-                def uiElement = d :> UIElement;
-                _ = uiElement.CommandBindings.Add(commandBinding);
+                when(command != null && routedCommand != null)
+                {
+                    def commandBinding = CommandBinding(routedCommand, Executed, CanExecute);
+                    def uiElement = d :> UIElement;
+                    _ = uiElement.CommandBindings.Add(commandBinding);
+                }
             }
         }
         

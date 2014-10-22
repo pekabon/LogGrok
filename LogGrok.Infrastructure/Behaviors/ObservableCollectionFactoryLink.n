@@ -1,0 +1,100 @@
+﻿using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.Linq;
+
+
+namespace LogGrok.Infrastructure.Behaviors
+{
+    public class ObservableCollectionFactoryLink[TTarget] where TTarget : class
+    {
+        public this(source : IList, target : ObservableCollection[TTarget], factory : object -> TTarget)
+        {
+            SourceCollection = source;
+            TargetCollection = target;
+            Factory = factory;
+
+            TargetCollection.Clear();
+            foreach (s in SourceCollection)
+            {
+                def t = Factory(s);
+                _sourceToTargetMapping[s] = t;
+                TargetCollection.Add(t);
+            }               
+
+            def SyncSourceChanges(source : IList, target : ObservableCollection[TTarget])
+            {
+                def haveSource(trgt)
+                {
+                    def src = _sourceToTargetMapping.First(k => object.ReferenceEquals(k.Value, trgt)).Key;
+                    source.Contains(src)
+                }
+
+                def itemsToAdd = source.Cast.[object]().Except(_sourceToTargetMapping.Keys).Select(s => (s, Factory(s))).ToList();
+                def itemsToRemove = target.Where(t => !haveSource(t)).ToList();
+
+                itemsToAdd.Iter(i =>
+                    {
+                                def (s, t) = i;
+                                _sourceToTargetMapping[s] = t;
+                                target.Add(t)
+                    });
+
+                itemsToRemove.Iter(i => 
+                    {
+                        _ = target.Remove(i);
+                        SourceFromTarget(i).Iter(s => _ = _sourceToTargetMapping.Remove(s));
+                    });
+            }
+
+            def SyncTargetChanges(source : IList, target : ObservableCollection[TTarget])
+            {
+                def itemsToSave = _sourceToTargetMapping.Where(k => target.Contains(k.Value)).Select(k => k.Key).ToList();
+                def itemsToRemove = source.Cast.[object]().Except(itemsToSave).ToList();
+
+                itemsToRemove.Iter(i => 
+                    {
+                        _ = source.Remove(i);
+                        _ = _sourceToTargetMapping.Remove(i);
+                    });
+            }
+            
+            (SourceCollection :> INotifyCollectionChanged).CollectionChanged += (_, _) => SyncSourceChanges(SourceCollection, TargetCollection);
+            TargetCollection.CollectionChanged += (_, _) => SyncTargetChanges(SourceCollection, TargetCollection);
+        }
+
+        public SourceCollection : IList { get; private set; }
+
+        public TargetCollection : ObservableCollection[TTarget]{ get; private set; }
+
+        public SourceFromTarget(target : TTarget) : option[object]
+        {
+            def result = _sourceToTargetMapping.FirstOrDefault(kv => object.ReferenceEquals(kv.Value, target));
+            
+            if (result.Equals(default(KeyValuePair[object, TTarget])))
+                None()
+            else
+                Some(result.Key)
+        }
+        
+        public TargetFromSource(source : object) : option[TTarget]
+        {
+            if (source == null || !_sourceToTargetMapping.ContainsKey(source))
+                None()
+            else
+                Some(_sourceToTargetMapping[source]);
+        }
+        
+        public Factory : object -> TTarget;
+
+        private _sourceToTargetMapping : Dictionary[object, TTarget] = Dictionary.[object, TTarget]();
+    }
+}
+

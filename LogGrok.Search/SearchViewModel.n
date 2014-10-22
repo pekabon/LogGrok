@@ -185,7 +185,7 @@ namespace LogGrok.Search
             {
                 DelegateCommand(d : SearchDocument =>
                 {
-                    _ = Documents.Remove(d);
+                    d.Dispose();
                     when (Documents.Count == 0)
                     {
                         SearchText = string.Empty;

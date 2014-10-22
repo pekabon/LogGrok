@@ -60,10 +60,18 @@ namespace LogGrok.Infrastructure
         protected override OnItemsSourceChanged(oldValue : IEnumerable, newValue : IEnumerable) : void
         {
             base.OnItemsSourceChanged(oldValue, newValue);
-            when (newValue.Cast.[object]().Any())
-                ResetColumnsWidth();
+            
+            if (newValue == null)
+            {
+                _storedItemCount = 0;
+            }
+            else
+            {
+                when (newValue.Cast.[object]().Any())
+                    ResetColumnsWidth();
                 
-            _storedItemCount = this.Items.Count;
+                _storedItemCount = this.Items.Count;
+            }
         }
         
         protected override OnItemsChanged(e : NotifyCollectionChangedEventArgs ) : void
@@ -120,7 +128,7 @@ namespace LogGrok.Infrastructure
                     {
                     | null                      =>  base.OnKeyDown(e);
                     | listViewItem is UIElement =>  
-                            when(Keyboard.FocusedElement != listViewItem)
+                            when(object.ReferenceEquals(Keyboard.FocusedElement, listViewItem))
                                 _ = listViewItem.Focus();
                             base.OnKeyDown(e);
                     | _                         => ()
@@ -170,15 +178,6 @@ namespace LogGrok.Infrastructure
             }
 
         }
-        
-        private Reselect() : void 
-        {
-            match(_currentPosition)
-            {
-                | -1  => ()
-                | pos    => _ = Items.MoveCurrentToPosition(pos);
-            }
-        }
 
         private CopySelectedItemsToClipboard() : void
         {
@@ -192,7 +191,6 @@ namespace LogGrok.Infrastructure
             System.Windows.Clipboard.SetText(text.ToString());
         }
 
-        private mutable _currentPosition : int;
         private mutable _storedItemCount : int;        
     }
 }

@@ -48,7 +48,7 @@ namespace LogGrok.Infrastructure
 
         public RegisterViewWithRegion(regionName : string, getContentDelegate : System.Func[object]) : void
         {
-            def del = c : IUnityContainer => getContentDelegate();
+            def del = _ : IUnityContainer => getContentDelegate();
             RegisterViewWithRegion(regionName, del);
         }
 

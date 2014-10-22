@@ -1,0 +1,119 @@
+﻿using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Extensions;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+
+using Nemerle.WPF;
+
+using Xceed.Wpf.AvalonDock;
+
+using LogGrok.Core;
+
+namespace LogGrok.Infrastructure.Behaviors
+{
+    public module DocumentCollectionBindingBehavior
+    {
+        [DependencyProperty(IsAttached, Metadata=PropertyMetadata(null, OnChanged))]
+        public GetDocumentsSource(dockingManager : DockingManager) : IList;
+
+        [DependencyProperty(IsAttached, Metadata=FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault, OnCurrentDocumentChanged))]
+        public GetCurrentDocument(dockingManager : DockingManager) : object;
+
+        [DependencyProperty(IsAttached, Metadata=PropertyMetadata(null, OnChanged))]
+        public GetDocumentViewTemplate(dockingManager : DockingManager) : DataTemplate;
+
+        [DependencyProperty(IsAttached, Metadata=PropertyMetadata(null, OnChanged))]
+        public GetDocumentViewTemplateSelector(dockingManager : DockingManager) : DataTemplateSelector;
+
+        [DependencyProperty(IsAttached)]
+        public GetObservableCollectionFactoryLink(dockingManager : DockingManager) : object;//ObservableCollectionFactoryLink[Document, UIElement]
+        
+        [DependencyProperty(IsAttached)]
+        public GetOnDocumentCloseCommand(dockingManager : DockingManager) : ICommand;
+
+        private OnCurrentDocumentChanged(d : DependencyObject, args : DependencyPropertyChangedEventArgs) : void
+        {
+            def dockingManager = d :> DockingManager;
+            def documentToDocumentViewLink = GetObservableCollectionFactoryLink(dockingManager) :> ObservableCollectionFactoryLink[UIElement];
+            when (documentToDocumentViewLink != null)
+                dockingManager.ActiveContent = documentToDocumentViewLink.TargetFromSource(args.NewValue).WithDefault(null);
+        }
+
+        private OnChanged(d : DependencyObject, _ : DependencyPropertyChangedEventArgs) : void 
+        {
+            def dockingManager = d :> DockingManager;
+
+            def SetDocumentsSourceWithViewFactory(documentsSource, factory)
+            {
+                def targetCollection = ObservableCollection.[UIElement]();
+                def documentToDocumentViewLink = ObservableCollectionFactoryLink(documentsSource, targetCollection, factory);
+
+                SetObservableCollectionFactoryLink(dockingManager, documentToDocumentViewLink);
+                dockingManager.DocumentsSource = targetCollection;
+                
+                dockingManager.DocumentClosed += (_, args) =>
+                {
+                    def closedSource = documentToDocumentViewLink.SourceFromTarget(args.Document.Content :> UIElement);
+                    documentsSource.Remove(closedSource.Value);
+                    
+                    def command = GetOnDocumentCloseCommand(dockingManager);
+                    when (command != null)
+                    {
+                        command.Execute(closedSource.Value);
+                    }
+                }
+                // 
+                
+                dockingManager.ActiveContentChanged
+                    += (_, _) => 
+                    {
+                        def activeSource = documentToDocumentViewLink.SourceFromTarget(dockingManager.ActiveContent :> UIElement);
+                        SetCurrentDocument(dockingManager, 
+                                    activeSource.WithDefault(null));
+                    }
+            }
+
+            def SetDocumentsSourceWithTemplate(documents, datatemplate)
+            {
+                def DocumentViewFactory(doc) : UIElement
+                {
+                    ContentControl() <- { Content = doc; ContentTemplate = datatemplate; };     
+                }
+                
+                SetDocumentsSourceWithViewFactory(documents, DocumentViewFactory)
+            }
+            
+            def SetDocumentsSourceWithTemplateSelector(documents, templateSelector)
+            {
+                def DocumentViewFactory(doc) : UIElement
+                {
+                    ContentControl() <- { Content = doc; ContentTemplate = templateSelector.SelectTemplate(doc, null); };     
+                }
+                
+                SetDocumentsSourceWithViewFactory(documents, DocumentViewFactory)            
+            }
+            
+            def (ds, dt, dts) = (GetDocumentsSource(dockingManager), GetDocumentViewTemplate(dockingManager), GetDocumentViewTemplateSelector(dockingManager));
+
+            match(ds, dt, dts)
+            {
+                | (null, _, _)                          
+                | (_, null, null)                       => ()
+                | (documents, template, null)           => SetDocumentsSourceWithTemplate(documents, template)
+                | (documents, null, templateSelector)   => SetDocumentsSourceWithTemplateSelector(documents, templateSelector)
+                | (_, d, t) when d != null && t != null => throw InvalidOperationException("Unable set DocumentViewTemplate & DocumentViewTemplateSelector simultaniously")
+                | _ => ()
+            }
+        }
+    }
+}

@@ -30,7 +30,7 @@ using System.Windows.Controls;
 namespace LogGrok.Search
 {
     [NotifyPropertyChanged]    
-    public class SearchDocument : ILineViewModelProviderAcceptor
+    public class SearchDocument : ILineViewModelProviderAcceptor, IDisposable
     {
         public this([NotNull] navigationService : ILogNavigation, 
                     [NotNull] filterManager : FilterManager, 
@@ -102,6 +102,11 @@ namespace LogGrok.Search
             }
         }
         
+        public Dispose() : void
+        { 
+            _searchFilter.Reset(string.Empty, SearchOptions.None);
+        }
+                
         [Throttle(TimeSpan.FromMilliseconds(500))]
         private StartSearch() : void
         {
@@ -156,7 +161,6 @@ namespace LogGrok.Search
         ResetFilter() : void
             implements ILineViewModelProviderAcceptor.ResetFilter
         {
-            
         }
         
         public SetItemProvider(itemProvider : DynamicFilteredLinesProvider) : void

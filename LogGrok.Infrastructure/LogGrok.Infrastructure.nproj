@@ -132,35 +132,35 @@
       <HintPath>$(Nemerle)\Nemerle.WPF.dll</HintPath>
     </MacroReference>
     <Reference Include="WindowsBase" />
-    <Reference Include="Xceed.Wpf.AvalonDock, Version=2.2.0.0, Culture=neutral, PublicKeyToken=3e4669d2f30244f4">
+    <Reference Include="Xceed.Wpf.AvalonDock, Version=2.3.0.0, Culture=neutral, PublicKeyToken=3e4669d2f30244f4">
       <Name>Xceed.Wpf.AvalonDock</Name>
       <AssemblyName>Xceed.Wpf.AvalonDock.dll</AssemblyName>
-      <HintPath>..\packages\Extended.Wpf.Toolkit.2.2.1\lib\net40\Xceed.Wpf.AvalonDock.dll</HintPath>
+      <HintPath>..\packages\Extended.Wpf.Toolkit.2.3\lib\net40\Xceed.Wpf.AvalonDock.dll</HintPath>
     </Reference>
-    <Reference Include="Xceed.Wpf.AvalonDock.Themes.Aero, Version=2.2.0.0, Culture=neutral, PublicKeyToken=3e4669d2f30244f4">
+    <Reference Include="Xceed.Wpf.AvalonDock.Themes.Aero, Version=2.3.0.0, Culture=neutral, PublicKeyToken=3e4669d2f30244f4">
       <Name>Xceed.Wpf.AvalonDock.Themes.Aero</Name>
       <AssemblyName>Xceed.Wpf.AvalonDock.Themes.Aero.dll</AssemblyName>
-      <HintPath>..\packages\Extended.Wpf.Toolkit.2.2.1\lib\net40\Xceed.Wpf.AvalonDock.Themes.Aero.dll</HintPath>
+      <HintPath>..\packages\Extended.Wpf.Toolkit.2.3\lib\net40\Xceed.Wpf.AvalonDock.Themes.Aero.dll</HintPath>
     </Reference>
-    <Reference Include="Xceed.Wpf.AvalonDock.Themes.Metro, Version=2.2.0.0, Culture=neutral, PublicKeyToken=3e4669d2f30244f4">
+    <Reference Include="Xceed.Wpf.AvalonDock.Themes.Metro, Version=2.3.0.0, Culture=neutral, PublicKeyToken=3e4669d2f30244f4">
       <Name>Xceed.Wpf.AvalonDock.Themes.Metro</Name>
       <AssemblyName>Xceed.Wpf.AvalonDock.Themes.Metro.dll</AssemblyName>
-      <HintPath>..\packages\Extended.Wpf.Toolkit.2.2.1\lib\net40\Xceed.Wpf.AvalonDock.Themes.Metro.dll</HintPath>
+      <HintPath>..\packages\Extended.Wpf.Toolkit.2.3\lib\net40\Xceed.Wpf.AvalonDock.Themes.Metro.dll</HintPath>
     </Reference>
-    <Reference Include="Xceed.Wpf.AvalonDock.Themes.VS2010, Version=2.2.0.0, Culture=neutral, PublicKeyToken=3e4669d2f30244f4">
+    <Reference Include="Xceed.Wpf.AvalonDock.Themes.VS2010, Version=2.3.0.0, Culture=neutral, PublicKeyToken=3e4669d2f30244f4">
       <Name>Xceed.Wpf.AvalonDock.Themes.VS2010</Name>
       <AssemblyName>Xceed.Wpf.AvalonDock.Themes.VS2010.dll</AssemblyName>
-      <HintPath>..\packages\Extended.Wpf.Toolkit.2.2.1\lib\net40\Xceed.Wpf.AvalonDock.Themes.VS2010.dll</HintPath>
+      <HintPath>..\packages\Extended.Wpf.Toolkit.2.3\lib\net40\Xceed.Wpf.AvalonDock.Themes.VS2010.dll</HintPath>
     </Reference>
-    <Reference Include="Xceed.Wpf.DataGrid, Version=2.2.0.0, Culture=neutral, PublicKeyToken=3e4669d2f30244f4">
+    <Reference Include="Xceed.Wpf.DataGrid, Version=2.3.0.0, Culture=neutral, PublicKeyToken=3e4669d2f30244f4">
       <Name>Xceed.Wpf.DataGrid</Name>
       <AssemblyName>Xceed.Wpf.DataGrid.dll</AssemblyName>
-      <HintPath>..\packages\Extended.Wpf.Toolkit.2.2.1\lib\net40\Xceed.Wpf.DataGrid.dll</HintPath>
+      <HintPath>..\packages\Extended.Wpf.Toolkit.2.3\lib\net40\Xceed.Wpf.DataGrid.dll</HintPath>
     </Reference>
-    <Reference Include="Xceed.Wpf.Toolkit, Version=2.2.0.0, Culture=neutral, PublicKeyToken=3e4669d2f30244f4">
+    <Reference Include="Xceed.Wpf.Toolkit, Version=2.3.0.0, Culture=neutral, PublicKeyToken=3e4669d2f30244f4">
       <Name>Xceed.Wpf.Toolkit</Name>
       <AssemblyName>Xceed.Wpf.Toolkit.dll</AssemblyName>
-      <HintPath>..\packages\Extended.Wpf.Toolkit.2.2.1\lib\net40\Xceed.Wpf.Toolkit.dll</HintPath>
+      <HintPath>..\packages\Extended.Wpf.Toolkit.2.3\lib\net40\Xceed.Wpf.Toolkit.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
@@ -177,6 +177,9 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Behaviors\DataObjects\FileSystemEntriesDataObject.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Behaviors\DocumentCollectionBindingBehavior.n">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Behaviors\DragnDropBehavior.n">
@@ -198,6 +201,9 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Behaviors\ListMouseMultiSelectionBehaviorBackend\VisualTreeWalker.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Behaviors\ObservableCollectionFactoryLink.n">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Behaviors\RoutedCommandBehavior.n">
@@ -234,9 +240,6 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="DocumentContextMenu.n">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="DocumentView\DocumentViewsCollection.n">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="DocumentView\IDocumentViewsFactory.n">

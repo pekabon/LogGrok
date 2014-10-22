@@ -143,24 +143,22 @@
             <RowDefinition Height="Auto" />
             <RowDefinition />
         </Grid.RowDefinitions>
-
         <avalonDock:DockingManager x:Name="DockingManager"
                                    Grid.Row="1"
-                                   ActiveContent="{Binding CurrentDocument,
-                                                           Mode=TwoWay,
-                                                           UpdateSourceTrigger=PropertyChanged}"
-                                   DocumentsSource="{Binding Documents}"
-                                   LayoutItemTemplateSelector="{Binding DocumentTemplateSelector}"
-                                   Theme="{StaticResource MetroTheme}">
+                                   Theme="{StaticResource MetroTheme}"
+                                   be:DocumentCollectionBindingBehavior.CurrentDocument="{Binding CurrentDocument}"
+                                   be:DocumentCollectionBindingBehavior.DocumentViewTemplateSelector="{Binding DocumentTemplateSelector}"
+                                   be:DocumentCollectionBindingBehavior.DocumentsSource="{Binding Documents}"
+                                   be:DocumentCollectionBindingBehavior.OnDocumentCloseCommand="{Binding CloseDocument}">
             <avalonDock:DockingManager.LayoutItemContainerStyle>
                 <Style TargetType="{x:Type avalonDock:LayoutItem}">
-                    <Setter Property="Title" Value="{Binding Model.DocumentViewModel.Title}" />
-                    <Setter Property="ToolTip" Value="{Binding Model.DocumentViewModel.Title}" />
+                    <Setter Property="Title" Value="{Binding Model.Content.DocumentViewModel.Title}" />
+                    <Setter Property="ToolTip" Value="{Binding Model.Content.DocumentViewModel.Title}" />
                 </Style>
             </avalonDock:DockingManager.LayoutItemContainerStyle>
             <infra:DocumentContextMenu.AdditionalContextMenuItems>
-                <MenuItem Command="{Binding Model.DocumentViewModel.OpenContainingFolderCommand}" Header="Open Containing Folder..." />
-                <MenuItem Command="{Binding Model.DocumentViewModel.CopyFullPathCommand}" Header="Copy Full Path" />
+                <MenuItem Command="{Binding Model.Content.DocumentViewModel.OpenContainingFolderCommand}" Header="Open Containing Folder..." />
+                <MenuItem Command="{Binding Model.Content.DocumentViewModel.CopyFullPathCommand}" Header="Copy Full Path" />
                 <Separator />
             </infra:DocumentContextMenu.AdditionalContextMenuItems>
             <avalonDock:LayoutRoot>
