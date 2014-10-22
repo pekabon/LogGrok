@@ -35,7 +35,6 @@ namespace LogGrok.Search
         public this([NotNull] navigationService : ILogNavigation, 
                     [NotNull] filterManager : FilterManager, 
                     [NotNull] searchFilter : SearchFilter, 
-                    [NotNull] highlighter : ILogHighlight,
                     [NotNull] scratchPad : IScratchPad,
                     [NotNull] gridViewFactory : LogGridViewFactory,
                     [NotNull] lineViewModelProviderFactory : IItemProvider[int] -> IItemProvider[LineViewModel],
@@ -45,7 +44,6 @@ namespace LogGrok.Search
             
             filterManager.RegisterClient(this);
             _searchFilter = searchFilter;
-            _highlighter = highlighter;
             _syncContext = syncContext;
             _gridViewFactory = gridViewFactory;
             _lineViewModelProviderFactory = lineViewModelProviderFactory;
@@ -119,7 +117,6 @@ namespace LogGrok.Search
             when (UseRegex) 
                 options |= SearchOptions.UseRegex;
                 
-            _highlighter.SetTextForHighlight(SearchText, options);
             _searchFilter.Reset(SearchText, options);
         }
         
@@ -180,7 +177,6 @@ namespace LogGrok.Search
         private _lineViewModelProviderFactory : IItemProvider[int] -> IItemProvider[LineViewModel];
         private _searchFilter  : SearchFilter;
         private _syncContext   : SynchronizationContext;
-        private _highlighter : ILogHighlight;
         private _gridViewFactory : LogGridViewFactory;
         
         private mutable _searchText    : string;

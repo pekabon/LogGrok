@@ -116,8 +116,9 @@ namespace LogGrok.Search
             }
         }
         
-        public this([NotNull] searchDocumentFactory : SearchDocumentFactory)
+        public this([NotNull] searchDocumentFactory : SearchDocumentFactory, [NotNull] highlighter : ILogHighlight)
         {
+            _highlighter = highlighter;
             _documentFactory = searchDocumentFactory;
             Documents = ObservableCollection();
         }
@@ -132,9 +133,12 @@ namespace LogGrok.Search
             set 
             {
                 _searchPattern.Text = value;
-                
                 when (_searchPattern.IsValid)
+                {
                     GetOrCreateCurrentDocument().SearchText = value;
+                    UpdateHighlight();
+                }   
+                
             }
         }
         
@@ -147,6 +151,7 @@ namespace LogGrok.Search
             set
             {
                 GetOrCreateCurrentDocument().IsCaseSensitive = value;
+                UpdateHighlight();
             }
         }
 
@@ -162,8 +167,23 @@ namespace LogGrok.Search
                 _searchPattern.UseRegex = value;
                 
                 when (_searchPattern.IsValid)
+                {
                     GetOrCreateCurrentDocument().UseRegex = value;
+                    UpdateHighlight();
+                }   
             }
+        }
+        
+        private UpdateHighlight() : void
+        {
+            mutable options = SearchOptions.None;
+            when (IsCaseSensitive)
+                options |= SearchOptions.CaseSensitive;
+            
+            when (UseRegex) 
+                options |= SearchOptions.UseRegex;
+                
+            _highlighter.SetTextForHighlight(SearchText, options);
         }
 
         private GetOrCreateCurrentDocument() : SearchDocument
@@ -173,7 +193,7 @@ namespace LogGrok.Search
                 | Some(document) => document
                 | None => 
                 {
-                    _currentDocument = Some(CreateNewDocument());
+                    _currentDocument = Some(CreateNewDocument(SearchText, IsCaseSensitive, UseRegex));
                     _currentDocument.Value
                 }
             }
@@ -225,11 +245,14 @@ namespace LogGrok.Search
                 {
                     _currentDocument = value;
                     ActiveContent = _currentDocument.WithDefault(null);
+                    
                     _searchPattern = SearchPattern() <- 
                     { 
                         UseRegex = _currentDocument.Map(_.UseRegex).WithDefault(false);
                         Text = _currentDocument.Map(_.SearchText).WithDefault(string.Empty);
                     }
+                    
+                    UpdateHighlight();
                 }
             } 
         }
@@ -275,18 +298,18 @@ namespace LogGrok.Search
         
         private AddNewDocument(searchText : string) : void
         { 
-            CurrentDocument = Some(CreateNewDocument() 
-                                   <- { SearchText = searchText; IsCaseSensitive = IsCaseSensitive; UseRegex = UseRegex; });
+            CurrentDocument = Some(CreateNewDocument(searchText, IsCaseSensitive, UseRegex));
         }
 
-        private CreateNewDocument() : SearchDocument
+        private CreateNewDocument(searchText : string, isCaseSensitive : bool, useRegex : bool) : SearchDocument
         {
-            def newSearchDocument = _documentFactory.Create();
+            def newSearchDocument = _documentFactory.Create() <- { SearchText = searchText; IsCaseSensitive = isCaseSensitive; UseRegex = useRegex; };
             Documents.Insert(0, newSearchDocument);
             newSearchDocument            
         }
 
         private _documentFactory : SearchDocumentFactory;
+        private _highlighter : ILogHighlight;
         private mutable _currentDocument : option[SearchDocument] = None();
         private mutable _activeContent : object;
         private mutable _searchPattern : SearchPattern = SearchPattern();
