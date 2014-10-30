@@ -1,0 +1,137 @@
+﻿using Nemerle;
+using Nemerle.Assertions;
+using Nemerle.Collections;
+using Nemerle.Peg;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+using SCG = System.Collections.Generic;
+
+using LogGrok.Core;
+
+namespace LogGrok.Module.CommonLogs
+{
+    type EventAttribute = KeyValuePair[string, string];
+    
+    
+    [PegGrammar(Options = EmitDebugSources,  line,
+	grammar
+	{
+		newLineCharacter =  '\n'                         
+                          / '\r'                         
+                          / '\u2028'    /*  line separator       */                         
+                          / '\u2029';   /*  paragraph separator  */       
+                          
+        newLine          =  "\r\n" / newLineCharacter;        
+        whitespace       =  [Zs]                 
+                          / '\t'
+                          / '\v'        /*  vertial tab          */
+                          / '\f';       /*  form feed            */
+        space            = whitespace / newLine;
+        
+        [InlineAllSubrules]       
+        s : void = space*;                                  /* optional spacer          */
+
+        regularCharacter                                      = !("<" / "\"") [Any];
+		
+        identifierCharacter                                   = !("<" / "\"" / "=") [Any]; 
+        
+        prefixCharacter                                       = !(":")[Any];
+ 	
+		quotedStringValueCaracter                             = !("\"")[Any];
+		
+		stringValueCharacter                                  = !("<") [Any];
+	
+        regularCharacters                                     = regularCharacter+;
+    
+        identifier                                            = identifierCharacter+;
+    
+        stringValue                                           = stringValueCharacter*;
+    
+        quoutedStringValue                                    = quotedStringValueCaracter*;
+    
+        prefix                                                = prefixCharacter +;
+                
+        property        : EventAttribute                      = s "<" prefix ":data" s "name" s "=" "\""identifier"\"" s "value" s "=" s "\"" quoutedStringValue "\"" s "/>";
+        
+        message         : EventAttribute                      = s "<" prefix ":message>" stringValue "</" prefix ":message>";
+
+        properties      : SCG.List.[EventAttribute]           = s "<" prefix ":properties>" property+ s "</" prefix ":properties>";
+        
+        eventAttribute : EventAttribute                       = s identifier s "=" s "\"" quoutedStringValue "\"";
+        
+        eventAttributes : SCG.List.[EventAttribute]           = eventAttribute+ s;
+        
+        locationInfo    : SCG.List.[EventAttribute]           = s "<" prefix ":locationInfo" eventAttributes "/>";
+        
+        line : DateTime * SCG.Dictionary[string, Text]        = s "<" prefix ":event" eventAttributes ">" message properties locationInfo? s "</" prefix ":event>"
+  }
+  
+	)]
+	
+	internal class Log4NetXmlLayoutParser
+	{
+	    public this([NotNull] dateTimeParser : string -> DateTime)
+	    {
+	        _dateTimeParser = dateTimeParser;
+	    }
+	    
+		//line(_ : NToken, attributes : System.Collections.Generic.List[System.Collections.Generic.KeyValuePair[string, string]], _ : NToken, _ : System.Collections.Generic.KeyValuePair[string, string], _ : System.Collections.Generic.List[System.Collections.Generic.KeyValuePair[string, string]], _ : option[System.Collections.Generic.List[System.Collections.Generic.KeyValuePair[string, string]]], _ : NToken) : log4netparser.Line
+		line(_ : NToken, _prefix : NToken, _ : NToken, attributes : SCG.List[EventAttribute], _ : NToken, message : EventAttribute, properties : SCG.List[EventAttribute], locationInfo : option[SCG.List[EventAttribute]], _ : NToken, _pprefix : NToken, _ : NToken, ) : DateTime * SCG.Dictionary[string, LogGrok.Core.Text]
+		{
+			def locationInfo = locationInfo.WithDefault(List());
+			
+			def groups = attributes.GroupBy(att => att.Key == "timestamp");
+			
+			def timestamp = groups.Single(_.Key).Single().Value |> _dateTimeParser;
+			def otherAttributes = groups.Single(g => !g.Key);
+						
+			def attDict =   [message] |> otherAttributes .Concat |> properties.Concat |> locationInfo.Concat;
+		    
+			
+			def dictionary = 
+                attDict.ToDictionary(kv => kv.Key, kv => 
+                             {                       
+                                 def str = kv.Value;
+                                 def bytes = Encoding.UTF8.GetBytes(str) : array[byte];
+                                 Text8(0, bytes.Length, bytes)
+                             });
+                             
+            (timestamp, dictionary)
+		}
+		
+		// eventAttribute : EventAttribute =  s identifier s "=" s "\"" regularCharacters "\"";
+		eventAttribute(identifier : NToken, _ : NToken, _ : NToken, value : NToken, _ : NToken) : KeyValuePair[string, string]
+		{
+			KeyValuePair(GetText(identifier), GetText(value))
+		}
+		
+		locationInfo(_ : NToken, _prefix : NToken, _ : NToken, lst : SCG.List[EventAttribute], _ : NToken) : SCG.List[EventAttribute]
+		{
+			lst
+		}
+		
+		message(_ : NToken, _prefix : NToken, _ : NToken, token : NToken, _ : NToken, _pprefix : NToken, _ : NToken,) : EventAttribute
+		{
+			EventAttribute("message", GetText(token))
+		}
+
+		// s "<log4j:data" s "name" s "=" "\""identifier"\"" s "value" s "=" s "\"" regularCharacters "\"" s "/>";
+		property(_ : NToken, _prefix : NToken, _ : NToken, _ : NToken, _ : NToken, _ : NToken, id : NToken, _ : NToken, _ : NToken, _ : NToken, _ : NToken, value : NToken, _ : NToken, _ : NToken) : EventAttribute
+		{
+			EventAttribute(GetText(id), GetText(value))	
+		}
+		
+		properties(_ : NToken, _prefix : NToken, _ : NToken, lst : SCG.List.[EventAttribute], _ : NToken, _pprefix : NToken, _ : NToken,) : SCG.List[EventAttribute]
+		{
+				lst
+		}
+		
+		private _dateTimeParser : string -> DateTime;
+	}
+}

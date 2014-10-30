@@ -28,14 +28,15 @@ namespace LogGrok.Module.CommonLogs
             def RegisterFactory[TFactory](logType : string, metaInformation : MetaInformation, priority : int)
             {
                 _ = _container.RegisterInstance(logType, metaInformation);  
-                _ = _container.RegisterType(typeof(ILogProcessorFactory), typeof(TFactory), logType, null, InjectionConstructor(priority, logType));
+                _ = _container.RegisterType(typeof(ILogProcessorFactory), typeof(TFactory), logType, null, InjectionConstructor(priority));
             }
             
-            RegisterFactory.[MsiLogProcessorFactory]("Msi trace", MsiLogProcessorFactory.MetaInformation, 80);
+            RegisterFactory.[MsiLogProcessorFactory](MsiLogProcessorFactory.MetaInformation.LogType, MsiLogProcessorFactory.MetaInformation, 80);
             RegisterFactory.[GenericUtf8LogProcessorFactory](GenericUtf8LogProcessorFactory.MetaInformation.LogType, GenericUtf8LogProcessorFactory.MetaInformation, int.MinValue);
             RegisterFactory.[GenericUtf16LogProcessorFactory](GenericUtf16LogProcessorFactory.MetaInformation.LogType, GenericUtf16LogProcessorFactory.MetaInformation, int.MinValue);
-            RegisterFactory.[VBLogProcessorFactory]("VB trace", VBLogProcessorFactory.MetaInformation, 80);
-            RegisterFactory.[NLogLogProcessorFactory]("NLog trace", NLogLogProcessorFactory.MetaInformation, 80);
+            RegisterFactory.[VBLogProcessorFactory](NLogLogProcessorFactory.MetaInformation.LogType, VBLogProcessorFactory.MetaInformation, 80);
+            RegisterFactory.[NLogLogProcessorFactory](NLogLogProcessorFactory.MetaInformation.LogType, NLogLogProcessorFactory.MetaInformation, 80);
+            Log4NetLogProcessorFactory.Register(_container, 120);
         }
 
         _container : IUnityContainer

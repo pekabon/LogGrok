@@ -1,0 +1,142 @@
+﻿using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+using System.IO;
+
+using System.Text.Encoding;
+using System.Threading;
+
+using LogGrok.Core;
+
+
+namespace LogGrok.Module.CommonLogs
+{
+    internal module FileSearch
+    {
+        public variant OffsetOrProgress
+        {
+            | Offset { value : long }
+            | Progress { value : double }
+        }
+        
+        internal type GetOffsetsWithTextFunction = Stream * string * SearchOptions * long -> IEnumerable[long];
+        
+        public GetOffsetsWithUtf8Text(stream : Stream, text: string, options : SearchOptions, offset: long) : IEnumerable[long]
+        {
+            GetOffsetsWithText(UTF8.GetBytes, stream, text, options, offset)
+        }
+        
+        public GetOffsetsWithUtf16Text(stream : Stream, text: string, options : SearchOptions, offset: long) : IEnumerable[long]
+        {
+            GetOffsetsWithText(Unicode.GetBytes, stream, text, options, offset)
+        }        
+        
+        private GetOffsetsWithText(stringEncoder : string -> array[byte], stream : Stream, text: string, options : SearchOptions, offset: long) : IEnumerable[long]
+        {
+            _ = stream.Seek(offset, SeekOrigin.Begin);
+
+            def textAsUtf8 =  stringEncoder(text); 
+            def buffer = array(Math.Max(64*1024, textAsUtf8.Length));
+
+            def lowerTextAsUtf8 = stringEncoder(text.ToLower());
+            def upperTextAsUtf8 = stringEncoder(text.ToUpper());        
+                
+            assert(lowerTextAsUtf8.Length == upperTextAsUtf8.Length);
+
+            def GetOffsetTable()
+            {
+                def table = Enumerable.Repeat(textAsUtf8.Length, byte.MaxValue + 1).ToArray();
+
+                def FillTable(bytes, i = 0)
+                {
+                    when(i < bytes.Length - 1)
+                    {
+                        table[bytes[i] :> int] = bytes.Length - i - 1;
+                        FillTable(bytes, i + 1)
+                    }
+                }
+
+                match (options)
+                {
+                    | CaseSensitive =>  FillTable(textAsUtf8); table
+                    | _ => FillTable(lowerTextAsUtf8); FillTable(upperTextAsUtf8); table
+                }
+            }
+
+            def LoadBuffer(tailStart, tailLen) 
+            { 
+                Array.Copy(buffer, tailStart, buffer, 0, tailLen);
+                stream.Read(buffer, tailLen, buffer.Length - tailLen);
+            }
+
+            def offsetTable = GetOffsetTable();
+
+            def Search(bufferLen = 0, bufferPos = 0)
+            {                    
+                if(bufferLen - bufferPos >= textAsUtf8.Length)
+                {
+                    def unmatchedLen = match(options)
+                                            {
+                                                | CaseSensitive => MatchBytesCaseSensitive(buffer, bufferPos, textAsUtf8, textAsUtf8.Length)
+                                                | _ => MatchBytesCaseInsensitive(buffer, bufferPos, lowerTextAsUtf8, upperTextAsUtf8, textAsUtf8.Length)
+                                            }
+
+                    if (unmatchedLen == 0)
+                    {  
+                        def returnValue = stream.Position - bufferLen + bufferPos;
+                        when (returnValue < 0)
+                            Console.WriteLine("cc");
+                        yield returnValue;
+                        Search(bufferLen, bufferPos + textAsUtf8.Length)
+                    }
+                    else
+                    {
+                        Search(bufferLen, bufferPos + offsetTable[buffer[bufferPos + textAsUtf8.Length - 1] :> int])
+                    }
+                }
+                else
+                {
+                    //yield OffsetOrProgress.Progress(100.0 * (stream.Position - bufferLen + bufferPos) / stream.Length);
+                    def readByteCount = LoadBuffer(bufferPos, bufferLen - bufferPos);
+                    when (readByteCount != 0)
+                        Search(bufferLen - bufferPos + readByteCount)
+                }
+            }
+
+            Search();                
+        }
+
+        
+        private MatchBytesCaseSensitive(buffer  : array[byte], 
+                                        bufferPos : int,
+                                        textAsUtf8 : array[byte],
+                                        unmatchedLen : int) : int
+        {
+            if (unmatchedLen >= 1 && textAsUtf8[unmatchedLen - 1] == buffer[bufferPos + unmatchedLen - 1])
+                MatchBytesCaseSensitive(buffer, bufferPos, textAsUtf8, unmatchedLen - 1)
+            else
+                unmatchedLen                        
+        }
+
+        
+        private MatchBytesCaseInsensitive(buffer  : array[byte], 
+                                          bufferPos : int,
+                                          lowerTextAsUtf8 : array[byte],
+                                          upperTextAsUtf8 : array[byte],
+                                          unmatchedLen : int) : int
+        {
+            if (unmatchedLen >= 1 && (lowerTextAsUtf8[unmatchedLen - 1] == buffer[bufferPos + unmatchedLen - 1] || 
+                                      upperTextAsUtf8[unmatchedLen - 1] == buffer[bufferPos + unmatchedLen - 1]))
+                MatchBytesCaseInsensitive(buffer, bufferPos, lowerTextAsUtf8, upperTextAsUtf8, unmatchedLen - 1)
+            else
+                unmatchedLen                        
+        }
+    }
+}
+

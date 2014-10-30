@@ -16,7 +16,7 @@ using LogGrok.LogParserBase;
 namespace LogGrok.Module.CommonLogs
 {
     [Record]
-    public class GenericUtf8LogProcessorFactory : BaseLogProcessorFactory
+    internal class GenericUtf8LogProcessorFactory : BaseLogProcessorFactory
     {
         public override Create([NotNullOrEmpty] name : string, [NotNull] streamFactory : void -> Stream, [NotNull] container : IUnityContainer,
                                startOffset : long, endOffset : long) : option[ILogProcessor*MetaInformation]

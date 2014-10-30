@@ -17,8 +17,6 @@ namespace LogGrok.Core
     {
         Priority : int { get; }
 
-        LogType : string { get; }
-
         Create(fileName : string, streamFactory : void -> Stream, container : IUnityContainer, startOffset = 0l, endOffset = -1l) 
             : option[ILogProcessor * MetaInformation];
 

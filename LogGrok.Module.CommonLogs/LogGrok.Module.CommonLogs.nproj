@@ -8,8 +8,8 @@
     <ProjectGuid>1f4120d0-b6bb-44dc-a063-62d2b56d4da7</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>LogGrok.Generic</RootNamespace>
-    <AssemblyName>LogGrok.Generic</AssemblyName>
+    <RootNamespace>LogGrok.Module.CommonLogs</RootNamespace>
+    <AssemblyName>LogGrok.Module.CommonLogs</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <NoStdLib>true</NoStdLib>
@@ -102,6 +102,11 @@
       <AssemblyName>Microsoft.Practices.Unity.RegistrationByConvention.dll</AssemblyName>
       <HintPath>..\packages\Unity.3.5.1404.0\lib\net45\Microsoft.Practices.Unity.RegistrationByConvention.dll</HintPath>
     </Reference>
+    <Reference Include="Nemerle.Peg">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>$(Nemerle)\Nemerle.Peg.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="mscorlib" />
     <Reference Include="System" />
     <Reference Include="System.Core">
@@ -127,6 +132,12 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="EnumerableExtensions.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="FileSearcher.n">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="GenericUtf16LineReader.n">
       <SubType>Code</SubType>
     </Compile>
@@ -137,6 +148,15 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="GenericUtf8LogProcessorFactory.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Log4NetLogProcessorFactory.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Log4NetLineReader.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Log4NetXmlLayoutParser.n">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Module.n" />
@@ -175,6 +195,9 @@
       <Project>{b5c80e41-f1f6-4ac0-a584-507808cba010}</Project>
       <Private>False</Private>
     </MacroProjectReference>
+    <MacroReference Include="Nemerle.Peg.Macros">
+      <HintPath>$(Nemerle)\Nemerle.Peg.Macros.dll</HintPath>
+    </MacroReference>
     <ProjectReference Include="..\LogGrok.LogParserBase\LogGrok.LogParserBase.nproj">
       <Name>LogGrok.LogParserBase</Name>
       <Project>{c497c2c5-893b-4be4-92a6-fce9b65f083e}</Project>
@@ -192,6 +215,7 @@
     <Resource Include="Resources\MSIColors.json" />
     <Resource Include="Resources\NLogColors.json" />
     <Resource Include="Resources\VBColors.json" />
+    <Resource Include="Resources\Log4NetColors.json" />
   </ItemGroup>
   <Import Project="$(Nemerle)\Nemerle.MSBuild.targets" />
   <Import Project="$(SolutionDir)\.nuget\NuGet.targets" Condition="Exists('$(SolutionDir)\.nuget\NuGet.targets')" />

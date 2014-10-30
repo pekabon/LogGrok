@@ -66,11 +66,6 @@ namespace LogGrok.Core
             _documentContextMapping[doc].Dispose();
             _ = _documentContextMapping.Remove(doc);
         }
-                
-        public SupportedLogTypes : IEnumerable[string]
-        {
-            get { _logProcessorFactories.Select(_.LogType) }
-        }
 
         private TryCreateDocument(fileName : string,  startOffset : long, endOffset : long) : option[Document]
         {

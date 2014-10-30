@@ -95,7 +95,7 @@ namespace LogGrok.LogView
         
         static GetSettingsFile(path : string, logType : string) : string
         {
-            Path.Combine(path, $"$logType.colors.json")
+            Path.Combine(path, $"$(Uri.EscapeDataString(logType)).colors.json")
         }
         
         _settings : Dictionary[string, List[ColorRule]] = Dictionary();

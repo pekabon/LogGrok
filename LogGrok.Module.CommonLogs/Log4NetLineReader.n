@@ -1,0 +1,108 @@
+﻿using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Extensions;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using System.IO;
+using System.Text;
+
+using LogGrok.Core;
+using LogGrok.LogParserBase;
+using LogGrok.Macros;
+
+namespace LogGrok.Module.CommonLogs
+{
+    [Disposable]
+    [Record]
+    internal class Log4NetLineReader : ILineReader
+    {
+        [Record]
+        internal class Log4NetLine : Line
+        {
+            public override Time : TimeSpan 
+            {
+                get; set;
+            }
+            
+            public override Item[s : string] : object
+            {
+                get
+                {
+                    def (timestamp, fields) = GetFields();
+                    match(s)
+                    {
+                        | "timestamp"                  => timestamp.ToString()
+                        | _ when fields.ContainsKey(s) => fields[s]
+                        | _                            => Text.Empty
+                    }
+                };
+            }
+            
+            [Memoize]
+            private GetFields() : DateTime * Dictionary[string, Text]
+            {
+                _parser(_rawLine);
+            }
+            
+            private _rawLine : string;
+            private _parser  : string -> DateTime * Dictionary[string, Text];
+        }
+        
+        public GetLastLine() : LogGrok.Core.ILine
+        { 
+            Log4NetLine(TimeSpan(), string.Empty, _parser)
+        }
+
+        public ReadLineAt(beginOffset : long, endOffset : long) : LogGrok.Core.ILine
+        {
+            _ = _stream.Seek(beginOffset, SeekOrigin.Begin);
+            def length = Convert.ToInt32(endOffset - beginOffset);
+            def buffer = array(length);
+            _ = _stream.Read(buffer, 0, length);
+            
+            def rawText = Encoding.UTF8.GetString(buffer);
+            
+            Log4NetLine(TimeSpan(), rawText, _parser) <- { RawLine = rawText; Offset = beginOffset; EndOffset = endOffset; };
+        }
+
+        public GetEnumerator() : System.Collections.Generic.IEnumerator[LogGrok.LogParserBase.Line]
+        { 
+            mutable buffer = array(1024);
+       
+            FileSearch.GetOffsetsWithUtf8Text(_stream, $"<$_prefix:event", SearchOptions.CaseSensitive, 0)
+                        .GetDifferences((start, end) =>
+                        {
+                            def position = _stream.Position;
+
+                            _ = _stream.Seek(start, SeekOrigin.Begin);
+                           
+                            def length = Convert.ToInt32(end - start);
+                            when (buffer.Length < length)
+                                buffer = array(length);
+                            _ = _stream.Read(buffer, 0, length);
+                            
+                            _stream.Position = position;
+            
+                            def rawText = Encoding.UTF8.GetString(buffer, 0, length);
+                            Log4NetLine(TimeSpan(), rawText, _parser) <- { RawLine = rawText; Offset = start; EndOffset = end; };
+                            
+                        }).GetEnumerator()
+        }
+
+        public NonGenericGetEnumerator() : IEnumerator
+        implements IEnumerable.GetEnumerator
+        {
+            this.GetEnumerator()
+        }
+
+        _stream : Stream;
+        _prefix : string;
+        _parser : string -> DateTime * Dictionary[string, Text];
+
+    }
+}

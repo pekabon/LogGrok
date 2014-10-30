@@ -1,0 +1,99 @@
+﻿using Nemerle;
+using Nemerle.Assertions;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text.RegularExpressions;
+
+using Microsoft.Practices.Unity;
+using System.IO;
+
+using LogGrok.Core;
+using LogGrok.LogParserBase;
+
+namespace LogGrok.Module.CommonLogs
+{
+
+    [Record]
+    internal class Log4NetLogProcessorFactory : BaseLogProcessorFactory
+    {
+        public override Create([NotNullOrEmpty] name : string, [NotNull] streamFactory : void -> Stream, [NotNull] container : IUnityContainer,
+                               startOffset : long, endOffset : long) : option[ILogProcessor*MetaInformation]
+        {
+            try
+            {
+                def buffer = array(10240);
+                _ = streamFactory().Read(buffer, 0, buffer.Length);
+                
+                def firstLines = ReadLines(streamFactory()).Take(10) |> string.Concat;
+                
+                def formatPrefix = TryRecognizeLog4NetFormat(firstLines);
+                
+                def GetTimeParseFunc(prefix)
+                {
+                    | "log4j" => javaTimeString : string => DateTime(1970,1,1,0,0,0,0,System.DateTimeKind.Utc).AddMilliseconds(long.Parse(javaTimeString)).ToLocalTime();
+                    | _       => DateTime.Parse
+                }
+                
+                match(formatPrefix)
+                {
+                    | None  => None()
+                    | Some(prefix) => 
+                    {
+                        def parseFunc = s =>
+                        {
+                            def parser = Log4NetXmlLayoutParser(GetTimeParseFunc(prefix));
+                            parser.Parse(s).Value;
+                        }
+                        
+                        def processor = LogProcessor(name, streamFactory, Log4NetLineReader(_, prefix, parseFunc), FileSearcher.GetOffsetsWithUtf8Text, _ => None(), container, 
+                                             startOffset, endOffset);
+                         Some((processor, if (prefix == "log4j") Log4NetLog4jXmlMetaInformation else Log4NetXmlMetaInformation))
+                    }
+                }
+            }
+            catch 
+            {
+                | _ => None()
+            }
+        }
+        
+        public static Register(container : IUnityContainer, priority : int) : void
+        {
+            _ = container.RegisterInstance(Log4NetLog4jXmlMetaInformation.LogType, Log4NetLog4jXmlMetaInformation)
+                         .RegisterInstance(Log4NetXmlMetaInformation.LogType, Log4NetXmlMetaInformation)
+                         .RegisterType(typeof(ILogProcessorFactory), typeof(Log4NetLogProcessorFactory), "Log4NetLogProcessorFactory", null, InjectionConstructor(priority));
+        }
+        
+        private ReadLines(stream : Stream) : IEnumerable[string]
+        {
+            def streamReader = StreamReader(stream);
+            while(streamReader.Peek() != -1)
+                yield streamReader.ReadLine();
+        }
+        
+        private TryRecognizeLog4NetFormat(source : string) : option[string]
+        {
+            def regex = Regex(@"<(\w+):event");
+            def mtchs = regex.Matches(source).Cast.[Match]();
+            
+            if (!mtchs.Any()) None() else Some(mtchs.First().Groups[1].Value)            
+        }
+        
+        public static Log4NetLog4jXmlMetaInformation : MetaInformation = CreateMetaInformation(
+            "Log4Net/Log4j Xml layout",
+            [("timestamp", false), ("level", true), ("thread", true), ("message", false), ("log4jmachinename", true), ("logger", true), ("log4japp", true), 
+             ("class", true), ("method", true), ("file", true), ("log4net:Identity", true), ("log4net:UserName", true), ("log4net:HostName", true)] ,
+            Uri($"pack://application:,,,/$(typeof(Log4NetLogProcessorFactory).Assembly.GetName().Name);component/resources/Log4NetColors.json"));
+                
+        public static Log4NetXmlMetaInformation : MetaInformation = CreateMetaInformation(
+            "Log4Net/Xml layout",
+            [("timestamp", false), ("level", true), ("thread", true), ("message", false), ("domain", true), ("username", true),("logger", true), 
+             ("class", true), ("method", true), ("file", true), ("line", false), ("log4net:Identity", true), ("log4net:UserName", true), ("log4net:HostName", true)],
+            Uri($"pack://application:,,,/$(typeof(Log4NetLogProcessorFactory).Assembly.GetName().Name);component/resources/Log4NetColors.json"));
+    }
+}

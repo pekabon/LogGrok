@@ -1,0 +1,62 @@
+[
+  {
+    "Name": "ERROR",
+    "Rule": {
+      "Pattern": "ERROR",
+      "Options": "None"
+    },
+    "TextColor": {
+      "Foreground": "#FFFF0000",
+      "Background": "#00FFFFFF"
+    },
+    "SearchAreas": [
+      "level"
+    ],
+    "Usage": "ParsedAreas"
+  },
+  {
+    "Name": "WARN",
+    "Rule": {
+      "Pattern": "WARN",
+      "Options": "None"
+    },
+    "TextColor": {
+      "Foreground": "#FFFF0000",
+      "Background": "#00FFFFFF"
+    },
+    "SearchAreas": [
+      "level"
+    ],
+    "Usage": "ParsedAreas"
+  },
+  {
+    "Name": "FATAL",
+    "Rule": {
+      "Pattern": "FATAL",
+      "Options": "None"
+    },
+    "TextColor": {
+      "Foreground": "#FFFFFFFF",
+      "Background": "#FFFF0000"
+    },
+    "SearchAreas": [
+      "level"
+    ],
+    "Usage": "ParsedAreas"
+  },
+  {
+    "Name": "DEBUG",
+    "Rule": {
+      "Pattern": "DEBUG",
+      "Options": "None"
+    },
+    "TextColor": {
+      "Foreground": "#FFA9A9A9",
+      "Background": "#00FFFFFF"
+    },
+    "SearchAreas": [
+      "level"
+    ],
+    "Usage": "ParsedAreas"
+  }
+]

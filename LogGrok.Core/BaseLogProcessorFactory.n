@@ -19,8 +19,6 @@ namespace LogGrok.Core
     {
         public Priority : int { get; private set; }
 
-        public LogType : string { get; private set; }
-
         public abstract Create(fileName : string, streamFactory : void -> Stream, container : IUnityContainer, startOffset : long, endOffset : long) : option[ILogProcessor * MetaInformation];
         
         protected static CreateMetaInformation([NotNullOrEmpty] name : string, [NotNull] fields : IEnumerable[string * bool], settings : Uri) : MetaInformation

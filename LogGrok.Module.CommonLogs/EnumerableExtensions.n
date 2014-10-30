@@ -1,0 +1,32 @@
+﻿using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace LogGrok.Module.CommonLogs
+{
+    internal module EnumerableExtensions
+    {
+        public GetDifferences[T, U](this source : IEnumerable[T], diffFunc : T*T -> U) : IEnumerable[U]
+        {
+            using (enumerator = source.GetEnumerator())
+	        {   
+	            when (enumerator.MoveNext())
+	            {
+	                mutable first = enumerator.Current;
+	                while (enumerator.MoveNext())
+	                {
+	                    def current = enumerator.Current;
+	                    
+	                    yield diffFunc(first, current);
+	                    first = current;
+	                }
+	            }
+            }
+        }
+    }
+}
