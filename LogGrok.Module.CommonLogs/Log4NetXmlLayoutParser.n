@@ -51,15 +51,17 @@ namespace LogGrok.Module.CommonLogs
     
         identifier                                            = identifierCharacter+;
     
-        stringValue                                           = stringValueCharacter*;
+        stringValue : string                                  = stringValueCharacter*;
     
         quoutedStringValue                                    = quotedStringValueCaracter*;
+        
+        cdata : string                                        = s "<![CDATA[" (!"]]>" [Any])* "]]>" s;
     
         prefix                                                = prefixCharacter +;
                 
         property        : EventAttribute                      = s "<" prefix ":data" s "name" s "=" "\""identifier"\"" s "value" s "=" s "\"" quoutedStringValue "\"" s "/>";
         
-        message         : EventAttribute                      = s "<" prefix ":message>" stringValue "</" prefix ":message>";
+        message         : EventAttribute                      = s "<" prefix ":message>" (cdata / stringValue) "</" prefix ":message>";
 
         properties      : SCG.List.[EventAttribute]           = s "<" prefix ":properties>" property+ s "</" prefix ":properties>";
         
@@ -116,9 +118,9 @@ namespace LogGrok.Module.CommonLogs
 			lst
 		}
 		
-		message(_ : NToken, _prefix : NToken, _ : NToken, token : NToken, _ : NToken, _pprefix : NToken, _ : NToken,) : EventAttribute
+		message(_ : NToken, _prefix : NToken, _ : NToken, value : string, _ : NToken, _pprefix : NToken, _ : NToken,) : EventAttribute
 		{
-			EventAttribute("message", GetText(token))
+			EventAttribute("message", value)
 		}
 
 		// s "<log4j:data" s "name" s "=" "\""identifier"\"" s "value" s "=" s "\"" regularCharacters "\"" s "/>";
@@ -130,6 +132,16 @@ namespace LogGrok.Module.CommonLogs
 		properties(_ : NToken, _prefix : NToken, _ : NToken, lst : SCG.List.[EventAttribute], _ : NToken, _pprefix : NToken, _ : NToken,) : SCG.List[EventAttribute]
 		{
 				lst
+		}
+		
+		cdata(_ : NToken, content : NToken, _ : NToken) : string
+		{
+		    GetText(content)
+		}
+		
+		stringValue(value : NToken) : string
+		{
+		    GetText(value)
 		}
 		
 		private _dateTimeParser : string -> DateTime;
