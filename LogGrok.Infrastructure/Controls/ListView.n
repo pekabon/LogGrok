@@ -137,7 +137,6 @@ namespace LogGrok.Infrastructure
             }
         }
 
-        [TraceMethod]
         private ResetColumnsWidth() : void
         {
             def CalculateRemainingSpace(gridView)

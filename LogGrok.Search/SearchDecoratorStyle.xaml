@@ -160,7 +160,7 @@
                                         </Style.Triggers>
                                     </Style>
                                 </Border.Style>
-                                <avalonDock:DockingManager infrabe:DocumentCollectionBindingBehavior.CurrentDocument="{Binding ActiveContent}"
+                                <avalonDock:DockingManager infrabe:DocumentCollectionBindingBehavior.CurrentDocument="{Binding CurrentDocument}"
                                                            infrabe:DocumentCollectionBindingBehavior.DocumentsSource="{Binding Documents}"
                                                            infrabe:DocumentCollectionBindingBehavior.OnDocumentCloseCommand="{Binding CloseDocument}">
                                     <avalonDock:DockingManager.LayoutItemContainerStyle>
@@ -237,7 +237,7 @@
                                                                     <ColumnDefinition Width="Auto" />
                                                                 </Grid.ColumnDefinitions>
                                                                 <Button Margin="5"
-                                                                        Command="{Binding AddNew}"
+                                                                        Command="{Binding AddNewSearch}"
                                                                         IsTabStop="False"
                                                                         Style="{StaticResource IronicallyNamedChromelessButtonStyle}">
                                                                     <Button.Content>

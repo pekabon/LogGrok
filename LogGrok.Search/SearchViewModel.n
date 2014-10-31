@@ -26,176 +26,147 @@ using LogGrok.FilterManager;
 using LogGrok.LogView.DataVirtualization;
 using LogGrok.Macros;
 
+#pragma warning disable 10003
+
 namespace LogGrok.Search
 {    
     [NotifyPropertyChanged]
-    public class SearchViewModel : IDataErrorInfo
+    internal class SearchViewModel : IDataErrorInfo
     {
-        class SearchPattern
-        {
-            [Record]
-            class PatternValidationResult
-            {
-                public static GetValidResult(pattern : string) : PatternValidationResult
-                {
-                    PatternValidationResult(pattern, true, string.Empty)
-                }
-                
-                [Accessor] _pattern : string;
-                [Accessor] _isValidRegex : bool;
-                [Accessor] _errorMessage : string;
-            }
-            
-            public UseRegex : bool { get; set }
-            public Text : string { get; set }
-            
-            public IsValid : bool
-            {
-                public get 
-                {
-                    if (!UseRegex)
-                    {
-                        true
-                    }
-                    else
-                    {
-                        ValidateRegex();
-                        _patternValidationResult.IsValidRegex;
-                    }
-                }
-            }
-            
-            public ValidationError : string 
-            { 
-                get
-                {
-                    if (!UseRegex)
-                    {
-                        string.Empty
-                    }
-                    else
-                    {
-                        ValidateRegex();
-                        _patternValidationResult.ErrorMessage;
-                    }
-                }
-            }
-            
-            private ValidateRegex() : void
-            {
-                unless (_patternValidationResult.Pattern == Text)
-                {
-                    try
-                    {
-                        _ = Regex(Text??string.Empty);
-                        _patternValidationResult = PatternValidationResult.GetValidResult(Text);
-                    }
-                    catch
-                    {
-                        | e => _patternValidationResult = PatternValidationResult(Text, false, e.Message);
-                    }
-                }
-            }
-
-            mutable _patternValidationResult : PatternValidationResult = PatternValidationResult.GetValidResult(string.Empty);
-        }
-        
-        public Error : string
-        {
-            get { string.Empty }
-        }
-        
-        public Item[propertyName : string] : string
-        {
-            get 
-            { 
-                if (propertyName == "SearchText")
-                    _searchPattern.ValidationError;
-                else
-                    string.Empty;
-            }
-        }
-        
         public this([NotNull] searchDocumentFactory : SearchDocumentFactory, [NotNull] highlighter : ILogHighlight)
         {
             _highlighter = highlighter;
-            _documentFactory = searchDocumentFactory;
+            _searchDocumentFactory = searchDocumentFactory;
             Documents = ObservableCollection();
-        }
+        }        
 
-        [NotifyChangedOptions(Dependent = IsFilterEnabled)]
         public SearchText : string
         {
-            get 
-            { 
-                _searchPattern.Text
+            get
+            {
+                _searchPatternCurrentlyEditing.Text
             }
+
             set 
             {
-                _searchPattern.Text = value;
-                when (_searchPattern.IsValid)
+                when (_searchPatternCurrentlyEditing.Text != value)
                 {
-                    GetOrCreateCurrentDocument().SearchText = value;
-                    UpdateHighlight();
-                }   
-                
+                    _searchPatternCurrentlyEditing.Text = value;
+                    CommitSearchPattern();
+                }
             }
         }
-        
+
         public IsCaseSensitive : bool 
         {
             get
             {
-                CurrentDocument.Map(d => d.IsCaseSensitive).WithDefault(false)
+                _searchPatternCurrentlyEditing.CaseSensitive
             }
+
             set
             {
-                GetOrCreateCurrentDocument().IsCaseSensitive = value;
-                UpdateHighlight();
+                when (_searchPatternCurrentlyEditing.CaseSensitive != value)
+                {
+                    _searchPatternCurrentlyEditing.CaseSensitive = value;
+                    CommitSearchPatternImmediately();
+                }
             }
         }
 
-        [NotifyChangedOptions(Dependent = [SearchText, IsFilterEnabled])]
-        public UseRegex : bool 
+        public UseRegex : bool
         {
             get
             {
-                _searchPattern.UseRegex
+                _searchPatternCurrentlyEditing.UseRegex
             }
+
             set
             {
-                _searchPattern.UseRegex = value;
-                
-                when (_searchPattern.IsValid)
+                when(_searchPatternCurrentlyEditing.UseRegex != value)
                 {
-                    GetOrCreateCurrentDocument().UseRegex = value;
-                    UpdateHighlight();
-                }   
+                    _searchPatternCurrentlyEditing.UseRegex = value;
+                    CommitSearchPatternImmediately();
+                }
             }
         }
-        
-        private UpdateHighlight() : void
+
+
+        [Throttle(TimeSpan.FromMilliseconds(500))]
+        private CommitSearchPattern() : void
         {
-            mutable options = SearchOptions.None;
-            when (IsCaseSensitive)
-                options |= SearchOptions.CaseSensitive;
-            
-            when (UseRegex) 
-                options |= SearchOptions.UseRegex;
-                
-            _highlighter.SetTextForHighlight(SearchText, options);
+            CommitSearchPatternImmediately()
         }
 
-        private GetOrCreateCurrentDocument() : SearchDocument
+        private CommitSearchPatternImmediately() : void
         {
-            match(CurrentDocument)
+            def searchPatternToCommit = _searchPatternCurrentlyEditing; 
+            _searchPatternCurrentlyEditing = SearchPattern(SearchText, IsCaseSensitive, UseRegex);
+            
+            when (searchPatternToCommit.IsValid)
             {
-                | Some(document) => document
-                | None => 
+                if (CurrentDocument != null)
                 {
-                    _currentDocument = Some(CreateNewDocument(SearchText, IsCaseSensitive, UseRegex));
-                    _currentDocument.Value
+                    CurrentDocument.SetSearchPattern(searchPatternToCommit);
                 }
+                else
+                {
+                    def newDocument = _searchDocumentFactory.Create();
+                    newDocument.SetSearchPattern(searchPatternToCommit);
+                    Documents.Add(newDocument);
+                    CurrentDocument = newDocument;
+                }
+                
+                _highlighter.SetTextForHighlight(searchPatternToCommit.Text, searchPatternToCommit.GetSearchOptions());
+                IsFilterEnabled = !searchPatternToCommit.Text.IsEmpty();
+            }
+        }
+
+        private mutable _currentDocument : SearchDocument;
+
+        public IsFilterEnabled : bool
+        {
+            get; set;
+        }
+
+        [NotifyChangedOptions(Dependent = [SearchText, IsCaseSensitive, UseRegex])]
+        public CurrentDocument : SearchDocument
+        {
+            get 
+            { 
+                _currentDocument; 
+            }
+            
+            set 
+            { 
+                _currentDocument = value;
+                
+                _searchPatternCurrentlyEditing = SearchPattern(value.SearchText, value.UseRegex, value.IsCaseSensitive);
+                _highlighter.SetTextForHighlight(_searchPatternCurrentlyEditing.Text, _searchPatternCurrentlyEditing.GetSearchOptions());
+            }
+        }
+
+        public Documents : ObservableCollection[SearchDocument] { get; private set; }
+
+        public AddNewSearch : ICommand
+        {
+            get
+            {
+                DelegateCommand(() =>
+                {
+                    def newDocument = _searchDocumentFactory.Create();
+                    newDocument.SetSearchPattern(_searchPatternCurrentlyEditing);
+                    Documents.Add(newDocument);
+                    CurrentDocument = newDocument;
+                })
+            }
+        }
+
+        public ClearSearchCommand : ICommand
+        {
+            get
+            {
+                DelegateCommand(() => { SearchText = string.Empty; CommitSearchPatternImmediately(); })
             }
         }
 
@@ -209,109 +180,31 @@ namespace LogGrok.Search
                     when (Documents.Count == 0)
                     {
                         SearchText = string.Empty;
-                        CurrentDocument = None();
+                        CurrentDocument = null;
                     }
                 })
             }
         }
 
-        public AddNew : ICommand
+        public Item[propertyName : string] : string
         {
             get 
             { 
-                DelegateCommand(() => AddNewDocument(SearchText));
+                if (propertyName == "SearchText")
+                    _searchPatternCurrentlyEditing.ValidationError;
+                else
+                    string.Empty;
             }
         }
 
-        public Documents : ObservableCollection[SearchDocument] { get; private set; }
-
-        [NotifyChangedOptions(Dependent = [SearchText, IsCaseSensitive, UseRegex, IsFilterEnabled])]
-        public CurrentDocument : option[SearchDocument]
-        { 
-            get 
-            { 
-                _currentDocument;
-            }
-
-            set
-            {
-                def Equals(document1, document2)
-                {
-                    | (Some(d1), Some(d2)) => Object.ReferenceEquals(d1, d2)
-                    | _ => false
-                }
-
-                unless (Equals(_currentDocument, value))
-                {
-                    _currentDocument = value;
-                    ActiveContent = _currentDocument.WithDefault(null);
-                    
-                    _searchPattern = SearchPattern() <- 
-                    { 
-                        UseRegex = _currentDocument.Map(_.UseRegex).WithDefault(false);
-                        Text = _currentDocument.Map(_.SearchText).WithDefault(string.Empty);
-                    }
-                    
-                    UpdateHighlight();
-                }
-            } 
-        }
-
-        public ActiveContent : object
+        public Error : string
         {
-            get
-            {
-                _activeContent
-            }
-
-            set 
-            {
-                unless (object.ReferenceEquals(_activeContent, value))
-                {
-                    _activeContent = value;
-                    match(value, Documents.Count)
-                    {
-                        | (document is SearchDocument, _) => CurrentDocument = Some(document)
-                        | (_, 0)                          => CurrentDocument = None()
-                        | (_, _)                          => CurrentDocument = Some(Documents.First());
-                    }
-                }
-
-            }
+            get { string.Empty }
         }
 
-        public IsFilterEnabled : bool 
-        { 
-            get 
-            {
-                !string.IsNullOrEmpty(SearchText) && _searchPattern.IsValid
-            }
-        }
-
-        public ClearSearchCommand : ICommand
-        {
-            get
-            {
-                DelegateCommand(() => SearchText = string.Empty)
-            }
-        }
-        
-        private AddNewDocument(searchText : string) : void
-        { 
-            CurrentDocument = Some(CreateNewDocument(searchText, IsCaseSensitive, UseRegex));
-        }
-
-        private CreateNewDocument(searchText : string, isCaseSensitive : bool, useRegex : bool) : SearchDocument
-        {
-            def newSearchDocument = _documentFactory.Create() <- { SearchText = searchText; IsCaseSensitive = isCaseSensitive; UseRegex = useRegex; };
-            Documents.Insert(0, newSearchDocument);
-            newSearchDocument            
-        }
-
-        private _documentFactory : SearchDocumentFactory;
+        private _searchDocumentFactory : SearchDocumentFactory;
         private _highlighter : ILogHighlight;
-        private mutable _currentDocument : option[SearchDocument] = None();
-        private mutable _activeContent : object;
-        private mutable _searchPattern : SearchPattern = SearchPattern();
+
+        private mutable _searchPatternCurrentlyEditing : SearchPattern = SearchPattern(string.Empty, false, false);
     }
 }

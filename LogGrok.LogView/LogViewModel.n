@@ -314,12 +314,11 @@ namespace LogGrok.LogView
 
         public SetTextForHighlight(text : string, searchOptions : SearchOptions) : void
         {
-            _syncContext.Post(_ => 
-                {
+            _ = Application.Current.Dispatcher.BeginInvoke(Action(() =>  
+                { 
                     HighlightedText = text;
-                    IsCaseSensitive = searchOptions.HasFlag(SearchOptions.CaseSensitive)
-                },
-                null);
+                    IsCaseSensitive = searchOptions.HasFlag(SearchOptions.CaseSensitive);
+                }), DispatcherPriority.ApplicationIdle);
         }
 
         public SelectedItems : IEnumerable[object]

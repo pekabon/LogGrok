@@ -27,10 +27,12 @@ using Microsoft.Practices.Prism.PubSubEvents;
 using Microsoft.Practices.Unity;
 using System.Windows.Controls;
 
+#pragma warning disable 10003
+
 namespace LogGrok.Search
 {
     [NotifyPropertyChanged]    
-    public class SearchDocument : ILineViewModelProviderAcceptor, IDisposable
+    internal class SearchDocument : ILineViewModelProviderAcceptor, IDisposable
     {
         public this([NotNull] navigationService : ILogNavigation, 
                     [NotNull] filterManager : FilterManager, 
@@ -51,6 +53,14 @@ namespace LogGrok.Search
             AddToScratchPad = DelegateCommand(o => (o : IEnumerable[object]).Cast.[LineViewModel]().Iter(x => scratchPad.AddText(x.RawLine)) );
         }
         
+        public SetSearchPattern(pattern : SearchPattern) : void
+        {
+            SearchText = pattern.Text;
+            IsCaseSensitive = pattern.CaseSensitive;
+            UseRegex = pattern.UseRegex;
+            StartSearch();
+        }
+        
         public CustomView : ViewBase 
         {
             get
@@ -68,7 +78,7 @@ namespace LogGrok.Search
                 {
                     _searchText = value; 
                           
-                    StartSearch(); 
+                     
                 }
             } 
         }
@@ -81,7 +91,6 @@ namespace LogGrok.Search
                 unless (_isCaseSensitive == value)
                 {
                     _isCaseSensitive = value;
-                    StartSearch();
                 }
                 
             }; 
@@ -95,7 +104,6 @@ namespace LogGrok.Search
                 unless (_useRegex == value)
                 {
                     _useRegex = value;
-                    StartSearch();
                 }
             }
         }
@@ -105,7 +113,7 @@ namespace LogGrok.Search
             _searchFilter.Reset(string.Empty, SearchOptions.None);
         }
                 
-        [Throttle(TimeSpan.FromMilliseconds(500))]
+        
         private StartSearch() : void
         {
             SearchProgress = 0;

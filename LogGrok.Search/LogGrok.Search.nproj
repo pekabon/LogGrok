@@ -189,6 +189,9 @@
     <Compile Include="SearchFilter.n">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="SearchPattern.n">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="SearchViewModel.n">
       <SubType>Code</SubType>
     </Compile>
