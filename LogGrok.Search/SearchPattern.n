@@ -1,0 +1,99 @@
+﻿using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text.RegularExpressions;
+
+using LogGrok.Core;
+
+namespace LogGrok.Search
+{
+    [Record]
+    class SearchPattern
+    {
+        [Record]
+        class PatternValidationResult
+        {
+            public static GetValidResult(pattern : string) : PatternValidationResult
+            {
+                PatternValidationResult(pattern, true, string.Empty)
+            }
+
+            [Accessor] _pattern : string;
+            [Accessor] _isValidRegex : bool;
+            [Accessor] _errorMessage : string;
+        }
+
+        public Text          : string { get; set }
+        public CaseSensitive : bool { get; set;}
+        public UseRegex      : bool { get; set }
+
+
+        public IsValid : bool
+        {
+                public get 
+            {
+                if (!UseRegex)
+                {
+                    true
+                }
+                else
+                {
+                    ValidateRegex();
+                    _patternValidationResult.IsValidRegex;
+                }
+            }
+        }
+
+        public ValidationError : string 
+        { 
+            get
+            {
+                if (!UseRegex)
+                {
+                    string.Empty
+                }
+                else
+                {
+                    ValidateRegex();
+                    _patternValidationResult.ErrorMessage;
+                }
+            }
+        }
+
+        public GetSearchOptions() : SearchOptions
+        {
+            mutable options = SearchOptions.None;
+            when (CaseSensitive)
+                options |= SearchOptions.CaseSensitive;
+            
+            when (UseRegex) 
+                options |= SearchOptions.UseRegex;
+                
+            options
+        }
+        
+        private ValidateRegex() : void
+        {
+            unless (_patternValidationResult.Pattern == Text)
+            {
+                try
+                {
+                    _ = Regex(Text??string.Empty);
+                    _patternValidationResult = PatternValidationResult.GetValidResult(Text);
+                }
+                catch
+                {
+                    | e => _patternValidationResult = PatternValidationResult(Text, false, e.Message);
+                }
+            }
+        }
+
+        [RecordIgnore]
+        mutable _patternValidationResult : PatternValidationResult = PatternValidationResult.GetValidResult(string.Empty);
+    }
+}
