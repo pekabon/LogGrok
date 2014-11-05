@@ -34,7 +34,7 @@ namespace LogGrok.Module.CommonLogs
             RegisterFactory.[MsiLogProcessorFactory](MsiLogProcessorFactory.MetaInformation.LogType, MsiLogProcessorFactory.MetaInformation, 80);
             RegisterFactory.[GenericUtf8LogProcessorFactory](GenericUtf8LogProcessorFactory.MetaInformation.LogType, GenericUtf8LogProcessorFactory.MetaInformation, int.MinValue);
             RegisterFactory.[GenericUtf16LogProcessorFactory](GenericUtf16LogProcessorFactory.MetaInformation.LogType, GenericUtf16LogProcessorFactory.MetaInformation, int.MinValue);
-            RegisterFactory.[VBLogProcessorFactory](NLogLogProcessorFactory.MetaInformation.LogType, VBLogProcessorFactory.MetaInformation, 80);
+            RegisterFactory.[VBLogProcessorFactory](VBLogProcessorFactory.MetaInformation.LogType, VBLogProcessorFactory.MetaInformation, 80);
             RegisterFactory.[NLogLogProcessorFactory](NLogLogProcessorFactory.MetaInformation.LogType, NLogLogProcessorFactory.MetaInformation, 80);
             Log4NetLogProcessorFactory.Register(_container, 120);
         }
