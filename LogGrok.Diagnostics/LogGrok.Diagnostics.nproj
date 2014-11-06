@@ -131,6 +131,9 @@
     <Compile Include="DiagnosticsComponent.n">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="ElevationLayoutRenderer.n">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Environment\ComponentProvider.n">
       <SubType>Code</SubType>
     </Compile>

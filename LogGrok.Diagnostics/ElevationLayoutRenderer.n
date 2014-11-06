@@ -1,0 +1,30 @@
+﻿using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using NLog.LayoutRenderers;
+
+using System.Security.Principal;
+
+namespace LogGrok.Diagnostics
+{
+    [LayoutRenderer("IsElevated")]
+    public class ElevationLayoutRenderer : LayoutRenderer
+    {
+        protected override Append(builder : System.Text.StringBuilder, _ : NLog.LogEventInfo) : void
+        {
+            _ = builder.Append(if (IsElevated()) "-Elevated" else string.Empty);
+        }
+
+        [Memoize]
+        private IsElevated() : bool
+        {
+            def principal = WindowsPrincipal(WindowsIdentity.GetCurrent());
+            principal.IsInRole(WindowsBuiltInRole.Administrator);
+        }
+    }
+}
