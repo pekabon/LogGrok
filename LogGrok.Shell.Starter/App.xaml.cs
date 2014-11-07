@@ -1,48 +1,66 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Configuration;
-using System.Data;
 using System.Deployment.Application;
 using System.Diagnostics;
 using System.Linq;
-using System.Threading.Tasks;
 using System.Windows;
+using Custom.Windows;
 using LogGrok.Core;
 using LogGrok.Diagnostics;
-using LogGrok.Shell;
-using MahApps.Metro;
 using Microsoft.Practices.Unity;
 
 namespace LogGrok.Shell.Starter
 {
-	public partial class App : Application
+	public partial class App
 	{
 		public App()
+			: base(ApplicationInstanceAwareness.Host)
+
 		{
 			InitializeComponent();
 		}
 
-		protected override void OnStartup(StartupEventArgs _)
+		private void ProcessArgs(string[] args)
 		{
-			ShutdownMode = ShutdownMode.OnMainWindowClose;
-
-			_bootstrapper.Run();
-            Current.MainWindow.Show();
-
-			var args = ApplicationDeployment.IsNetworkDeployed ?
-				GetClickOnceArgs() :
-				Environment.GetCommandLineArgs().Skip(1).ToArray();
-
 			if (args.Length > 1)
-				MessageBox.Show(string.Format("Unsupported args count use {0} <filename>", Process.GetCurrentProcess().MainModule.FileName));
+				MessageBox.Show(string.Format("Unsupported args count use {0} <filename>",
+					Process.GetCurrentProcess().MainModule.FileName));
 			if (args.Length == 1)
 				_bootstrapper.Container.Resolve<DocumentManager>().LoadNew(args[0]);
 		}
 
-		protected override void OnExit(ExitEventArgs _) 
-        {
-            Logger.FlushAll();   
-        }
+		protected override void OnStartup(StartupEventArgs e, bool? isFirstInstance)
+		{
+
+			if (!isFirstInstance.GetValueOrDefault(false))
+			{
+				Shutdown();
+				return;
+			}
+
+			StartupNextInstance += (_, arguments)
+				=>
+			{
+				ProcessArgs(arguments.Args.Skip(1).ToArray());
+				arguments.BringToForeground = true;
+			};
+
+			ShutdownMode = ShutdownMode.OnMainWindowClose;
+
+			_bootstrapper.Run();
+			Current.MainWindow.Show();
+
+			var args = ApplicationDeployment.IsNetworkDeployed
+				? GetClickOnceArgs()
+				: Environment.GetCommandLineArgs().Skip(1).ToArray();
+			
+			ProcessArgs(args);
+		}
+
+		protected override void OnExit(ExitEventArgs e, bool isFirstInstance)
+		{
+			base.OnExit(e, isFirstInstance);
+			Logger.FlushAll();   
+		}
 
 		private static string[] GetClickOnceArgs()
 		{
