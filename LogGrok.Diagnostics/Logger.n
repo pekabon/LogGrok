@@ -1,5 +1,4 @@
 ﻿using Nemerle;
-
 using Nemerle.Collections;
 using Nemerle.Text;
 using Nemerle.Utility;
@@ -11,14 +10,11 @@ using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Linq;
 using System.Deployment.Application;
-using System.IO;
 
 using NLog;
 
 using LogGrok.Diagnostics.Environment;
 using LogGrok.Diagnostics.Formatters;
-
-[assembly: log4net.Config.XmlConfigurator(Watch = true)]
 
 namespace LogGrok.Diagnostics
 {
@@ -26,17 +22,18 @@ namespace LogGrok.Diagnostics
   {
       static this()
       {
-          
-          _nlogLogger = LogManager.GetCurrentClassLogger();         
+          _logger = LogManager.GetCurrentClassLogger();
+
           GlobalDiagnosticsContext.Set("EntryAssembly", Assembly.GetEntryAssembly().FullName);
           
-          GlobalDiagnosticsContext.Set("DeploymentVersion", if (ApplicationDeployment.IsNetworkDeployed) ApplicationDeployment.CurrentDeployment?.CurrentVersion?.ToString() else string.Empty);
+          GlobalDiagnosticsContext.Set(
+            "DeploymentVersion", 
+            if (ApplicationDeployment.IsNetworkDeployed) ApplicationDeployment.CurrentDeployment?.CurrentVersion?.ToString() else string.Empty);
       }
       
       private this(component : string)
       {
           _component = component;
-          _loggerFunc = Log4NetLog;
       }
       
       public static Get(component : string = null) : Logger
@@ -47,7 +44,7 @@ namespace LogGrok.Diagnostics
       
       public static FlushAll() : void
       {
-          //LogManager.Flush();   
+          LogManager.Flush();   
       }
             
       public Debug(message : string, params args : array[object]) : void
@@ -72,44 +69,22 @@ namespace LogGrok.Diagnostics
       
       public Flush() : void
       {
-         // LogManager.Flush();   
+          LogManager.Flush();   
       }
       
       private Log(level : LogLevel, message : string, args : array[object]) : void
       {
-            _loggerFunc(level, message, args)   
-      }
-      
-      private NLogLog(level : LogLevel, message : string, args : array[object]) : void
-      {
-          def logEvent = LogEventInfo.Create(level, _nlogLogger.Name, null, message, args);
+          def logEvent = LogEventInfo.Create(level, _logger.Name, null, message, args);
           
           logEvent.Properties["component"] = _component;
           logEvent.Properties["levelShort"] = LogLevelFormatter.Format(level);
           
-          _nlogLogger.Log(logEvent);                    
-      }
-      
-      private Log4NetLog(level : LogLevel, message : string, args : array[object]) : void
-      {
-          def msg = string.Format(message, args);
-          match(level)
-          {
-            |  _ when level == LogLevel.Info  => _log4netLogger.Info(msg)
-            |  _ when level == LogLevel.Warn  => _log4netLogger.Warn(msg)
-            |  _ when level == LogLevel.Error => _log4netLogger.Error(msg)           
-            |  _ when level == LogLevel.Debug => _log4netLogger.Debug(msg)
-          } 
+          _logger.Log(logEvent);                    
       }
       
       private _component : String;
-            
-      private _loggerFunc : (LogLevel * string * array[object]) -> void;
       
       private static _loggersCache : ConcurrentDictionary[string, Logger] = ConcurrentDictionary();
-      private static _nlogLogger : NLog.Logger;   
-      
-      private static _log4netLogger : log4net.ILog = log4net.LogManager.GetLogger(typeof(Logger));
-      
+      private static _logger : NLog.Logger;      
   }
 }

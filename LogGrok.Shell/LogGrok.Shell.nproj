@@ -45,11 +45,6 @@
     <MacroReference Include="Nemerle.WPF">
       <HintPath>$(Nemerle)\Nemerle.WPF.dll</HintPath>
     </MacroReference>
-    <Reference Include="log4net, Version=1.2.13.0, Culture=neutral, PublicKeyToken=669e0ddf0bb1aa2a">
-      <Name>log4net</Name>
-      <AssemblyName>log4net.dll</AssemblyName>
-      <HintPath>..\packages\log4net.2.0.3\lib\net40-full\log4net.dll</HintPath>
-    </Reference>
     <Reference Include="MahApps.Metro, Version=0.14.0.0, Culture=neutral, PublicKeyToken=f4fb5a3c4d1e5b4f">
       <Name>MahApps.Metro</Name>
       <AssemblyName>MahApps.Metro.dll</AssemblyName>
