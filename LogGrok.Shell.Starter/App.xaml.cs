@@ -1,66 +1,48 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Configuration;
+using System.Data;
 using System.Deployment.Application;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
-using Custom.Windows;
 using LogGrok.Core;
 using LogGrok.Diagnostics;
+using LogGrok.Shell;
+using MahApps.Metro;
 using Microsoft.Practices.Unity;
 
 namespace LogGrok.Shell.Starter
 {
-	public partial class App
+	public partial class App : Application
 	{
 		public App()
-			: base(ApplicationInstanceAwareness.Host)
-
 		{
 			InitializeComponent();
 		}
 
-		private void ProcessArgs(string[] args)
+		protected override void OnStartup(StartupEventArgs _)
 		{
+			ShutdownMode = ShutdownMode.OnMainWindowClose;
+
+			_bootstrapper.Run();
+            Current.MainWindow.Show();
+
+			var args = ApplicationDeployment.IsNetworkDeployed ?
+				GetClickOnceArgs() :
+				Environment.GetCommandLineArgs().Skip(1).ToArray();
+
 			if (args.Length > 1)
-				MessageBox.Show(string.Format("Unsupported args count use {0} <filename>",
-					Process.GetCurrentProcess().MainModule.FileName));
+				MessageBox.Show(string.Format("Unsupported args count use {0} <filename>", Process.GetCurrentProcess().MainModule.FileName));
 			if (args.Length == 1)
 				_bootstrapper.Container.Resolve<DocumentManager>().LoadNew(args[0]);
 		}
 
-		protected override void OnStartup(StartupEventArgs e, bool? isFirstInstance)
-		{
-
-			if (!isFirstInstance.GetValueOrDefault(false))
-			{
-				Shutdown();
-				return;
-			}
-
-			StartupNextInstance += (_, arguments)
-				=>
-			{
-				ProcessArgs(arguments.Args.Skip(1).ToArray());
-				arguments.BringToForeground = true;
-			};
-
-			ShutdownMode = ShutdownMode.OnMainWindowClose;
-
-			_bootstrapper.Run();
-			Current.MainWindow.Show();
-
-			var args = ApplicationDeployment.IsNetworkDeployed
-				? GetClickOnceArgs()
-				: Environment.GetCommandLineArgs().Skip(1).ToArray();
-			
-			ProcessArgs(args);
-		}
-
-		protected override void OnExit(ExitEventArgs e, bool isFirstInstance)
-		{
-			base.OnExit(e, isFirstInstance);
-			Logger.FlushAll();   
-		}
+		protected override void OnExit(ExitEventArgs _) 
+        {
+            Logger.FlushAll();   
+        }
 
 		private static string[] GetClickOnceArgs()
 		{

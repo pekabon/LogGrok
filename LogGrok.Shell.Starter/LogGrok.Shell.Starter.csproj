@@ -83,9 +83,6 @@
     <ApplicationIcon>whiteeye.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Custom.Windows">
-      <HintPath>..\packages\Custom.Windows.1.1.0.0\lib\net40\Custom.Windows.dll</HintPath>
-    </Reference>
     <Reference Include="LogGrok.Core, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL" />
     <Reference Include="LogGrok.Diagnostics, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL" />
     <Reference Include="MahApps.Metro, Version=0.14.0.0, Culture=neutral, PublicKeyToken=f4fb5a3c4d1e5b4f, processorArchitecture=MSIL">
