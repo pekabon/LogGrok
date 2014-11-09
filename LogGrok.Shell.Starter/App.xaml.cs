@@ -12,6 +12,7 @@ using LogGrok.Diagnostics;
 using LogGrok.Shell;
 using MahApps.Metro;
 using Microsoft.Practices.Unity;
+using System.Windows.Threading;
 
 namespace LogGrok.Shell.Starter
 {
@@ -22,44 +23,59 @@ namespace LogGrok.Shell.Starter
 			InitializeComponent();
 		}
 
+        public void NextInstanceStarted(IEnumerable<string> args)
+        {
+            HandleCommandLine(args.ToArray());
+            Activate();
+        }
+
+        public void Run(string[] args)
+        {
+            Dispatcher.BeginInvoke(DispatcherPriority.Normal, new Action(() => HandleCommandLine(args)));
+            Run();
+        }
+
 		protected override void OnStartup(StartupEventArgs _)
 		{
 			ShutdownMode = ShutdownMode.OnMainWindowClose;
 
 			_bootstrapper.Run();
             Current.MainWindow.Show();
-
-			var args = ApplicationDeployment.IsNetworkDeployed ?
-				GetClickOnceArgs() :
-				Environment.GetCommandLineArgs().Skip(1).ToArray();
-
-			if (args.Length > 1)
-				MessageBox.Show(string.Format("Unsupported args count use {0} <filename>", Process.GetCurrentProcess().MainModule.FileName));
-			if (args.Length == 1)
-				_bootstrapper.Container.Resolve<DocumentManager>().LoadNew(args[0]);
 		}
-
+        
 		protected override void OnExit(ExitEventArgs _) 
         {
             Logger.FlushAll();   
         }
 
-		private static string[] GetClickOnceArgs()
-		{
-			var activationData = AppDomain.CurrentDomain.SetupInformation.ActivationArguments.ActivationData;
+        private void Activate()
+        {
+            var window = Current.MainWindow;
 
-			if (activationData == null)
-				return new string[0];
+            if (!window.IsVisible)
+            {
+                window.Show();
+            }
 
-			var argUri = new Uri(activationData[0]);
+            if (window.WindowState == WindowState.Minimized)
+            {
+                window.WindowState = WindowState.Normal;
+            }
 
-			if (ApplicationDeployment.CurrentDeployment.ActivationUri == argUri)
-				return new string[0];
+            window.Activate();
+            window.Topmost = true;
+            window.Topmost = false;
+            window.Focus();
+        }
 
-			return argUri.IsFile ? new[] { argUri.LocalPath } : new string[0];
-		}
+        private void HandleCommandLine(string[] args)
+        {
+            if (args.Length > 1)
+                MessageBox.Show(string.Format("Unsupported args count use {0} <filename>", Process.GetCurrentProcess().MainModule.FileName));
+            if (args.Length == 1)
+                _bootstrapper.Container.Resolve<DocumentManager>().LoadNew(args[0]);
+        }
 
-		private readonly Bootstrapper _bootstrapper = new Bootstrapper();
-
+        private readonly Bootstrapper _bootstrapper = new Bootstrapper();
 	}
 }
