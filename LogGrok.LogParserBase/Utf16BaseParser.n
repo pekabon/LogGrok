@@ -87,7 +87,9 @@ namespace LogGrok.LogParserBase
             unchecked 
             {
                 when (bufferOffset >= BufferArrayLength)
-                    throw ParseException($"Too long string at offset $BufferOffset");
+                {
+                    GrowBuffer(bufferOffset)
+                }
                 
                 BufferOffset = Stream.Position - bufferOffset * 2;
                 def read = Stream.Read(_buffer.Bytes, bufferOffset * 2, _buffer.Bytes.Length - bufferOffset * 2);
@@ -101,6 +103,21 @@ namespace LogGrok.LogParserBase
         
         protected CreateTextBytes(begin : int, end : int) : Text { Text16(begin*2, end*2, _buffer.Bytes) }
 
+        protected GrowBuffer(desiredSize : int) : void
+        {
+            while(BufferArrayLength <= desiredSize)
+            {
+                def newBuffer = array(_buffer.Bytes.Length * 2); 
+                Buffer.BlockCopy(_buffer.Bytes, 0, newBuffer, 0, _buffer.Bytes.Length);
+                
+                _buffer = UnionArray() <- { Bytes = newBuffer };
+                
+                Buffer = _buffer.UShorts;
+                BufferArrayLength = _buffer.Bytes.Length / 2;
+            }
+            
+        }
+        
         protected static MakeConstant(v : char) : ushort
         {
             def result = Text.Encoding.Unicode.GetBytes(array[v]);
@@ -115,7 +132,7 @@ namespace LogGrok.LogParserBase
             ZeroByte = MakeConstant('0');
         }
 
-        private _buffer : UnionArray;
+        private mutable _buffer : UnionArray;
         private static AByte : ushort;
         private static ABigByte : ushort;
         private static ZeroByte : ushort;

@@ -388,7 +388,9 @@ namespace LogGrok.Macros.LogParserGenerator
                 _ = Stream.Seek(0, System.IO.SeekOrigin.Begin);
                 when (!TryReadBuffer())
                     throw LogGrok.LogParserBase.ParseException("File is empty");
+                
                 def lineFormat = DetectLineBegin(0);
+                
                 def (lineFormat, beginPosition) = 
                     if (lineFormat != -1) 
                         (lineFormat, 0)
@@ -397,6 +399,13 @@ namespace LogGrok.Macros.LogParserGenerator
                         def (format, endPosition) = FindEndOfLine(0);
                         (format, endPosition + EolLength)
                     }
+            
+                 when (lineFormat == -1)
+                 {
+                    throw LogGrok.LogParserBase.ParseException("Unable to find first line");
+                 }
+                    
+                    
                 ReadLines(lineFormat, beginPosition);
             } ]> );
 
@@ -454,6 +463,7 @@ namespace LogGrok.Macros.LogParserGenerator
         _ = type.DefineWithSource( <[ decl:
         public ReadLineAt(beginOffset : long, nextbeginOffset: long) : LogGrok.LogParserBase.Line
             {
+                GrowBuffer(((nextbeginOffset - beginOffset) / $size):> int);
                 when (beginOffset < BufferOffset || nextbeginOffset > BufferOffset + BufferLength * $size)
                 {
                     _ = Stream.Seek(beginOffset, System.IO.SeekOrigin.Begin);
