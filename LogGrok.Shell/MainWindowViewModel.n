@@ -66,7 +66,7 @@ namespace LogGrok.Shell
                         partiallyDialog.DataContext = viewModel;
                         when (partiallyDialog.ShowDialog().GetValueOrDefault())
                         {
-                            TryOpenFile(dialog.FileName)
+                            TryOpenFile(dialog.FileName, viewModel.StartOffset, viewModel.EndOffset)
                         }
                     }
                 }
@@ -179,6 +179,12 @@ namespace LogGrok.Shell
         private TryOpenFile(file : string) : void
         {
             _ = _documentManager.LoadNew(file);
+        }
+        
+        [TraceMethod]
+        private TryOpenFile(file : string, startOffset : long,  endOffset : long) : void
+        {
+            _ = _documentManager.LoadNew(file , startOffset, endOffset);
         }
 
         private _documentManager : DocumentManager;
