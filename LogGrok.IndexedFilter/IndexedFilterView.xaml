@@ -68,10 +68,11 @@
                                                             UpdateSourceTrigger=PropertyChanged}"
                                              be:RoutedCommandBehavior.RoutedCommandToCommandBinding="{be:RoutedCommandToCommandBinding Command={Binding Source={x:Static commands:TextBoxCommands.Clear}},
                                                                                                                                        RoutedCommand={x:Static commands:RoutedCommands.Cancel}}"
-                                             metroControls:TextboxHelper.ButtonCommand="{Binding Source={x:Static commands:TextBoxCommands.Clear}}"
-                                             metroControls:TextboxHelper.ButtonCommandParameter="{Binding ElementName=FilterTextBox}"
-                                             metroControls:TextboxHelper.SelectAllOnFocus="True"
-                                             metroControls:TextboxHelper.Watermark="Search...">
+                                             
+                                             metroControls:TextBoxHelper.ButtonCommand="{Binding Source={x:Static commands:TextBoxCommands.Clear}}"
+                                             metroControls:TextBoxHelper.ButtonCommandParameter="{Binding ElementName=FilterTextBox}"
+                                             metroControls:TextBoxHelper.SelectAllOnFocus="True"
+                                             metroControls:TextBoxHelper.Watermark="Search...">
                                         <TextBox.InputBindings>
                                             <KeyBinding Key="Escape"
                                                         Command="{x:Static commands:RoutedCommands.Cancel}"
@@ -79,13 +80,13 @@
                                         </TextBox.InputBindings>
                                         <TextBox.Style>
                                             <Style BasedOn="{StaticResource MetroTextBox}" TargetType="{x:Type TextBox}">
-                                                <Setter Property="metroControls:TextboxHelper.ClearTextButton" Value="True" />
+                                                <Setter Property="metroControls:TextBoxHelper.ClearTextButton" Value="True" />
                                                 <Style.Triggers>
-                                                    <Trigger Property="metroControls:TextboxHelper.HasText" Value="False">
-                                                        <Setter Property="metroControls:TextboxHelper.ClearTextButton" Value="False" />
+                                                    <Trigger Property="metroControls:TextBoxHelper.HasText" Value="False">
+                                                        <Setter Property="metroControls:TextBoxHelper.ClearTextButton" Value="False" />
                                                     </Trigger>
-                                                    <Trigger Property="metroControls:TextboxHelper.HasText" Value="True">
-                                                        <Setter Property="metroControls:TextboxHelper.ClearTextButton" Value="True" />
+                                                    <Trigger Property="metroControls:TextBoxHelper.HasText" Value="True">
+                                                        <Setter Property="metroControls:TextBoxHelper.ClearTextButton" Value="True" />
                                                     </Trigger>
                                                 </Style.Triggers>
                                             </Style>

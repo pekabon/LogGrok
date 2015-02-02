@@ -113,22 +113,22 @@
                                                         ValidatesOnDataErrors=True,
                                                         Mode=TwoWay}"
                                          controls:FindRoutedCommandBehavior.IsRoutedCommandTarget="True"
-                                         metroControls:TextboxHelper.ButtonCommand="{Binding ClearSearchCommand,
+                                         metroControls:TextBoxHelper.ButtonCommand="{Binding ClearSearchCommand,
                                                                                              Mode=OneWay}"
-                                         metroControls:TextboxHelper.SelectAllOnFocus="True"
-                                         metroControls:TextboxHelper.Watermark="Search...">
+                                         metroControls:TextBoxHelper.SelectAllOnFocus="True"
+                                         metroControls:TextBoxHelper.Watermark="Search...">
                                     <TextBox.InputBindings>
                                         <KeyBinding Key="Escape" Command="{Binding ClearSearchCommand}" />
                                     </TextBox.InputBindings>
                                     <TextBox.Style>
                                         <Style BasedOn="{StaticResource MetroTextBox}" TargetType="{x:Type TextBox}">
-                                            <Setter Property="metroControls:TextboxHelper.ClearTextButton" Value="True" />
+                                            <Setter Property="metroControls:TextBoxHelper.ClearTextButton" Value="True" />
                                             <Style.Triggers>
-                                                <Trigger Property="metroControls:TextboxHelper.HasText" Value="False">
-                                                    <Setter Property="metroControls:TextboxHelper.ClearTextButton" Value="False" />
+                                                <Trigger Property="metroControls:TextBoxHelper.HasText" Value="False">
+                                                    <Setter Property="metroControls:TextBoxHelper.ClearTextButton" Value="False" />
                                                 </Trigger>
-                                                <Trigger Property="metroControls:TextboxHelper.HasText" Value="True">
-                                                    <Setter Property="metroControls:TextboxHelper.ClearTextButton" Value="True" />
+                                                <Trigger Property="metroControls:TextBoxHelper.HasText" Value="True">
+                                                    <Setter Property="metroControls:TextBoxHelper.ClearTextButton" Value="True" />
                                                 </Trigger>
                                             </Style.Triggers>
                                         </Style>
@@ -239,7 +239,7 @@
                                                                 <Button Margin="5"
                                                                         Command="{Binding AddNewSearch}"
                                                                         IsTabStop="False"
-                                                                        Style="{StaticResource IronicallyNamedChromelessButtonStyle}">
+                                                                        Style="{StaticResource ChromelessButtonStyle}">
                                                                     <Button.Content>
                                                                         <Rectangle Width="15"
                                                                                    Height="15"
