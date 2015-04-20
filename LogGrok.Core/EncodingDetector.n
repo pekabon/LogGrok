@@ -1,0 +1,44 @@
+﻿using System.IO;
+using System.Text;
+using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace LogGrok.Core
+{
+    public module EncodingDetector
+    {
+        public DetectEncoding(stream : Stream) : Encoding
+        {
+            def preamble = array(4);
+            def bytesRead = stream.Read(preamble, 0, 4);
+            def encoding = 
+                              match(bytesRead, NList.ToList(preamble) )
+                              {
+                                  | (0, _)
+                                  | (1, _)                                             => null
+                                  | (_, [254, 255, _, _])                              => UnicodeEncoding(true, true)
+                                  | (l, [255, 254, a, b]) 
+                                      when l < 4 || a != 0 || b != 0                   => UnicodeEncoding(false, true)
+                                  | (_, [255, 254, _, _])                              => UTF32Encoding(false, true)
+                                  | (l, [239, 187, 191, _]) when l >= 3                => Encoding.UTF8
+                                  | (l, [0, 0, 254, 255])   when l >= 4                => UTF32Encoding(true, true);
+                                  | _                                                  => null
+                              }
+
+            if (encoding == null)                
+            {
+                Encoding.UTF8
+            }
+            else
+            {
+                encoding
+            }
+        }
+    }
+}

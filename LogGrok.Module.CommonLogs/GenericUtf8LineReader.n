@@ -13,6 +13,6 @@ namespace LogGrok.Module.CommonLogs
     [LogParserGenerator( byte, "\xd\xa", "text:Message" )]
     class GenericUtf8LineReader : Utf8BaseParser
     {
-        public this(stream : Stream) { base(stream); }
+        public this(streamFactory : void -> Stream) { base(streamFactory()); }
     }
 }

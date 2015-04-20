@@ -21,16 +21,22 @@ namespace LogGrok.LogParserBase
     {           
         internal type GetOffsetsWithTextFunction = (void -> Stream) * string * SearchOptions * long -> (IEnumerable[LineLocation] -> IEnumerable[LineOrProgress]);
         
+        public GetOffsets(encoding : System.Text.Encoding, streamFactory : void -> Stream, pattern: string, options : SearchOptions, offset: long) : 
+            IEnumerable[LineLocation] -> IEnumerable[LineOrProgress]
+        {
+            lineLocations => GetMatches(buffer => encoding.GetString(buffer, 0, buffer.Length), streamFactory, pattern, options, offset, lineLocations)
+        }
+        
         public GetOffsetsWithUtf8Text(streamFactory : void -> Stream, pattern: string, options : SearchOptions, offset: long) : 
             IEnumerable[LineLocation] -> IEnumerable[LineOrProgress]
         {
-            lineLocations => GetMatches(buffer => UTF8.GetString(buffer, 0, buffer.Length), streamFactory, pattern, options, offset, lineLocations)
+            GetOffsets(UTF8, streamFactory, pattern, options, offset)
         }
         
         public GetOffsetsWithUtf16Text(streamFactory : void -> Stream, pattern: string, options: SearchOptions, offset: long) : 
             IEnumerable[LineLocation] -> IEnumerable[LineOrProgress]
         {
-             lineLocations => GetMatches(buffer => Unicode.GetString(buffer, 0, buffer.Length), streamFactory, pattern, options, offset, lineLocations)
+             GetOffsets(Unicode, streamFactory, pattern, options, offset)
         } 
         
         internal GetMatches(unicodeReader : array[byte] -> string, 

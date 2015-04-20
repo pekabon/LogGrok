@@ -13,16 +13,20 @@ using Microsoft.Practices.Unity;
 using LogGrok.Core;
 using LogGrok.LogParserBase;
 
+
 namespace LogGrok.LogParserBase
 {
+    type StreamFactory     = void -> Stream;
+    type LineReaderFactory = (void -> Stream) -> ILineReader;
+    
     public class LogProcessor : ILogProcessor
     {
-        public this([NotNullOrEmpty] filePath : string,
-                    [NotNull] streamFactory : void -> Stream,
-                    [NotNull] lineReaderFactory : Stream -> ILineReader,
-                    [NotNull] fileSearcher : FileSearcher.GetOffsetsWithTextFunction,
-                    [NotNull] headerParser : Stream -> option[Header*string],
-                    [NotNull] container : IUnityContainer,
+        public this([NotNullOrEmpty] filePath   : string,
+                    [NotNull] streamFactory     : StreamFactory,
+                    [NotNull] lineReaderFactory : LineReaderFactory,
+                    [NotNull] fileSearcher      : FileSearcher.GetOffsetsWithTextFunction,
+                    [NotNull] headerParser      : Stream -> option[Header*string],
+                    [NotNull] container         : IUnityContainer,
                     beginOffset = 0l,
                     endOffset = -1l)
         {
@@ -37,7 +41,7 @@ namespace LogGrok.LogParserBase
             Loaded += (_, _) => _lineIndex.OnLoaded();
             
             def stream = CreateSubStream();
-            _lineReader = _lineReaderFactory(stream);
+            _lineReader = _lineReaderFactory(CreateSubStream);
             FileSize = stream.Length;
             StartTime =  _lineReader.First().Time;
             FinishTime = _lineReader.GetLastLine().Time;
@@ -68,9 +72,9 @@ namespace LogGrok.LogParserBase
         {
             match (ProcessedLineCount - index)
             {
-                | 1 => _lineReader.ReadLineAt( _lineIndex.GetLineOffset(index), _lineIndex.LastLineOffset )
+                | 1 => _lineReader.ReadLineAt(_lineIndex.GetLineOffset(index), _lineIndex.LastLineOffset )
                 | x when x > 0 => 
-                    _lineReader.ReadLineAt( _lineIndex.GetLineOffset(index),  _lineIndex.GetLineOffset(index + 1))
+                    _lineReader.ReadLineAt(_lineIndex.GetLineOffset(index),  _lineIndex.GetLineOffset(index + 1))
                 | _ => throw ArgumentOutOfRangeException($"Try get line by index $index but have only $ProcessedLineCount processed line");
             }
         }
@@ -93,7 +97,7 @@ namespace LogGrok.LogParserBase
             
             try
             {
-                using (lineReader = _lineReaderFactory(CreateSubStream()))
+                using (lineReader = _lineReaderFactory(CreateSubStream))
                     foreach (line in lineReader.TakeWhile(_ => !cancellationToken.IsCancellationRequested))
                     {
                         def index = _lineIndex.AddNextLine(line.Offset, line.EndOffset);
@@ -126,7 +130,7 @@ namespace LogGrok.LogParserBase
         }
         
         private _streamFactory : void -> Stream;
-        private _lineReaderFactory : Stream -> ILineReader;
+        private _lineReaderFactory : LineReaderFactory;
         private _lineReader : ILineReader;
         private _lineIndex : LineIndex;
         private _cancellationTokenSource = CancellationTokenSource();

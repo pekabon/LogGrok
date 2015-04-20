@@ -11,6 +11,7 @@ using Nemerle.WPF;
 using Nemerle.Surround;
 
 using LogGrok.Core;
+using LogGrok.Core.EncodingDetector;
 
 [assembly:DefineSurround("seekToBegin", true, _ = _stream.Seek(0, SeekOrigin.Begin), _ = _stream.Seek(0, SeekOrigin.Begin))]
 
@@ -28,32 +29,11 @@ namespace LogGrok.Shell
                 _stream.Dispose();
             }
             
-            def BomIsEqaulToPreamble(encoding)
-            {
-                surroundwith(seekToBegin)
-                {
-                    def preamble = encoding.GetPreamble();
-                    def bom = array(preamble.Length);
-                    _ = _stream.Read(bom, 0, bom.Length);
-                    bom.SequenceEqual(preamble)
-                }
-            }
-            
-            def GetEncoding()
-            {
-                if (BomIsEqaulToPreamble(Encoding.Unicode))
-                {
-                    Encoding.Unicode
-                }
-                else
-                {
-                    Encoding.UTF8
-                }
-            }
-
 			_stream = LogFile.OpenRead(fileName);
-			_encoding = GetEncoding();
-            FileLength = _stream.Length;
+			
+			surroundwith(seekToBegin) _encoding = DetectEncoding(_stream);
+
+			FileLength = _stream.Length;
             FileName = fileName;
             EndOffset = FileLength;
             OpenCommand = DelegateCommand(Open);
@@ -91,7 +71,9 @@ namespace LogGrok.Shell
         
         private ReadText(startOffset : long) : string
         {
-            _ = _stream.Seek(startOffset, SeekOrigin.Begin);
+            def charLength = _encoding.GetByteCount("0");
+            
+            _ = _stream.Seek(startOffset - startOffset % charLength, SeekOrigin.Begin);
 			def length = _stream.Read(_buffer, 0, _buffer.Length);
 			_encoding.GetString(_buffer, 0, length);
         }

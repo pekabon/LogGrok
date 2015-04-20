@@ -19,7 +19,7 @@ namespace LogGrok.LogParserBase
             get; set;
         }
         
-        public GetRawLine() : string implements ILine.get_RawLine { RawLine.ToString() }
+        public virtual GetRawLine() : string implements ILine.get_RawLine { RawLine.ToString() }
         
         public GetTime() : TimeSpan implements ILine.get_Time { Time }
         

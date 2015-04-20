@@ -148,6 +148,9 @@
     <Compile Include="DocumentViewTemplateSelector.n">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="EncodingDetector.n">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="ErrorPresenter.n">
       <SubType>Code</SubType>
     </Compile>

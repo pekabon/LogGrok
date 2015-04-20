@@ -6,7 +6,10 @@ namespace LogGrok.LogParserBase
 {
     public interface ILineReader : IEnumerable[Line], IDisposable
     {
+        
+        
         GetLastLine() : ILine;
+        
         ReadLineAt(beginOffset : long, endOffset : long) : ILine;
     }
 }

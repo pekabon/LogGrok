@@ -16,6 +16,6 @@ namespace LogGrok.Module.CommonLogs
         )]
     class VBLineReader : Utf8BaseParser
     {
-        public this(stream : Stream) { base(stream); }
+        public this(streamFactory : void -> Stream) { base(streamFactory()); }
     }
 }

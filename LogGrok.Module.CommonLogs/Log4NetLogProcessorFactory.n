@@ -71,7 +71,7 @@ namespace LogGrok.Module.CommonLogs
         
         private ReadLines(stream : Stream) : IEnumerable[string]
         {
-            def streamReader = StreamReader(stream);
+            def streamReader = System.IO.StreamReader(stream);
             while(streamReader.Peek() != -1)
                 yield streamReader.ReadLine();
         }

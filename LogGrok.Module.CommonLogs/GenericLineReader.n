@@ -1,0 +1,106 @@
+﻿using Nemerle;
+using Nemerle.Assertions;
+using Nemerle.Collections;
+using Nemerle.Extensions;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Collections;
+using System.Linq;
+using System.IO;
+
+using LogGrok.Core;
+using LogGrok.LogParserBase;
+
+using LogGrok.Macros;
+
+namespace LogGrok.Module.CommonLogs
+{
+    [Disposable]
+    internal class GenericLineReader : ILineReader
+    {
+        [Record]
+        internal class GenericLine : Line
+        {
+            public override Item[s : string] : object
+            {
+                get
+                {
+                    match(s)
+                    {
+                        | "Message" => _text.Value
+                        | _ => throw NotSupportedException()
+                    }
+                }
+            }
+        
+            [RecordIgnore]
+            public override Time : System.TimeSpan
+            {
+                get; set;
+            }
+        
+            public override GetRawLine() : string 
+            {
+                _text.Value
+            }
+        
+            private _text : Lazy[string];
+        }
+        
+        public this([NotNull] streamFactory : void -> Stream, encoding : System.Text.Encoding )
+        {
+            def stream = streamFactory();
+            _streamReader = LogGrok.Module.CommonLogs.StreamReader(stream, encoding);
+            _lineStream = streamFactory();
+        }
+        
+        
+        public GetLastLine() : ILine
+        { 
+            GenericLine(Lazy(() => string.Empty));
+        }
+        
+        private static ReadTextAt(encoding : System.Text.Encoding, stream : Stream, beginOffset : long, endOffset : long) : string
+        {
+            def length = (endOffset - beginOffset) :> int;
+            
+            def buffer    = array(length);
+            
+            stream.Position = beginOffset;
+            def bytesRead = stream.Read(buffer, 0, length);
+            
+            encoding.GetString(buffer, 0, bytesRead).TrimEnd(System.Environment.NewLine.ToCharArray());
+        }
+        
+        public ReadLineAt(beginOffset : long, endOffset : long) : LogGrok.Core.ILine
+        {
+            GenericLine(Lazy(() => ReadTextAt(_streamReader.Encoding, _lineStream, beginOffset, endOffset))) <- { Offset = beginOffset; EndOffset = endOffset; };
+        }
+        
+        public GetEnumerator() : IEnumerator[Line]
+        { 
+            def offsets = _streamReader.Read();    
+            
+            offsets.Select(offset =>
+            {
+                def (begin, end) = offset;
+                
+                GenericLine(Lazy(() => ReadTextAt(_streamReader.Encoding, _lineStream, begin, end))) <- { Offset = begin; EndOffset = end; };
+                
+            }).Cast.[Line]().GetEnumerator()
+        }
+        
+        public NonGenericGetEnumerator() : IEnumerator
+            implements IEnumerable.GetEnumerator
+        { 
+            this.GetEnumerator() 
+        }
+        
+        private _lineStream : Stream;
+        private _streamReader : StreamReader;
+        
+    }
+}

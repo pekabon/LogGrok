@@ -135,7 +135,13 @@
     <Compile Include="EnumerableExtensions.n">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="FileSearcher.n">
+    <Compile Include="FileSearch.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="GenericLineReader.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="GenericLogProcessorFactory.n">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="GenericUtf16LineReader.n">
@@ -173,6 +179,9 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Properties\AssemblyInfo.n" />
+    <Compile Include="StreamReader.n">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="VBLineReader.n">
       <SubType>Code</SubType>
     </Compile>

@@ -46,9 +46,6 @@ namespace LogGrok.Infrastructure
                 | _ => ()
             }
             
-            when (name == "SearchDocumentsPane")
-                Console.WriteLine("");
-            
             when (d != null && context != null && name != null)
                CreateRegion(d, context, name);
         }

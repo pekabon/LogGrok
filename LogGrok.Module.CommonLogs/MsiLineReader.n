@@ -17,6 +17,6 @@ namespace LogGrok.Module.CommonLogs
         )]
     class MsiLineReader : Utf16BaseParser
     {
-        public this(stream : Stream) { base(stream); }
+        public this(streamFactory : void -> Stream) { base(streamFactory()); }
     }
 }
