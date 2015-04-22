@@ -18,7 +18,7 @@
 
                         <Grid.InputBindings>
                             <MouseBinding Gesture="LeftDoubleClick" 
-                                Command="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type ListView}}, Path=DataContext.AddSingleLineToScartchPad}"
+                                Command="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type ListView}}, Path=DataContext.AddSingleLineToScratchPad}"
                                 CommandParameter="{Binding}" />
                         </Grid.InputBindings>
 

@@ -51,6 +51,7 @@ namespace LogGrok.Search
             _lineViewModelProviderFactory = lineViewModelProviderFactory;
             
             AddToScratchPad = DelegateCommand(o => (o : IEnumerable[object]).Cast.[LineViewModel]().Iter(x => scratchPad.AddText(x.RawLine)) );
+            AddSingleLineToScratchPad = DelegateCommand(o => AddToScratchPad.Execute([o]));
         }
         
         public SetSearchPattern(pattern : SearchPattern) : void
@@ -178,6 +179,7 @@ namespace LogGrok.Search
         }
         
         public AddToScratchPad : ICommand { get; private set; }
+        public AddSingleLineToScratchPad : ICommand { get; private set; }
         
         private _navigationService : ILogNavigation;
         private mutable _selectedValue : LineViewModel;    
