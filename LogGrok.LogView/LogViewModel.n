@@ -98,6 +98,8 @@ namespace LogGrok.LogView
                 .Cast.[VirtualItem[LineViewModel]]()
                 .Select(_.SourceItem)
                 .Iter(x => scratchPad.AddText(x.RawLine)) );
+                
+            AddSingleLineToScartchPad = DelegateCommand(o => AddToScratchPad.Execute([o]));
 
             _indexProvider = OriginalLineProvider(_documentLineProvider, _logInfo);
             
@@ -332,6 +334,8 @@ namespace LogGrok.LogView
         }
 
         public AddToScratchPad : ICommand { get; private set; }
+        
+        public AddSingleLineToScartchPad : ICommand { get; private set; }
         
         private GetComponentsInSelectedLines(componentKey : string) : IEnumerable[Text]
         {
