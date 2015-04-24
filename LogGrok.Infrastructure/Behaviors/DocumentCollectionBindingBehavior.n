@@ -45,8 +45,9 @@ namespace LogGrok.Infrastructure.Behaviors
         {
             def dockingManager = d :> DockingManager;
             def documentToDocumentViewLink = GetObservableCollectionFactoryLink(dockingManager) :> ObservableCollectionFactoryLink[UIElement];
-            when (documentToDocumentViewLink != null)
-                dockingManager.ActiveContent = documentToDocumentViewLink.TargetFromSource(args.NewValue).WithDefault(null);
+            
+            when (documentToDocumentViewLink != null && documentToDocumentViewLink.TargetFromSource(args.NewValue).HasValue)
+                dockingManager.ActiveContent = documentToDocumentViewLink.TargetFromSource(args.NewValue).Value;
         }
 
         private OnChanged(d : DependencyObject, _ : DependencyPropertyChangedEventArgs) : void 
@@ -78,8 +79,11 @@ namespace LogGrok.Infrastructure.Behaviors
                     += (_, _) => 
                     {
                         def activeSource = documentToDocumentViewLink.SourceFromTarget(dockingManager.ActiveContent :> UIElement);
-                        SetCurrentDocument(dockingManager, 
-                                    activeSource.WithDefault(null));
+                        
+                        when (activeSource.HasValue)
+                        {
+                            SetCurrentDocument(dockingManager, activeSource.Value);
+                        }
                     }
             }
 
