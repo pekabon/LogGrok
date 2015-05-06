@@ -1,0 +1,38 @@
+﻿using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Windows.Data;
+using System.Windows.Markup;
+
+namespace LogGrok.Search
+{
+    class SettingsBindingConverterExtension : MarkupExtension, IValueConverter
+    {
+        private mutable _lastValue  : object;
+        
+        public Convert(value : object, _ : System.Type, _: object, _: System.Globalization.CultureInfo) : object
+        {
+            when (_lastValue == null)
+                _lastValue = value;
+            
+            _lastValue
+            
+        }
+
+        public ConvertBack(value : object, _: System.Type, _: object, _: System.Globalization.CultureInfo) : object
+        {
+            _lastValue = value;
+            value
+        }
+        
+        public override ProvideValue(_ : IServiceProvider) : object
+        {
+            SettingsBindingConverterExtension()
+        }
+    }
+}

@@ -8,7 +8,9 @@
                     xmlns:infrabe="clr-namespace:LogGrok.Infrastructure.Behaviors;assembly=LogGrok.Infrastructure"
                     xmlns:infracontrols="clr-namespace:LogGrok.Infrastructure.Controls;assembly=LogGrok.Infrastructure"
                     xmlns:metroControls="clr-namespace:MahApps.Metro.Controls;assembly=MahApps.Metro"
-                    xmlns:toolkit="clr-namespace:Xceed.Wpf.Toolkit;assembly=Xceed.Wpf.Toolkit">
+                    xmlns:toolkit="clr-namespace:Xceed.Wpf.Toolkit;assembly=Xceed.Wpf.Toolkit"
+                    xmlns:properties="clr-namespace:LogGrok.Resources.Properties;assembly=LogGrok.Resources">
+    
     <ResourceDictionary.MergedDictionaries>
         <ResourceDictionary Source="/LogGrok.Controls;component/Styles/ToggleButtonStyle.xaml" />
         <ResourceDictionary Source="/LogGrok.LogView;component/Styles/ListViewItemStyle.xaml" />
@@ -18,9 +20,11 @@
         <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Controls.xaml" />
         <ResourceDictionary Source="pack://application:,,,/Xceed.Wpf.AvalonDock.Themes.Metro;component/Theme.xaml" />
     </ResourceDictionary.MergedDictionaries>
-
+    
+    
     <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
     <avalonDock:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibilityConverter" />
+    <properties:Settings x:Key="Settings" />
 
     <Style TargetType="{x:Type Search:SearchDecorator}">
         <Style.Setters>
@@ -32,35 +36,14 @@
                               be:HideableRowBehavior.IsVisible="{Binding IsFilterEnabled}"
                               be:HideableRowBehavior.Row="{Binding ElementName=SearchResultsRow}">
                             <Grid.RowDefinitions>
-                                <RowDefinition Height="2*" />
+                                <RowDefinition Height="{Binding Default.MainViewHeightSetting, Source={StaticResource Settings}, Mode=TwoWay, Converter={Search:SettingsBindingConverter}}"/>
+
+
                                 <RowDefinition Height="5" />
-                                <RowDefinition x:Name="SearchResultsRow" Height="*">
-                                    <RowDefinition.Style>
-                                        <Style TargetType="{x:Type RowDefinition}">
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsFilterEnabled}" Value="True">
-                                                    <Setter Property="RowDefinition.Height" Value="*" />
-                                                </DataTrigger>
-                                                <DataTrigger Binding="{Binding IsFilterEnabled}" Value="False">
-                                                    <DataTrigger.EnterActions>
-                                                        <BeginStoryboard Name="BeginStoryboard">
-                                                            <Storyboard>
-                                                                <ObjectAnimationUsingKeyFrames Storyboard.TargetProperty="Height">
-                                                                    <ObjectAnimationUsingKeyFrames.KeyFrames>
-                                                                        <DiscreteObjectKeyFrame KeyTime="0:0:0" Value="{x:Static GridLength.Auto}" />
-                                                                    </ObjectAnimationUsingKeyFrames.KeyFrames>
-                                                                </ObjectAnimationUsingKeyFrames>
-                                                            </Storyboard>
-                                                        </BeginStoryboard>
-                                                    </DataTrigger.EnterActions>
-                                                    <DataTrigger.ExitActions>
-                                                        <RemoveStoryboard BeginStoryboardName="BeginStoryboard" />
-                                                    </DataTrigger.ExitActions>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </RowDefinition.Style>
-                                </RowDefinition>
+                                <RowDefinition x:Name="SearchResultsRow" 
+                                               Height="{Binding Default.SearchViewHeightSetting, Source={StaticResource Settings},  Mode=TwoWay, Converter={Search:SettingsBindingConverter}}"/>
+
+
                             </Grid.RowDefinitions>
                             <Grid>
                                 <Grid.ColumnDefinitions>

@@ -277,6 +277,10 @@
     </PublishFile>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\LogGrok.Resources\LogGrok.Resources.csproj">
+      <Project>{5565dfb5-5d9e-43eb-834f-f4e9bfbb0104}</Project>
+      <Name>LogGrok.Resources</Name>
+    </ProjectReference>
     <ProjectReference Include="..\LogGrok.Shell\LogGrok.Shell.nproj">
       <Project>{006b038a-854a-4d72-97ad-1913e07df1c0}</Project>
       <Name>LogGrok.Shell</Name>

@@ -197,6 +197,9 @@
     <Compile Include="SearchViewModel.n">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="SettingsBindingConverter.n">
+      <SubType>Code</SubType>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <Page Include="SearchDecoratorStyle.xaml">
@@ -253,6 +256,11 @@
     <ProjectReference Include="..\LogGrok.LogView\LogGrok.LogView.nproj">
       <Name>LogGrok.LogView</Name>
       <Project>{236ada26-ef7b-4aa8-a1cf-1eb5f69d9a0d}</Project>
+      <Private>True</Private>
+    </ProjectReference>
+    <ProjectReference Include="..\LogGrok.Resources\LogGrok.Resources.csproj">
+      <Name>LogGrok.Resources</Name>
+      <Project>{5565dfb5-5d9e-43eb-834f-f4e9bfbb0104}</Project>
       <Private>True</Private>
     </ProjectReference>
   </ItemGroup>

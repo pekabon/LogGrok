@@ -42,10 +42,11 @@ namespace LogGrok.Shell.Starter
 			_bootstrapper.Run();
             Current.MainWindow.Show();
 		}
-        
+
 		protected override void OnExit(ExitEventArgs _) 
         {
-            Logger.FlushAll();   
+			LogGrok.Resources.Properties.Settings.Default.Save();
+			Logger.FlushAll();   
         }
 
         private void Activate()
