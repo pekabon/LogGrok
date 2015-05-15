@@ -90,8 +90,6 @@ namespace LogGrok.Module.CommonLogs
                     if (unmatchedLen == 0)
                     {  
                         def returnValue = stream.Position - bufferLen + bufferPos;
-                        when (returnValue < 0)
-                            Console.WriteLine("cc");
                         yield returnValue;
                         Search(bufferLen, bufferPos + textAsUtf8.Length)
                     }

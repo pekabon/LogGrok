@@ -40,12 +40,17 @@ namespace LogGrok.Core
         
         public GetModifiedFNVHash(this value : array[byte]) : int
         {
+            value.GetModifiedFNVHash(0, value.Length);
+        }
+        
+        public GetModifiedFNVHash(this value : array[byte], from : int, length : int) : int
+        {
             unchecked
             {
                 def p = 16777619;
 		        mutable hash = 2166136261 :> int;
 
-		        for (mutable i = 0; i < value.Length; i++)
+		        for (mutable i = from; i < length; i++)
 			        hash = (hash ^ value[i]) * p;
 
 			    hash += hash << 13;

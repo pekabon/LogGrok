@@ -1,0 +1,319 @@
+﻿using Nemerle.Assertions;
+using Nemerle.Collections;
+using Nemerle.Extensions;
+
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.IO;
+using System.Runtime.CompilerServices;
+using System.Text;
+using System.Runtime.InteropServices;
+using LogGrok.Macros;
+
+namespace LogGrok.Module.CommonLogs
+{
+    [Disposable]
+    public class BufferStreamReader : IDisposable
+    {
+        public this([NotNull] stream : Stream, [NotNull] encoding : Encoding)
+        {
+            _stream = stream;
+            _encoding = Lazy(() => encoding);
+        }
+
+        public Encoding : Encoding 
+        { 
+            get 
+            {
+                _encoding.Value
+            }
+        };
+        
+        public Read() : IEnumerable[long*long]
+        {
+            ReadBuffers().Select(
+                v : IEnumerable[int * int] * array[byte] * long =>
+                {
+                    def (offsets, _, pos) = v;
+                        offsets.Select(offset : int * int =>
+                        {
+                            def (begin, length) = offset;
+                            
+                            (begin + pos, begin + pos + length)
+                            
+                        })
+                    })
+                    .SelectMany(s => s)
+        }
+        
+        public ReadStrings() : IEnumerable[string]
+        {
+            ReadBuffers().Select(
+                v : IEnumerable[int * int] * array[byte] * long =>
+                {
+                    def (offsets, buffer, _) = v;
+                        offsets.Select(offset=>
+                            {
+                                   def (begin, length) = offset;
+                                   Encoding.GetString(buffer, begin, length);
+                            })
+                    })
+                    .SelectMany(s => s)
+        }
+        
+        public ReadBuffers() : IEnumerable[IEnumerable[int* int] * array[byte] * long]
+        {
+            System.Diagnostics.Trace.TraceInformation("Start read file");
+            
+            SkipPreamble();
+            def encoding = Encoding;
+            mutable position : long = _stream.Position;
+
+            def crSize = Encoding.GetByteCount("\r");
+            def (rPattern, nPattern, minusPattern, andPattern) = GetPatterns(encoding.GetBytes("\r"), encoding.GetBytes("\n"));
+            
+            mutable bytesRead;
+            mutable lastPosition;
+            mutable byteBuffer;
+            
+            while (position < _stream.Length - crSize)
+            {
+                byteBuffer = array(4*1024*1024);
+                bytesRead = _stream.Read(byteBuffer, 0, byteBuffer.Length);
+                    
+                def rangesInBuffer = GetRangesBuffer(byteBuffer, bytesRead, rPattern, nPattern, minusPattern, andPattern);
+                if (rangesInBuffer.Length == 0)
+                {
+                    yield (array[(0, bytesRead)], byteBuffer, position);
+                    position += bytesRead;
+                }
+                else
+                {    
+                    def (lastBegin, lastLength) = rangesInBuffer[rangesInBuffer.Length - 1];
+                    lastPosition = lastBegin + lastLength;
+                
+                    yield (rangesInBuffer, byteBuffer, position);
+                
+                    position += lastPosition;
+                    _stream.Position = position;
+                }
+            }
+            
+            when (bytesRead - lastPosition > crSize)
+                yield ([(lastPosition, bytesRead - lastPosition)], byteBuffer, position - lastPosition);
+            
+            System.Diagnostics.Trace.TraceInformation("End read file");
+        }
+        
+        private GetRangesBuffer(buffer : array[byte], length : int, rPattern : ulong, nPattern : ulong, minusPattern : ulong, andPattern : ulong) : array[int*int]
+        {
+            FindCrlfPositionInBuffer(buffer, length, rPattern, nPattern, minusPattern, andPattern)
+                        |> MergeCrlfs
+                        |> Enumerable.ToArray;
+        }
+        
+        enum MergeState
+        {
+            | FindEol
+            | EatingTail
+        }
+        
+        private MergeCrlfs(source : IEnumerable[int]) : IEnumerable[int*int]
+        {
+            def charLength: int = Encoding.GetBytes("\r").Length;
+            
+            when(source.Any())
+            {
+                mutable firstChar = 0;
+                mutable prevCrlf  = 0;
+                mutable crlfCount = 0;
+                
+                mutable state = MergeState.FindEol;
+                
+                foreach (crlfPosition in source)
+                {
+                    match (state)    
+                    {
+                        | FindEol =>
+                            {
+                                state = MergeState.EatingTail;
+                                crlfCount ++;
+                                prevCrlf = crlfPosition;
+                            }
+                        | EatingTail when crlfPosition - prevCrlf > charLength =>
+                            {
+                                yield (firstChar, prevCrlf - firstChar + charLength);
+                                state = MergeState.FindEol;
+                                firstChar = prevCrlf + charLength;
+                                crlfCount = 0;
+                            }
+                        | EatingTail when crlfCount == 3 => 
+                            {
+                                yield (firstChar, prevCrlf - firstChar + charLength);
+                                crlfCount = 2;
+                                firstChar = crlfPosition - charLength;
+                                prevCrlf  = crlfPosition;
+                            }
+                        | EatingTail =>
+                            {
+                                crlfCount++;
+                                prevCrlf = crlfPosition;
+                            }
+                    }
+                }
+            }
+        }
+
+        private SkipPreamble() : void
+        {
+            _stream.Position = 0;
+            def preamble = Encoding.GetPreamble();
+            def preambleBuffer = array(preamble.Length);
+            def read = _stream.Read(preambleBuffer, 0, preambleBuffer.Length);
+            
+            when (read < preambleBuffer.Length || !Compare(preamble, preamble, preambleBuffer, 0, preamble.Length))
+            {
+                _stream.Position = 0;
+            }            
+        }
+        
+        private FindCrlfs(encoding : Encoding) : IEnumerable[long]
+        {
+            SkipPreamble();
+                        
+            mutable position : long = _stream.Position;
+            def byteBuffer = array(4*1024*1024);
+            
+            def (rPattern, nPattern, minusPattern, andPattern) = GetPatterns(encoding.GetBytes("\r"), encoding.GetBytes("\n"));
+            
+            while (position < _stream.Length - 1l)
+            {   
+                def bytesRead = _stream.Read(byteBuffer, 0, byteBuffer.Length);
+                foreach(pos in FindCrlfPositionInBuffer(byteBuffer, bytesRead, rPattern, nPattern, minusPattern, andPattern))
+                {
+                    def crlfPosition = pos + position;
+                    yield crlfPosition
+                }
+                
+                position += bytesRead;
+            }
+            
+            yield _stream.Length;
+        }
+
+        private FindCrlfPositionInBuffer(buffer : array[byte], length : int, rPattern : ulong, nPattern : ulong, minusPattern : ulong, andPattern : ulong) : IEnumerable[int]
+        {
+            def fixedBuffer = 
+            {
+                    def mod = length % 8;
+                    if (mod == 0)
+                        buffer
+                    else
+                    {
+                        def newArray = array(length + mod);
+                        Buffer.BlockCopy(buffer, 0, newArray, 0, length);
+                        newArray
+                    }
+            }
+
+            def r = Encoding.GetBytes("\r");
+            def n = Encoding.GetBytes("\n");
+            def rLength = r.Length;
+            
+            unchecked
+            {
+                def ints = UnionArray.ToLongs(fixedBuffer);
+                for(mutable idx = 0; idx < length / 8; idx++)
+                {
+                    def v = ints[idx];
+               
+                    when ({ 
+                            def masked13 = v ^ nPattern;
+                            ((masked13 - minusPattern) & ~masked13 & andPattern) != 0
+                          } 
+                          || 
+                          {
+                              def masked10 = v ^ rPattern;
+                              ((masked10 - minusPattern) & ~masked10 & andPattern) != 0
+                          })
+                    {
+                        def bytePosition = idx * 8;
+                        for (mutable i = bytePosition; i < bytePosition + 8; i += rLength)
+                        {
+                            when (Compare(r, n, fixedBuffer, i, rLength))
+                                yield i;
+                        }
+                    }
+            }}
+        }
+
+        private static GetPatterns(r : array[byte], n : array[byte]) : ulong * ulong * ulong * ulong
+        {
+            def ToLongBE(value : array[byte])
+            {
+                BitConverter.ToUInt64(value.Reverse().ToArray(), value.Length - sizeof(UInt64));
+            }
+            
+            def patternLength = r.Length;
+            
+            def rPattern = array(8);
+            def nPattern = array(8);
+            def minusPattern = array(8) : array[byte];
+            def andPattern = array(8) : array[byte];
+            
+            for (mutable idx = 0; idx < 8; idx += patternLength)
+            {
+                Buffer.BlockCopy(r, 0, rPattern, idx, patternLength);
+                Buffer.BlockCopy(n, 0, nPattern, idx, patternLength);
+                minusPattern[idx + patternLength - 1] = 0x01ub;
+                andPattern[idx]   = 0x80ub;
+            }
+            
+            (BitConverter.ToUInt64(rPattern, 0), BitConverter.ToUInt64(nPattern, 0), ToLongBE(minusPattern), ToLongBE(andPattern))
+            
+        }
+        
+        [StructLayout(LayoutKind.Explicit)]
+        private struct UnionArray
+        {
+            [FieldOffset(0)]
+            public mutable Bytes : array[byte];
+            
+            [FieldOffset(0)]
+            public Longs: array[ulong];
+
+            public static ToLongs(bytes : array[byte]) : array[ulong]
+            {
+                def u = UnionArray() <- {Bytes = bytes;};
+                u.Longs
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static Compare(a1 : array[byte], a2 : array[byte], b : array[byte], bPos : int, l : int) : bool
+        {
+            mutable result1 = true;
+            mutable result2 = true;
+            unchecked
+            {
+                for (mutable i = 0; i < l && (result1 || result2); i++)
+                {
+                    def bbyte = b[i + bPos];
+                    result1 = a1[i] == bbyte;
+                    result2 = a2[i] == bbyte;
+
+                }
+            }
+
+            result1 || result2
+        }
+
+        private _encoding : Lazy[Encoding];
+
+        private _stream : Stream;
+    }
+}

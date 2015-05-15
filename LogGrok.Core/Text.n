@@ -10,22 +10,15 @@ using System.Linq;
 
 namespace LogGrok.Core
 {
-    public class Text : IComparable, IComparable[Text]
+    [Record]
+    public class Text  : IComparable, IComparable[Text]
     {
-        protected this(start : int, end : int, buffer : array[byte])
-        {
-            unchecked
-            {
-                Buffer = array(end - start);
-                Buffer.BlockCopy(buffer, start, Buffer, 0, end - start);
-            }
-        }
-      
+       
         public static Empty : Text
         {
             get
             {
-                Text8(0, 0, array(0))
+                _empty
             }
         }
         
@@ -33,38 +26,48 @@ namespace LogGrok.Core
         {
             get
             {
-                Buffer.Length == 0
+                _end == _start;
             }
         }
         
-        public Buffer : array[byte];
+        public Length : int
+        {
+            get
+            {
+                _end - _start;
+            }
+        }
         
         public override GetHashCode() : int 
         {
-            Buffer.GetModifiedFNVHash()
+            _buffer.GetModifiedFNVHash(_start, _end - _start)
         }
         
         public override Equals(other : object) : bool
         {
             | otherText is Text =>
             {
-                if (Buffer.Length != otherText.Buffer.Length)
+                if (Length != otherText.Length)
                     false
                 else
                 {
                     mutable result = true;
-                    for (mutable i = 0; i < Buffer.Length; i++)
-                        when (Buffer[i] != otherText.Buffer[i]) 
+                    mutable j = otherText._start;
+                    for (mutable i = _start; i < Length + _start; i++)
+                    {
+                        when (_buffer[i] != otherText._buffer[j]) 
                         {
                             result = false;
                             break;
                         }
+                        j++;
+                    }
                     result
                 }
             }
             | _ => false
         }
-
+        
         public NonGenericCompareTo(obj : object) : int 
                             implements IComparable.CompareTo
         {
@@ -81,6 +84,43 @@ namespace LogGrok.Core
         {
             throw InvalidOperationException()
         }
+        
+        protected ToString(encoding : System.Text.Encoding) : string
+        {
+            encoding.GetString(_buffer, _start, _end - _start);
+        }
+        
+        private static _empty : Text = Text8(0, 0, array(0));
+        
+        private _start : int;
+        private _end   : int;
+        private _buffer : array[byte];
+    }
+    
+    public class TextWithCopy : Text, IComparable, IComparable[Text]
+    {
+        protected this(start : int, end : int, buffer : array[byte])
+        {
+            unchecked
+            {
+                Buffer = array(end - start);
+                Buffer.BlockCopy(buffer, start, Buffer, 0, end - start);
+                
+                base(0, buffer.Length, Buffer)
+            }
+        }      
+        
+       
+        protected Buffer : array[byte];
+        
+        
+                
+        public override ToString() : string
+        {
+            throw InvalidOperationException()
+        }
+        
+        private static _empty : Text = Text8(0, 0, array(0));
         
     }
 }

@@ -6,16 +6,17 @@ using Nemerle.Utility;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 
 namespace LogGrok.Core
 {
     [Record]
-    public class Text8 : TextWithCopy
+    public class TextWithEncoding : Text
     {
         public override ToString() : string 
         {
-             if (Buffer == null) string.Empty else Encoding.UTF8.GetString(Buffer) 
-        }        
+            ToString(_encoding)
+        } 
+
+        private _encoding : System.Text.Encoding;
     }
 }

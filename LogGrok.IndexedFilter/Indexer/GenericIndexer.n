@@ -158,7 +158,7 @@ namespace LogGrok.IndexedFilter.Indexer
             {
                 _indexer = indexer;
                 CountChanged += _ => {}
-                Console.WriteLine(excludedComponents.ToList());
+
                 def excludedComponentsByIndex = excludedComponents.Select(
                     keyValuePair => new (ComponentIndex = indexer._keyFields.IndexOf(keyValuePair.Key), ExcludedComponentValues = keyValuePair.Value));
                 

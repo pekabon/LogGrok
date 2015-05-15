@@ -1,0 +1,250 @@
+﻿using System.Collections.Concurrent;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using Nemerle;
+using Nemerle.Assertions;
+using Nemerle.Collections;
+using Nemerle.Extensions;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Collections;
+using System.Linq;
+using System.IO;
+
+using LogGrok.Core;
+using LogGrok.LogParserBase;
+
+using LogGrok.Macros;
+using System.Linq.Expressions;
+namespace LogGrok.Module.CommonLogs
+{
+    [Disposable]
+    internal class RegexBasedLineReader : ILineReader
+    {
+        [Record]
+        internal class RegexBasedLine : Line
+        {
+            public override Item[s : string] : object
+            {
+                get
+                {
+                    mutable groupNum;
+                    if (_groupNameMapping.TryGetValue(s, out groupNum))
+                    {
+
+                        def mtch = _matchs[groupNum];
+
+                        if (mtch[1] >= 0)
+                        {
+                            def start = _startIndex;
+                            def count = _encoding.GetBytes(_rawLine, mtch[0], mtch[1], _buffer, _startIndex);
+                            _startIndex += count;
+                            mtch[0] = start;
+                            mtch[1] = -count;
+
+                            LogGrok.Core.TextWithEncoding(start, _startIndex, _buffer, _encoding);
+                        }
+                        else
+                        {
+                            LogGrok.Core.TextWithEncoding(mtch[0], mtch[0] - mtch[1], _buffer, _encoding);
+                        }
+
+                    }
+                    else
+                        Text.Empty;
+                }
+            }
+
+            [RecordIgnore]
+            public override Time : System.TimeSpan
+            {
+                get; set;
+            }
+
+            public override GetRawLine() : string
+            {
+                _rawLine
+            }
+
+            private _encoding : System.Text.Encoding;
+            private _rawLine : string;
+            private _matchs : array[array[int]];
+            private _buffer : array[byte];
+            mutable private _startIndex : int;
+            private _groupNameMapping : Dictionary[string, int];
+        }
+
+        public this([NotNull] streamFactory : void -> Stream, encoding : System.Text.Encoding, regexes : list[Regex], meta : MetaInformation)
+        {
+            def stream = streamFactory();
+            _meta = meta;
+            _streamReader = LogGrok.Module.CommonLogs.BufferStreamReader(stream, encoding);
+
+            _lineStream = streamFactory();
+            _regexes    = regexes;
+        }
+
+        public GetLastLine() : ILine
+        { 
+            EmptyLine
+        }
+        
+        private static Combine[T, U](this source : IEnumerable[T], convert : T -> U, needCombine : T -> bool, combine : (U*T) -> U) : IEnumerable[U]
+        {
+            def enumerator = source.GetEnumerator();
+            when (enumerator.MoveNext())
+            {
+                mutable current = convert(enumerator.Current);    
+                while(enumerator.MoveNext())
+                {
+                    if (needCombine(enumerator.Current))
+                    {
+                        current = combine(current, enumerator.Current);
+                        
+                    }
+                    else
+                    {
+                        yield current;
+                        current = convert(enumerator.Current);
+                    }
+                }
+                
+                yield current;
+            }
+           
+        }
+        
+        public GetEnumerator() : IEnumerator[Line]
+            implements IEnumerable.[Line].GetEnumerator
+        { 
+            def encoding = _streamReader.Encoding;
+            
+            _streamReader.ReadBuffers()
+                .Select(
+                    v : IEnumerable[int * int] * array[byte] * long =>
+                    {
+                        def (offsets, buffer, startOffset) = v;
+                        offsets.Select(offset=>
+                        {
+                                   def (begin, length) = offset;
+                                   def text = encoding.GetString(buffer, begin, length);
+                                   _regexes
+                                     .Select(r => (r.Match(text), r))
+                                     .Where(m => m[0].Success)
+                                     .Select(matchAndRegex => CreateLine(matchAndRegex, text, buffer, begin, true) <- { Offset = begin :> long + startOffset; EndOffset =  (begin +  length) :> long + startOffset })
+                                     .FirstOrDefault()
+                                    
+                        }).Where(p => p != null)
+                    })
+                    .SelectMany(p => p)
+                    .GetEnumerator();
+        }
+
+        public NonGenericGetEnumerator() : IEnumerator
+            implements IEnumerable.GetEnumerator
+        { 
+            (this : ILineReader).GetEnumerator() 
+        }
+
+        private static ReadTextAt(encoding : System.Text.Encoding, stream : Stream, beginOffset : long, endOffset : long) : string*array[byte]
+        {
+            def length = (endOffset - beginOffset) :> int;
+
+            def buffer    = array(length);
+
+            stream.Position = beginOffset;
+            def bytesRead = stream.Read(buffer, 0, length);
+            
+            (encoding.GetString(buffer, 0, bytesRead).TrimEnd(System.Environment.NewLine.ToCharArray()), buffer);
+        }
+
+        public ReadLineAt(beginOffset : long, endOffset : long) : LogGrok.Core.ILine
+        {
+            def (str, buffer) = ReadTextAt(_streamReader.Encoding, _lineStream, beginOffset, endOffset);
+
+            CreateLine(str, buffer, 0,  false) <- { Offset = beginOffset; EndOffset = endOffset; };
+        }
+
+        private static GetFieldAccessor[T,R](fieldName : string ) : Func[T,R]
+        { 
+            def param = Expression.Parameter (typeof(T),"arg");  
+
+            def member = Expression.Field(param, fieldName);   
+
+            def lambda = Expression.Lambda(typeof(Func[T,R]), member, param);   
+
+            lambda.Compile() :> Func[T,R]; 
+        }
+
+        [Memoize]
+        private GetGroupNamesMapping(regex : Regex) : Dictionary[string, int]
+        {
+            Enumerable.Zip(regex.GetGroupNames(), regex.GetGroupNumbers(), (name, num)=> (name, num)).ToDictionary(n => n[0], n => n[1]);
+        }
+
+        private Match(lineText : string) : Match * Regex
+        {
+            _regexes
+                .Select(r => (r.Match(lineText), r))
+                .FirstOrDefault(m => m[0].Success);
+        }
+        
+        private CreateLine(matchAndRegex : Match*Regex, lineText : string, buffer : array[byte], startIndex : int, onlyIndexed : bool) : Line
+        {
+            if (matchAndRegex[0] != null)
+            {
+                def (mtch, regex) = matchAndRegex;
+
+                def matchs = _matchesGetter(mtch);
+
+                RegexBasedLine(Encoding, lineText, matchs, buffer, startIndex, GetGroupNamesMapping(regex))
+            }
+            else
+            {
+                EmptyLine
+            }
+        }
+
+        
+        private CreateLine(lineText : string, buffer : array[byte], startIndex : int, onlyIndexed : bool) : Line
+        {
+            def m = _regexes
+                           .Select(r => (r.Match(lineText), r))
+                           .FirstOrDefault(m => m[0].Success);
+            if (m[0] != null)
+            {
+                def (mtch, regex) = m;
+
+                def matchs = _matchesGetter(mtch);
+
+                RegexBasedLine(Encoding, lineText, matchs, buffer, startIndex, GetGroupNamesMapping(regex))
+            }
+            else
+            {
+                EmptyLine
+            }
+        }
+
+        private class EmptyLinePrivate : Line
+        {
+            public override Item[_ : string] : object { get { Text.Empty } }
+
+            public override Time : System.TimeSpan { get; set; }
+
+            public override GetRawLine() : string { string.Empty }
+        }
+               
+        private Encoding : System.Text.Encoding { get { _streamReader.Encoding } }
+
+        private _lineStream : Stream;
+        private _streamReader : BufferStreamReader;
+        private _regexes      : list[Regex];
+        private _meta         : MetaInformation;
+        private _matchesGetter : Func[Match, array[array[int]]] = GetFieldAccessor.[Match, array[array[int]]]("_matches");
+        
+        public static EmptyLine : Line = EmptyLinePrivate();
+    }
+}

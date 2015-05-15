@@ -179,7 +179,13 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Properties\AssemblyInfo.n" />
+    <Compile Include="RegexBasedLineReader.n">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="StreamReader.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="BufferStreamReader.n">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="VBLineReader.n">

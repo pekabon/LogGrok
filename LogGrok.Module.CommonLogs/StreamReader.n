@@ -33,6 +33,9 @@ namespace LogGrok.Module.CommonLogs
             }
         };
 
+        
+        
+        
         public Read() : IEnumerable[long*long]
         {
             System.Diagnostics.Trace.TraceInformation("Start read file");
@@ -65,16 +68,57 @@ namespace LogGrok.Module.CommonLogs
                 yield (first, last);
         }
         
-        private FindCrlfs(encoding : Encoding) : IEnumerable[long]
+        public ReadBuffers() : IEnumerable[IEnumerable[long * long] * array[byte]]
+        {
+            SkipPreamble();
+            
+            
+            
+            null
+        }
+        
+        private MergeCrlfs(source : IEnumerable[long]) : IEnumerable[long*long]
+        {
+            def crLength : long = Encoding.GetBytes("\r").Length;
+            
+            mutable first = 0l;
+            mutable last  = source.First();
+            mutable crlfcount = 0;
+            
+            foreach (crlf in source)
+            {
+                if (crlf - last <= crLength && crlfcount == 0)
+                {
+                    last = crlf;
+                    crlfcount++;
+                }
+                else
+                {
+                    yield (first, last);
+                    first = last + crLength;
+                    last  = crlf;
+                    crlfcount = 0;
+                }
+            }
+        }
+        
+        private SkipPreamble() : void
         {
             _stream.Position = 0;
             def preamble = Encoding.GetPreamble();
             def preambleBuffer = array(preamble.Length);
             def read = _stream.Read(preambleBuffer, 0, preambleBuffer.Length);
+            
             when (read < preambleBuffer.Length || !Compare(preamble, preamble, preambleBuffer, 0, preamble.Length))
             {
                 _stream.Position = 0;
             }            
+        }
+        
+        
+        private FindCrlfs(encoding : Encoding) : IEnumerable[long]
+        {
+            SkipPreamble();
                         
             mutable position : long = _stream.Position;
             def byteBuffer = array(4*1024*1024);
