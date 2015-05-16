@@ -106,7 +106,7 @@ namespace LogGrok.Core
                 Buffer = array(end - start);
                 Buffer.BlockCopy(buffer, start, Buffer, 0, end - start);
                 
-                base(0, buffer.Length, Buffer)
+                base(0, Buffer.Length, Buffer)
             }
         }      
         
