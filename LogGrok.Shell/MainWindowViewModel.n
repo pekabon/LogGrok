@@ -40,7 +40,7 @@ namespace LogGrok.Shell
                 OpenFileDialog() <-
                             {                               
                                 DefaultExt  = "log"; 
-                                Filter      = "Log files(*.log)|*.log";
+                                Filter      = "All Files|*.*|Log files(*.log)|*.log|Text files(*.txt)|*.txt";
                                 Multiselect = true;
                             }
             }
