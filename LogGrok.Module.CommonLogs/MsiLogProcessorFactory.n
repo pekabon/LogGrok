@@ -56,10 +56,9 @@ namespace LogGrok.Module.CommonLogs
             def lines = streamReader
                             .ReadStrings()
                             .Take(probe)
-                            
                             .ToList();
             
-            lines.Where(s => Regexes.Where(r => r.IsMatch(s)).Any()).Count() > probe/2
+            lines.Where(s => Regexes.Where(r => r.IsMatch(s)).Any()).Count() > lines.Count/2
             
         }
         

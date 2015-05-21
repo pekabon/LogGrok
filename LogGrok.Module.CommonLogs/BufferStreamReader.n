@@ -84,7 +84,7 @@ namespace LogGrok.Module.CommonLogs
             {
                 byteBuffer = array(4*1024*1024);
                 bytesRead = _stream.Read(byteBuffer, 0, byteBuffer.Length);
-                    
+                
                 def rangesInBuffer = GetRangesBuffer(byteBuffer, bytesRead, rPattern, nPattern, minusPattern, andPattern);
                 if (rangesInBuffer.Length == 0)
                 {
@@ -103,8 +103,6 @@ namespace LogGrok.Module.CommonLogs
                 }
             }
             
-            when (bytesRead - lastPosition > crSize)
-                yield ([(lastPosition, bytesRead - lastPosition)], byteBuffer, position - lastPosition);
             
             System.Diagnostics.Trace.TraceInformation("End read file");
         }
