@@ -50,7 +50,7 @@ namespace LogGrok.Core
                 def p = 16777619;
 		        mutable hash = 2166136261 :> int;
 
-		        for (mutable i = from; i < length; i++)
+		        for (mutable i = from; i < from + length; i++)
 			        hash = (hash ^ value[i]) * p;
 
 			    hash += hash << 13;
