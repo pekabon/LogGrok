@@ -142,7 +142,7 @@
                                         </MenuItem.ItemsSource>
                                     </MenuItem>
 
-                                    <MenuItem Header="Include" Visibility="{Binding CanFilter, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <MenuItem Header="Exclude All But" Visibility="{Binding CanFilter, Converter={StaticResource BooleanToVisibilityConverter}}">
                                         <MenuItem.ItemsSource>
                                             <MultiBinding Converter="{index:MetaInfoToMenuItemsConverter}">
                                                 <Binding Path="MetaInformation" />
