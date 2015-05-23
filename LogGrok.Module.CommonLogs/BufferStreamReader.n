@@ -65,6 +65,11 @@ namespace LogGrok.Module.CommonLogs
                     .SelectMany(s => s)
         }
         
+        private GetLeadingCrlfCount(r : array[byte], n : array[byte], byteBuffer : array[byte], bytesRead : int, crSize : int) : int
+        {
+            Enumerable.Range(0, bytesRead).TakeWhile(b => Compare(r, n, byteBuffer, b, crSize)).Count();
+        }
+        
         public ReadBuffers() : IEnumerable[IEnumerable[int* int] * array[byte] * long]
         {
             System.Diagnostics.Trace.TraceInformation("Start read file");
@@ -74,7 +79,9 @@ namespace LogGrok.Module.CommonLogs
             mutable position : long = _stream.Position;
 
             def crSize = Encoding.GetByteCount("\r");
-            def (rPattern, nPattern, minusPattern, andPattern) = GetPatterns(encoding.GetBytes("\r"), encoding.GetBytes("\n"));
+            def r = encoding.GetBytes("\r");
+            def n = encoding.GetBytes("\n");
+            def (rPattern, nPattern, minusPattern, andPattern) = GetPatterns(r, n);
             
             mutable bytesRead;
             mutable lastPosition;
@@ -88,7 +95,8 @@ namespace LogGrok.Module.CommonLogs
                 def rangesInBuffer = GetRangesBuffer(byteBuffer, bytesRead, rPattern, nPattern, minusPattern, andPattern);
                 if (rangesInBuffer.Length == 0)
                 {
-                    yield (array[(0, bytesRead)], byteBuffer, position);
+                    def l = GetLeadingCrlfCount(r, n, byteBuffer, bytesRead, crSize);
+                    yield (array[(l, bytesRead)], byteBuffer, position);
                     position += bytesRead;
                 }
                 else
@@ -103,7 +111,6 @@ namespace LogGrok.Module.CommonLogs
                 }
             }
             
-            
             System.Diagnostics.Trace.TraceInformation("End read file");
         }
         
@@ -113,55 +120,55 @@ namespace LogGrok.Module.CommonLogs
                         |> MergeCrlfs
                         |> Enumerable.ToArray;
         }
-        
-        enum MergeState
-        {
-            | FindEol
-            | EatingTail
-        }
-        
+
         private MergeCrlfs(source : IEnumerable[int]) : IEnumerable[int*int]
         {
             def charLength: int = Encoding.GetBytes("\r").Length;
-            
+
             when(source.Any())
             {
-                mutable firstChar = 0;
-                mutable prevCrlf  = 0;
-                mutable crlfCount = 0;
-                
-                mutable state = MergeState.FindEol;
+                mutable crlfCount;
+                mutable firstCrlf;
+                mutable lastCrlf;
+                mutable lineStart;
                 
                 foreach (crlfPosition in source)
                 {
-                    match (state)    
+                    if ((crlfPosition - lastCrlf) > charLength)
                     {
-                        | FindEol =>
+
+                        while (crlfCount > 0)
+                        {
+                            match(crlfCount)  
                             {
-                                state = MergeState.EatingTail;
-                                crlfCount ++;
-                                prevCrlf = crlfPosition;
+                                | c when c < 3 => 
+                                    {
+                                        yield (firstCrlf, c);
+                                        crlfCount = 0;
+                                    }
+                                | _ => 
+                                    {
+                                        yield (firstCrlf, 2);
+                                        firstCrlf += 2;
+                                        crlfCount -= 2;
+                                    }
                             }
-                        | EatingTail when crlfPosition - prevCrlf > charLength =>
-                            {
-                                yield (firstChar, prevCrlf - firstChar + charLength);
-                                state = MergeState.FindEol;
-                                firstChar = prevCrlf + charLength;
-                                crlfCount = 0;
-                            }
-                        | EatingTail when crlfCount == 3 => 
-                            {
-                                yield (firstChar, prevCrlf - firstChar + charLength);
-                                crlfCount = 2;
-                                firstChar = crlfPosition - charLength;
-                                prevCrlf  = crlfPosition;
-                            }
-                        | EatingTail =>
-                            {
-                                crlfCount++;
-                                prevCrlf = crlfPosition;
-                            }
+                        }
+                        
+                            
+                        yield (lineStart, crlfPosition - lineStart);
+                        
+                        firstCrlf = crlfPosition;
+                        crlfCount = -1;
+                        lineStart = firstCrlf + charLength;
                     }
+                    else
+                    {
+                        crlfCount++;
+                        lineStart += charLength;
+                    }
+                    
+                    lastCrlf = crlfPosition;
                 }
             }
         }
