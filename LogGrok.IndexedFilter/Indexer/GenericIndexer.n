@@ -36,7 +36,13 @@ namespace LogGrok.IndexedFilter.Indexer
 
             foreach (keyField in _keyFields with idx)
             {
-                keyBytes[idx] = (line[keyField] ?? Text.Empty) :> Text;
+                def component = (line[keyField] ?? Text.Empty) :> Text;
+                
+                keyBytes[idx] = component;
+                def components = _componentsMap[keyField];
+                
+                when (components.Insert(component))
+                    NewComponentFound(keyField, component)
             }
 
             def key = ByteKey(keyBytes);
@@ -45,15 +51,6 @@ namespace LogGrok.IndexedFilter.Indexer
             {
                 _cachedKey = key;
                 _cachedIndex = _indices.GetOrAdd(key, _ => IndexTree(_pageFactory));
-            }
-
-            foreach(keyField in _keyFields)
-            {
-                def components = _componentsMap[keyField];
-                def component = (line[keyField] ?? Text.Empty) :> Text;
-
-                when (components.Insert(component))
-                    NewComponentFound(keyField, component)
             }
 
             def indexTree = _cachedIndex;

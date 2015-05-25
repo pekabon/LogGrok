@@ -26,7 +26,24 @@ namespace LogGrok.IndexedFilter.Indexer
         public override Equals(other : object) : bool
         {
             | null => false
-            | otherKey is ByteKey => _data.SequenceEqual(otherKey._data)
+            | otherKey is ByteKey => 
+                {
+                    if (otherKey._data.Length != _data.Length)
+                        false
+                    else
+                    {
+                        mutable result = true;
+                        mutable i =0;
+                        def otherData = otherKey._data;
+                        while (i < _data.Length && result)
+                        {
+                            result = _data[i].Equals(otherData[i]);
+                            i ++;
+                        }
+                        
+                        result
+                    }
+                }
             | _ => throw ArgumentException($"Cannot compare ByteKey to $other");
         }
         
