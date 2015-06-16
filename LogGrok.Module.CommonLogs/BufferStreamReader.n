@@ -96,7 +96,11 @@ namespace LogGrok.Module.CommonLogs
                 if (rangesInBuffer.Length == 0)
                 {
                     def l = GetLeadingCrlfCount(r, n, byteBuffer, bytesRead, crSize);
-                    yield (array[(l, bytesRead)], byteBuffer, position);
+                    
+                    when (l < bytesRead)
+                    {
+                        yield (array[(l, bytesRead - l)], byteBuffer, position);
+                    }
                     position += bytesRead;
                 }
                 else
@@ -155,12 +159,13 @@ namespace LogGrok.Module.CommonLogs
                             }
                         }
                         
-                            
                         yield (lineStart, crlfPosition - lineStart);
                         
                         firstCrlf = crlfPosition;
                         crlfCount = -1;
                         lineStart = firstCrlf + charLength;
+                        
+                        
                     }
                     else
                     {
