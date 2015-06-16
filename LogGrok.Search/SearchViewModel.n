@@ -141,7 +141,12 @@ namespace LogGrok.Search
             { 
                 _currentDocument = value;
                 
-                _searchPatternCurrentlyEditing = SearchPattern(value.SearchText, value.UseRegex, value.IsCaseSensitive);
+                _searchPatternCurrentlyEditing =  
+                    if (value != null)
+                        SearchPattern(value.SearchText, value.UseRegex, value.IsCaseSensitive)
+                    else
+                        SearchPattern(string.Empty, false, false);
+                                                    
                 _highlighter.SetTextForHighlight(_searchPatternCurrentlyEditing.Text, _searchPatternCurrentlyEditing.GetSearchOptions());
             }
         }
