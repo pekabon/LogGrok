@@ -10,7 +10,7 @@ namespace LogGrok.Controls
   public module FindRoutedCommandBehavior
   {
         [DependencyProperty(IsAttached, Metadata=FrameworkPropertyMetadata() <- { Inherits = true; OverridesInheritanceBehavior = true; PropertyChangedCallback = IsRoutedCommandTargetPropertyChanged })]
-        GetRoutedCommands(d : UIElement) : CommandBindingCollection;
+        public GetRoutedCommands(d : UIElement) : CommandBindingCollection;
                                                
         [DependencyProperty(IsAttached, Metadata=FrameworkPropertyMetadata() <- { Inherits = false; PropertyChangedCallback = IsRoutedCommandRootPropertyChanged})]
         public GetIsRoutedCommandRoot(element : DependencyObject) : bool;

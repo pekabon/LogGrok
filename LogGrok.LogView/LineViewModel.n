@@ -53,7 +53,7 @@ namespace LogGrok.LogView
             RawLine = _line.RawLine;
             
             WeakEventManager.[TextColorizer, EventArgs].AddHandler(textColorizer, "SettingsChanged", UpdateColors);
-            UpdateColors(this, EventArgs.Empty)            
+            _colors = Lazy(GetColors);           
         }
         
         public Item[s : string] : object
@@ -69,31 +69,32 @@ namespace LogGrok.LogView
                 }
             }
         }
-        
-        private UpdateColors(_ : object, _ : EventArgs) : void
-        {
-            def textColor = _textColorizer.GetTextColor(_line);
-            HasTextColor = textColor.IsSome;
-            when (HasTextColor)
-            {
-                Background = textColor.Value.Background;
-                Foreground = textColor.Value.Foreground;
-            }                
-        }        
-        
+
         public Background : Color
         {
-            get; private set;
+            get
+            {
+                def (_, background, _) = _colors.Value;
+                background
+            }
         }
         
         public Foreground : Color
         {
-            get; private set;
+            get
+            {
+                def (_, _, foreground) = _colors.Value;
+                foreground
+            }
         }
         
         public HasTextColor : bool
         {
-            get; private set;
+            get
+            {
+                def (hasColor, _, _) = _colors.Value;
+                hasColor
+            }
         }
         
         private TextColor : option[TextColor]
@@ -131,6 +132,30 @@ namespace LogGrok.LogView
         }
         
         public override ToString() : string { RawLine }
+        
+        private UpdateColors(_ : object, _ : EventArgs) : void
+        {
+            _colors = Lazy(GetColors);
+            RaisePropertyChanged(HasTextColor);
+            RaisePropertyChanged(Background);
+            RaisePropertyChanged(Foreground);
+        }        
+        
+        private GetColors() : bool*Color*Color
+        {
+            def textColor = _textColorizer.GetTextColor(_line);
+            def hasTextColor = textColor.IsSome;
+            if (hasTextColor)
+            {
+                (true, textColor.Value.Background, textColor.Value.Foreground)
+            } 
+            else
+            {
+                (false, default(Color), default(Color))
+            }
+        }
+        
+        mutable _colors : Lazy[bool*Color*Color];
         
         private _index : int;
         private _fields : Dictionary[string, object];

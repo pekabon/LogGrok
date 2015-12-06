@@ -17,13 +17,13 @@ namespace LogGrok.Infrastructure.Controls
     public module NavigateToLineBehavior
     {
         [DependencyProperty(IsAttached, Metadata=PropertyMetadata(null, OnRequestChanged))]
-        public GetNavigateToLineRequest(panel : VirtualizingStackPanel)  : NavigateToLineRequest;
+        public GetNavigateToLineRequest(listView : LogGrok.Infrastructure.ListView)  : NavigateToLineRequest;
 
         private OnRequestChanged(d : DependencyObject, args : DependencyPropertyChangedEventArgs) : void
         {
             match (d)
             {
-                | (panel is VirtualizingStackPanel) => 
+                | (listView is LogGrok.Infrastructure.ListView) => 
                 {
                     when (args.OldValue != null)
                     {
@@ -35,21 +35,24 @@ namespace LogGrok.Infrastructure.Controls
                     when (args.NewValue != null)
                     {
                         def request = args.NewValue :> NavigateToLineRequest;
-                        _subscribersMap[request] = panel;
+                        _subscribersMap[request] = listView;
                         request.Navigate += RequestNavigate;
                     }
                 }
-                | _ => throw InvalidOperationException($"Unsupported targetType: $(d.GetType)")
+                
+                
+                | _ => ()// TODO: throw InvalidOperationException($"Unsupported targetType: $(d.GetType)")
             }
         }
 
         private static RequestNavigate(sender : object, args : DataEventArgs[int]) : void
         {
-            def panel = _subscribersMap[sender :> NavigateToLineRequest];
-            panel.BringIndexIntoViewPublic(args.Value)
+            def listView = _subscribersMap[sender :> NavigateToLineRequest];
+            listView.BringIndexIntoView(args.Value);
+            listView.SelectedIndexes = [args.Value];
         }
 
         private _subscribersMap = 
-            Dictionary.[NavigateToLineRequest, VirtualizingStackPanel]();
+            Dictionary.[NavigateToLineRequest, LogGrok.Infrastructure.ListView]();
     }
 }

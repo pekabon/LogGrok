@@ -1,0 +1,71 @@
+using Nemerle;
+using Nemerle.Assertions;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Windows.Media;
+using System.Windows;
+
+namespace LogGrok.Controls
+{
+    public static class VisualTreeWalker
+    {
+        public static GetDirectDescendands([NotNull] this obj : DependencyObject) : IEnumerable[DependencyObject] 
+        {
+            for (mutable i = 0; i < VisualTreeHelper.GetChildrenCount(obj); i++)
+                yield VisualTreeHelper.GetChild(obj, i);
+        }
+        
+        public static GetVisualChildren[T]([NotNull] this obj : DependencyObject) : IEnumerable[T] where T : DependencyObject
+        {
+            foreach (descendant : DependencyObject in GetDirectDescendands(obj))
+            {
+                match(descendant)
+                {
+                    | d is T => yield d 
+                    | _ => ()
+                }
+                foreach (d in GetVisualChildren(descendant)) yield d 
+            };
+        }
+
+         public static FindAncestor[T]([NotNull] this sourceObject : DependencyObject, lastCheckedParent : DependencyObject) : option[T]
+            where T : DependencyObject
+        {
+            mutable currentObject = sourceObject;
+            
+            while (currentObject != null && !(currentObject is T) && !currentObject.Equals(lastCheckedParent))
+            {
+	            if (currentObject is Visual)
+	            {
+	                currentObject = VisualTreeHelper.GetParent(currentObject);
+	            }
+	            else
+	            {
+	                def logicalAncestor = currentObject.FindLogicalAncestor.[Visual]();
+		            currentObject = if (logicalAncestor.IsSome) VisualTreeHelper.GetParent(logicalAncestor.Value) else null;
+		        }
+            }
+            
+            if (currentObject is T) Some(currentObject :> T) else None();
+        }
+        
+        public static FindAncestor[T]([NotNull] this sourceObject : DependencyObject) : option[T]
+            where T : DependencyObject
+        {
+            sourceObject.FindAncestor.[T](null);
+        }
+
+        public static FindLogicalAncestor[T]([NotNull] this sourceObject : DependencyObject) : option[T]
+            where T : DependencyObject
+        {
+            mutable currentObject = sourceObject;
+            while (currentObject != null && !(currentObject is T))
+                currentObject = LogicalTreeHelper.GetParent(currentObject);
+                
+            if (currentObject is T) Some(currentObject :> T) else None();
+        }
+    }
+}

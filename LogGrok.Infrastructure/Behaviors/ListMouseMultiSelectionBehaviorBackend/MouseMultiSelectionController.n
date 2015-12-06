@@ -20,6 +20,8 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Input;
 
+using LogGrok.Controls;
+
 namespace LogGrok.Infrastructure.Behaviors.ListMouseMultiSelectionBehaviorBackend
 {
     public class MouseMultiSelectionController
@@ -51,6 +53,7 @@ namespace LogGrok.Infrastructure.Behaviors.ListMouseMultiSelectionBehaviorBacken
             _target.PreviewMouseDown += OnPreviewMouseDown;
             _target.MouseUp += OnMouseUp;
             _target.MouseMove += OnMouseMove;
+            _target.KeyDown += OnKeyDown;
             
             _adorner.Attach();            
             _adorner.MouseMove += OnMouseMove;
@@ -67,12 +70,29 @@ namespace LogGrok.Infrastructure.Behaviors.ListMouseMultiSelectionBehaviorBacken
             _target.PreviewMouseDown -= OnPreviewMouseDown;
             _target.MouseUp -= OnMouseUp;
             _target.MouseMove -= OnMouseMove;
+            _target.KeyDown -= OnKeyDown;
             
             _adorner.Detach();
             _adorner.MouseMove -= OnMouseMove;
             _adorner.MouseUp -= OnMouseUp;
             _adorner.PreviewMouseDown -= OnPreviewMouseDown;
         }
+        
+        private OnKeyDown(_ : object, e : KeyEventArgs) : void
+        {
+            match (e.Key)
+            {
+                | Key.Down when Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) => _target.ExpandSelectionDown(); e.Handled = true
+                | Key.Up   when Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) => _target.ExpandSelectionUp(); e.Handled = true
+                | Key.Down                                                     => _target.NavigateDown(); e.Handled = true
+                | Key.Up                                                       => _target.NavigateUp(); e.Handled = true
+                | _                                                            => ()
+            }
+            
+            when (e.Handled)
+                _target.UpdateSelection();
+        }
+
         
         OnScrollChanged(_ : object, _ : RoutedEventArgs) : void
         {
@@ -87,7 +107,8 @@ namespace LogGrok.Infrastructure.Behaviors.ListMouseMultiSelectionBehaviorBacken
         
         OnMouseDown(_ : object, _ : RoutedEventArgs) : void
         {
-            _target.UnselectAllItems();            
+            def itemUnderMouse = _target.GetItemUnderMouse();
+            itemUnderMouse.Iter(_target.SelectOnlyItem);
         }
         
         OnMouseMove(_ : object, _ : MouseEventArgs) : void
@@ -106,33 +127,52 @@ namespace LogGrok.Infrastructure.Behaviors.ListMouseMultiSelectionBehaviorBacken
             def isShiftPressed = Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift);
             def isCtrlPressed = Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl);
             
-            def spButtonPressed = isShiftPressed || isCtrlPressed;
             def itemUnderMouse = _target.GetItemUnderMouse();
 
-            if (!isLeftButton)
+            when (isMine && isLeftButton)
+            match(isCtrlPressed, isShiftPressed)
             {
+                | (false, false) when (!isOverScrollBar && !isOverGridViewHeader && args.ClickCount == 1) =>
+                        StartDragging();
+                        args.Handled = true;
+                | (_, true)    =>
+                        def itemUnderMouseIndexOpt = itemUnderMouse.Map(_target.GetItemIndex);
+                        itemUnderMouseIndexOpt.Iter(
+                            itemUnderMouseIndex =>
+                            {
+                                def startIndex = _target.SelectedIndex;
+                                def endIndex = itemUnderMouseIndex.WithDefault(_target.ItemsCount - 1);
+                                when (startIndex >= 0 && endIndex >=0)
+                                {
+                                    _target.SelectRange(startIndex, endIndex);
+                                    args.Handled = true;
+                                }
+                            }
+                        )
+                 | (true, _) when itemUnderMouse.HasValue =>
+                 {
+                    def itemUnderMouseIndex = _target.GetItemIndex(itemUnderMouse.Value);
+                    itemUnderMouseIndex.Iter(i => 
+                        { 
+                            _target.ToggleItemSelection(i); 
+                            args.Handled = true;
+                        });
+                 }
+                 
+                 | _ => {}
             }
-            else if (!spButtonPressed && !isOverScrollBar && !isOverGridViewHeader && isMine)
+            
+            when (isMine && !isLeftButton)
             {
-                def itemAlreadySelected = itemUnderMouse.IsSome && itemUnderMouse.Value.IsSelected;
-                when (!itemAlreadySelected && args.ClickCount == 1)
-                {            
-                    StartDragging();
-                    args.Handled = true;
-                }
-            }
-            else if (itemUnderMouse.IsSome && isShiftPressed && isMine)
-            {
-                def itemUnderMouseIndex = _target.GetItemIndex(itemUnderMouse.Value);
-                def startIndex = _target.SelectedIndex;
-                def endIndex = if (itemUnderMouseIndex.IsSome) itemUnderMouseIndex.Value else _target.ItemsCount - 1;
-                when (startIndex >= 0 && endIndex >=0)
+                itemUnderMouse.Iter(item =>
                 {
-                    _target.SelectItems(startIndex, endIndex);
-                    args.Handled = true;
-                }
+                    when (!item.IsSelected)
+                    {
+                        _target.SelectOnlyItem(item);
+                    }
+                })
             }
-            else { }
+            
             
             when (args.Handled)
                 _target.Focus();
@@ -146,9 +186,13 @@ namespace LogGrok.Infrastructure.Behaviors.ListMouseMultiSelectionBehaviorBacken
                 def itemUnderMouse = _target.GetItemUnderMouse();
                 
                 if (itemUnderMouse.IsSome && itemUnderMouse.Value.Equals(_firstSelectedItem))
-                    _target.SelectItem(itemUnderMouse.Value);
+                {
+                    _target.SelectOnlyItem(itemUnderMouse.Value);
+                }
                 else if (mousePosition.IsSome && Point.Subtract(_startMousePosition, mousePosition.Value).Length < 10.0d)
-                    _target.UnselectAllItems();
+                    {
+                        //TODO : what is it
+                    }
                 else {}
                         
                 EndDragging();
@@ -176,7 +220,13 @@ namespace LogGrok.Infrastructure.Behaviors.ListMouseMultiSelectionBehaviorBacken
             {
                 when (_adorner.IsSelecting)
                 {
-                    SelectItemsUnderAdorner();
+                    def IsModifierPressed = Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift) || Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl);
+                    
+                    if (IsModifierPressed)
+                        SelectItemsUnderAdorner();
+                    else
+                        SelectOnlyItemsUnderAdorner();
+                    
                     UnhighlightAllItems();
                     _adorner.IsSelecting = false;
                 }
@@ -251,15 +301,24 @@ namespace LogGrok.Infrastructure.Behaviors.ListMouseMultiSelectionBehaviorBacken
         
         SelectItemsUnderAdorner() : void
         {
-            _target.SelectItems(GetItemsUnderAdorner());
+            def indexBounds = GetAdornerIndexBounds();
+            indexBounds.Iter(_target.SelectRange);
+        }
+        
+        SelectOnlyItemsUnderAdorner() : void
+        {
+            def indexBounds = GetAdornerIndexBounds();
+            indexBounds.Iter(_target.SelectOnlyRange);
         }
         
         GetItemsUnderAdorner() : IEnumerable.[ListViewItem]
         {
+            
             def indexBounds = GetAdornerIndexBounds();
             when (indexBounds.IsSome)
             {
-                for (mutable i = indexBounds.Value.Item1; i <= indexBounds.Value.Item2; i++)
+                def (first, last) = indexBounds.Value;
+                foreach (i in [first..last])
                 {
                     def item = _target.GetItemByIndex(i);
                     when (item.IsSome)
@@ -268,7 +327,7 @@ namespace LogGrok.Infrastructure.Behaviors.ListMouseMultiSelectionBehaviorBacken
             }
         }
         
-        GetAdornerIndexBounds() : option[Tuple.[int, int]]
+        GetAdornerIndexBounds() : option[int * int]
         {
             def startItem = _target.GetItemUnderPoint(_adorner.SelectionBounds.TopLeft);
             def endItem = _target.GetItemUnderPoint(_adorner.SelectionBounds.BottomRight);
@@ -278,7 +337,7 @@ namespace LogGrok.Infrastructure.Behaviors.ListMouseMultiSelectionBehaviorBacken
                 def endItemIndex = _target.GetItemIndex(endItem.Value);
                 if (strartItemIndex.IsSome && endItemIndex.IsSome)
                 {
-                    Some(Tuple(strartItemIndex.Value, endItemIndex.Value));
+                    Some((strartItemIndex.Value, endItemIndex.Value));
                 }
                 else
                 {

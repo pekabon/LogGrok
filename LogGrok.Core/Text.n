@@ -8,6 +8,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
+using LogGrok.Unsafe;
+
 namespace LogGrok.Core
 {
     [Record]
@@ -51,18 +53,10 @@ namespace LogGrok.Core
                     false
                 else
                 {
-                    mutable result = true;
-                    mutable j = otherText._start;
-                    for (mutable i = _start; i < Length + _start; i++)
-                    {
-                        when (_buffer[i] != otherText._buffer[j]) 
-                        {
-                            result = false;
-                            break;
-                        }
-                        j++;
-                    }
-                    result
+                    if (Length == 0) 
+                        true 
+                    else
+                        ByteArrayTools.FastEquals(_buffer, _start, otherText._buffer, otherText._start, Length);
                 }
             }
             | _ => false

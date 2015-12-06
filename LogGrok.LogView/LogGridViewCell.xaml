@@ -4,4 +4,4 @@
                                xmlns:controls="clr-namespace:LogGrok.Controls;assembly=LogGrok.Controls"
                                xmlns:infra="clr-namespace:LogGrok.Infrastructure;assembly=LogGrok.Infrastructure"
                                HorizontalAlignment="Stretch"
-                               Text="{Binding}" />
+                               />

@@ -50,6 +50,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LogGrok.Resources", "LogGro
 EndProject
 Project("{EDCC3B85-0BAD-11DB-BC1A-00112FDE8B61}") = "LogGrok.Diagnostics", "LogGrok.Diagnostics\LogGrok.Diagnostics.nproj", "{EACC0308-9405-4511-A2F5-48FB438C9EA0}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LogGrok.Unsafe", "LogGrok.Unsafe\LogGrok.Unsafe.csproj", "{37FD8941-1840-48DF-9F81-F6603CA4490E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -238,6 +240,16 @@ Global
 		{EACC0308-9405-4511-A2F5-48FB438C9EA0}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
 		{EACC0308-9405-4511-A2F5-48FB438C9EA0}.Release|Mixed Platforms.Build.0 = Release|Any CPU
 		{EACC0308-9405-4511-A2F5-48FB438C9EA0}.Release|x86.ActiveCfg = Release|Any CPU
+		{37FD8941-1840-48DF-9F81-F6603CA4490E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{37FD8941-1840-48DF-9F81-F6603CA4490E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{37FD8941-1840-48DF-9F81-F6603CA4490E}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
+		{37FD8941-1840-48DF-9F81-F6603CA4490E}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
+		{37FD8941-1840-48DF-9F81-F6603CA4490E}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{37FD8941-1840-48DF-9F81-F6603CA4490E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{37FD8941-1840-48DF-9F81-F6603CA4490E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{37FD8941-1840-48DF-9F81-F6603CA4490E}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
+		{37FD8941-1840-48DF-9F81-F6603CA4490E}.Release|Mixed Platforms.Build.0 = Release|Any CPU
+		{37FD8941-1840-48DF-9F81-F6603CA4490E}.Release|x86.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

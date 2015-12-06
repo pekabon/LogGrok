@@ -7,6 +7,7 @@ using Nemerle.WPF;
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 
 using System.Windows;
@@ -15,73 +16,93 @@ using System.Windows.Documents;
 using System.Windows.Media;
 using System.Text.RegularExpressions;
 
+using LogGrok.Macros;
+
+using System.Windows.FrameworkPropertyMetadataOptions;
+
 namespace LogGrok.Controls
 {
-    public class HighlightedTextBlock : ContentControl
+    public class HighlightedTextBlock : Control
     {
-        [DependencyProperty(IsAttached, Metadata=FrameworkPropertyMetadata(string.Empty, 
-                                        FrameworkPropertyMetadataOptions.Inherits, OnTextChanged))]
+        [DependencyProperty(IsAttached, Metadata=FrameworkPropertyMetadata(string.Empty, Inherits | AffectsRender))]
         public static GetHighlightedText(d : DependencyObject) : string;
 
-        [DependencyProperty(IsAttached, Metadata=FrameworkPropertyMetadata(false, 
-                                        FrameworkPropertyMetadataOptions.Inherits, OnTextChanged))]
+        [DependencyProperty(IsAttached, Metadata=FrameworkPropertyMetadata(false, Inherits | AffectsRender))]
         public static GetIsCaseSensitive(d : DependencyObject) : bool;
 
-        [DependencyProperty]
-        public Highlighting : bool { get; set; };
-
-        [DependencyProperty(Metadata=FrameworkPropertyMetadata(string.Empty, OnTextChanged))]
+        [DependencyProperty(Metadata=FrameworkPropertyMetadata(string.Empty, AffectsMeasure | AffectsRender))]
         public Text : string { get; set; }
 
-        public this()
+        protected override MeasureOverride(_: Size) : Size
         {
-            Content = _textBlock;
+            def formattedText = GetFormattedText();
+            MeasureOverrideCore(formattedText);
+            
+        }
+        
+        [CacheLastResult]
+        private MeasureOverrideCore(formattedText : FormattedText) : Size
+        {
+            Size(formattedText.Width, formattedText.Height)
+        }
+        
+        protected override ArrangeOverride(finalSize : Size) : Size
+        {
+            finalSize
         }
 
-        private static OnTextChanged(d : DependencyObject, _ : DependencyPropertyChangedEventArgs) : void
+        protected override OnRender(drawingContext : DrawingContext) : void 
         {
-            | (control is HighlightedTextBlock, _) => control.Update()
-            | _ => ()
-        }
-
-        private Update() : void
-        {
-            when(!Highlighting)
+            when (Background != null)
+                drawingContext.DrawRectangle(Background, Pen(Background, 0), Rect(0, 0, ActualWidth, ActualHeight));
+                
+            foreach(highlighting in GetDrawingGeometries(Text, GetHighlightedText(this), GetIsCaseSensitive(this)))
             {
-                Highlighting = true;
-                try
-                {
-                    def highlighted = GetHighlightedText(this);
-                    match(Text, highlighted)
-                    {
-                        | _ when string.IsNullOrEmpty(highlighted)
-                        | _ when string.IsNullOrEmpty(Text)         => _textBlock.Text = Text
-                        | _ =>   
-                        {
-                                def regex = Regex($"($(Regex.Escape(highlighted)))", if (GetIsCaseSensitive(this)) RegexOptions.None else RegexOptions.IgnoreCase);
-
-                                def substrings = regex.Split(Text);
-
-                                _textBlock.Inlines.Clear();
-
-                                foreach (substring in substrings)
-                                {
-                                    if (regex.Match(substring).Success)
-                                        _textBlock.Inlines.Add(Run(substring) <- { Background = Brushes.Moccasin })
-                                    else
-                                        _textBlock.Inlines.Add(substring)
-                                }
-                        }
-                    }
-                }
-                finally
-                {
-                    Highlighting = false;
-                }
+                drawingContext.DrawGeometry(Brushes.Moccasin, Pen(Brushes.Moccasin, 0), highlighting);
+            }
+                
+            drawingContext.DrawText(GetFormattedText(), Point(0, 0));
+        }
+        
+        [CacheLastResult]
+        private GetDrawingGeometries(text: string, highlightString : string, highlightIsCaseSensitive : bool) : IEnumerable[Geometry]
+        {
+            if (string.IsNullOrEmpty(text) || string.IsNullOrEmpty(highlightString))
+            {
+                Enumerable.Empty()
+            }
+            else
+            {
+                def regex = Regex($"($(Regex.Escape(highlightString)))", if (highlightIsCaseSensitive) RegexOptions.None else RegexOptions.IgnoreCase);
+                def matchs = regex.Matches(Text).Cast.[Match]().ToList();
+                matchs .Select(
+                    mtch => 
+                        { 
+                            def ft = GetFormattedText();
+                            def geometry = ft.BuildHighlightGeometry(Point(0,0), mtch.Index, mtch.Length): Geometry;
+                            geometry;
+                            
+                        });
             }
         }
-
-        _textBlock : TextBlock = TextBlock();
+        
+        private GetFormattedText() : FormattedText
+        {
+            GetFormattedText(Text, FlowDirection, FontFamily, FontStyle, FontWeight, FontStretch, FontSize, Foreground)
+        }
+        
+        [CacheLastResult]
+        private GetFormattedText(value : string, flowDirection : FlowDirection, fontFamily : FontFamily, fontStyle : FontStyle, fontWeight : FontWeight, fontStretch : FontStretch, fontSize : double, foreground : Brush) : FormattedText 
+        {
+            FormattedText(if(value == null) string.Empty else value, 
+                            CultureInfo.CurrentUICulture,
+                            flowDirection,
+                            Typeface(fontFamily, fontStyle, fontWeight, fontStretch),
+                            fontSize,
+                            Foreground, 
+                            null,
+                            TextFormattingMode.Display);
+        }
 
     }
 }

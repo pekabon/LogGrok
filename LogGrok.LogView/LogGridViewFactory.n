@@ -50,12 +50,12 @@ namespace LogGrok.LogView
                 def CreateCellTemplate()
                 {
                     def frameworkElementFactory = FrameworkElementFactory(typeof(LogGridViewCell));
-                    _ = frameworkElementFactory.SetBinding(FrameworkElement.DataContextProperty, Binding($"[$(d.FieldName)]") );
+                    _ = frameworkElementFactory.SetValue(LogGridViewCell.ValueGetterProperty, ln : VirtualLineViewModel => ln[$"$(d.FieldName)"]);
                     def dataTemplate = DataTemplate(typeof(DependencyObject));
                     dataTemplate.VisualTree = frameworkElementFactory;
                     dataTemplate
                 }
-
+                
                 def CreateHeaderTemplate()
                 {
                     if (d.IsIndexed && withIndices)
@@ -79,9 +79,9 @@ namespace LogGrok.LogView
                 }
 
                 view.Columns.Add(LogGridViewColumn() <- 
-                { 
+                {  
                         HeaderTemplate = CreateHeaderTemplate(); 
-                        CellTemplate = CreateCellTemplate(); 
+                        CellTemplate = CreateCellTemplate();
                 });
             }
             view

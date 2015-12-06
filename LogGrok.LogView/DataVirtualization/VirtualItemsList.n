@@ -20,10 +20,11 @@ namespace LogGrok.LogView.DataVirtualization
 	    where T : class
 	    where TVirtualItem : VirtualItem[T]
     {
+        
         public this(
             [NotNull] sourceList : IList[T], 
             [NotNull] notifications : INotifyCollectionChanged,
-            [NotNull] virtualItemFactory : Func[IList[T], int, TVirtualItem])
+            [NotNull] virtualItemFactory : Func[IList[T], int, TVirtualItem]) 
 		{
 		    _sourceList = sourceList;
 		    _notifications = notifications;
@@ -155,7 +156,7 @@ namespace LogGrok.LogView.DataVirtualization
 		public IndexOf(item : object) : int
             implements System.Collections.IList.IndexOf
 		{
-		    IndexOf(item :> TVirtualItem)
+		   0// IndexOf(item :> TVirtualItem)
 		}
 
 		public Item[_ : int] : object

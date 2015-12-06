@@ -19,9 +19,10 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Threading;
 
-using LogGrok.Macros.Diagnostics;
+using LogGrok.Controls;
 using LogGrok.Diagnostics;
 using LogGrok.Infrastructure.Controls;
+using LogGrok.Macros.Diagnostics;
 
 namespace LogGrok.Infrastructure
 {
@@ -29,7 +30,7 @@ namespace LogGrok.Infrastructure
     {
         public this()
         {
-            base();
+            base();       
 
             def DoCopy(_, _)
             {
@@ -45,17 +46,40 @@ namespace LogGrok.Infrastructure
             _ = this.CommandBindings.Add(
                 CommandBinding(ApplicationCommands.Copy, DoCopy, CanCopy));
 
-      
-            this.Loaded += (_, _) => ResetColumnsWidth();
+            Loaded +=  _ => ResetColumnsWidth();
         }
-
-        public SelectItems(items : IEnumerable) : void
-        {
-            _ = SetSelectedItems(items);   
-        }
-
+        
         [DependencyProperty]
         public ReadOnlySelectedItems : IEnumerable { get; set }
+
+        [DependencyProperty(Metadata=PropertyMetadata(Enumerable.Empty.[int](), OnSelectedIndexesChanged))]
+        public SelectedIndexes : IEnumerable[int] { get; set; }
+        
+        public event SelectedIndexesChanged : Action;
+        
+        public new event KeyDown : KeyEventHandler;
+        
+        public BringIndexIntoView(position : int) : void
+        {
+            GetPanel().BringIndexIntoViewPublic(position)
+        }
+        
+        public BringIndexIntoViewWhileNavigatingDown(index : int) : void
+        {
+            GetPanel().BringIndexIntoViewWhileNavigatingDown(index);
+        }
+
+        protected override ClearContainerForItemOverride(_ : DependencyObject, _ : object) : void
+        {}
+        
+        protected override OnKeyDown(e : KeyEventArgs) : void
+        {
+            def handler = KeyDown;
+            unless (handler == null) KeyDown(this, e);
+            
+            unless (e.Handled) 
+            base.OnKeyDown(e);
+        }
         
         protected override OnItemsSourceChanged(oldValue : IEnumerable, newValue : IEnumerable) : void
         {
@@ -90,53 +114,24 @@ namespace LogGrok.Infrastructure
 
         protected override OnSelectionChanged(_ : SelectionChangedEventArgs) : void
         {
-            when (SelectedIndex > 0)
-            {
-                _ = Items.MoveCurrentToPosition(SelectedIndex);
-            }
-
             ReadOnlySelectedItems = SelectedItems;
         }
-        
-        protected override OnPreviewKeyDown(e : KeyEventArgs) : void
+
+        private static OnSelectedIndexesChanged(_ : DependencyObject, _ : DependencyPropertyChangedEventArgs) : void
         {
-            when (_storedItemCount > SelectionLimitations.MaxItemsCount)
-            {
-                match(e.Key)
-                { 
-                    | Key.Down => e.Handled = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift);
-                    | Key.Up => e.Handled = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift);
-                    | Key.A => e.Handled = Keyboard.Modifiers.HasFlag(ModifierKeys.Control);
-                    | _ => {};
-                }
-            }
+            | (lv is ListView, _) =>
             
-            base.OnPreviewKeyDown(e);
+                def handler = lv.SelectedIndexesChanged;
+                unless (handler == null) handler();
+            | _ => ()
         }
         
-        protected override OnKeyDown(e : KeyEventArgs) : void
+        [Memoize(InvalidValue = null)]
+        private GetPanel() : LogGrok.Controls.VirtualizingStackPanel
         {
-            match(e.Key)
-            {                
-                | Key.Down
-                | Key.Up =>
-                    def pos = SelectedIndex;
-
-                    match (ItemContainerGenerator.ContainerFromItem(Items.CurrentItem) ?? 
-                           ItemContainerGenerator.ContainerFromIndex(Items.CurrentPosition) ?? 
-                           ItemContainerGenerator.ContainerFromIndex(pos))
-                    {
-                    | null                      =>  base.OnKeyDown(e);
-                    | listViewItem is UIElement =>  
-                            when(object.ReferenceEquals(Keyboard.FocusedElement, listViewItem))
-                                _ = listViewItem.Focus();
-                            base.OnKeyDown(e);
-                    | _                         => ()
-                    }
-                | _ => base.OnKeyDown(e);
-            }
+            VisualTreeWalker.GetVisualChildren.[LogGrok.Controls.VirtualizingStackPanel](this).FirstOrDefault()
         }
-
+        
         private ResetColumnsWidth() : void
         {
             def CalculateRemainingSpace(gridView)
@@ -175,13 +170,14 @@ namespace LogGrok.Infrastructure
                     }
                 | _ => ()
             }
-
         }
 
         private CopySelectedItemsToClipboard() : void
         {
+            def items =  SelectedIndexes.OrderBy(i => i).Select(i => Items[i]);
+            
             def text = StringBuilder();
-            foreach (line in SelectedItems)
+            foreach (line in items)
             {
                 _ = text.Append(line);
                 _ = text.Append("\r\n");

@@ -1,0 +1,159 @@
+﻿using Nemerle.Collections;
+using Nemerle.Compiler;
+using Nemerle.Compiler.Parsetree;
+using Nemerle.Compiler.NemerleModifiers;
+
+namespace LogGrok.Macros
+{
+  enum MemoizeScope
+  {
+    | Instance
+    | Class
+  }
+  [Nemerle.MacroUsage (Nemerle.MacroPhase.WithTypedMembers, Nemerle.MacroTargets.Method)]
+  macro CacheLastResult (tb : TypeBuilder, meth : MethodBuilder, params opts : list [PExpr])
+  {
+    mutable scope = if(meth.IsStatic) MemoizeScope.Class else MemoizeScope.Instance;
+    mutable synch = false;
+    mutable invalidValue = None();
+
+    foreach (o in opts)
+    {
+      | <[ Scope = Instance ]> => scope = MemoizeScope.Instance
+      | <[ Scope = Class    ]> => scope = MemoizeScope.Class
+      | <[ Scope = $other ]> =>
+        Message.Error (other.Location, $"Invalid parameter: Scope = $other. Valid options are Instance (default) and Class.")
+      | <[ Synchronized = $(opt : bool) ]> => synch = opt
+      | <[ Synchronized = $other ]> =>
+        Message.Error (other.Location, $"Invalid parameter: Synchronized = $other. Valid options are true and false (default).")
+      | <[ InvalidValue = $x ]> => invalidValue = Some(x)
+      | x =>
+        Message.Error ($"Invalid parameter: $x. Valid parameters are Scope, Synchronized and InvalidValue.")
+    }
+
+    def parms = meth.GetParameters ();
+    def lockVar = Macros.NewSymbol ("lockVar");
+    def immutableAttrs = if (scope == MemoizeScope.Class) Static else None;
+    def mutableAttrs   = immutableAttrs | Mutable;
+    def immutableMods  = AttributesAndModifiers(immutableAttrs, [
+      <[ System.Diagnostics.DebuggerBrowsable(System.Diagnostics.DebuggerBrowsableState.Never) ]>,
+      <[ Nemerle.Extensions.EqualsIgnore ]>
+    ]);
+    def mutableMods    = AttributesAndModifiers(mutableAttrs, [
+      <[ System.Diagnostics.DebuggerBrowsable(System.Diagnostics.DebuggerBrowsableState.Never) ]>,
+      <[ Nemerle.Extensions.EqualsIgnore ]>,
+      <[ Nemerle.Core.RecordIgnore ]>
+    ]);
+    
+    def body           = Util.locate(meth.Body.Location, <[ $("_N_return" : global): { $(meth.Body) } ]>);
+    def newBody        = Util.locate(meth.Body.Location, match (parms)
+    {
+      | [] | null =>
+        def cached_value = Macros.NewSymbol ("cached_value");
+        def is_cached    = Macros.NewSymbol ("is_cached");
+
+        tb.Define (<[ decl: ..$mutableMods $(cached_value : name) : $(meth.ReturnType : typed); ]>);
+        tb.Define (<[ decl: ..$mutableMods $(is_cached : name) : bool; ]>);
+        when (synch)
+          tb.Define (<[ decl: ..$immutableMods $(lockVar : name) : object = object (); ]>);
+    
+        def doCachedCheck(expr)
+        {
+          <[
+            unless($(is_cached : name))
+            {
+              $expr
+            }
+            $(cached_value : name)
+          ]>
+        }
+          
+        def getValue = match(invalidValue)
+        {
+          | Some(invalidValue) =>
+            doCachedCheck(<[
+                $(cached_value : name) = $body;
+                unless($(cached_value : name) == $invalidValue)
+                  $(is_cached : name) = true;
+            ]>)
+          | _ =>
+            doCachedCheck(<[
+                $(cached_value : name) = $body;
+                $(is_cached : name) = true;
+            ]>)
+        }
+
+        if (synch)
+          doCachedCheck(<[
+            lock ($(lockVar : name))
+              _ = $getValue
+          ]>)
+        else
+          getValue
+
+      | (prm :: _) =>
+        def cache = Macros.NewSymbol ("cache");
+
+        match (FixedType.ConstructFunctionType (meth.GetHeader ()))
+        {
+          | Fun (t1, t2) =>
+            
+            tb.Define (<[ decl: ..$mutableMods $(cache : name) : System.Tuple[$(t1 : typed) , $(t2 : typed)]; ]>);
+            when (synch)
+              tb.Define (<[ decl: ..$immutableMods $(lockVar : name) : object = object (); ]>);
+        }
+
+        def parm_values = if (parms.Length > 1)
+                            <[ (..$(parms.Map(p => <[ $(p.name : usesite) ]>)) )]>
+                          else
+                            <[ $(prm.name : usesite) ]>;
+        
+        def res = match(invalidValue)
+        {
+          | Some(invalidValue) =>
+            <[
+              match($(cache : name))
+              {
+                  | null
+                  | tuple when !tuple.Item1.Equals($parm_values) =>
+                  {
+                    def ret = $body;
+                    unless(ret == $invalidValue)
+                    $(cache : name) = System.Tuple.Create(($parm_values), ret);
+                    ret
+                  }
+                  | tuple => tuple.Item2
+                    
+              }
+            
+              
+            ]>
+          | _ =>
+            <[
+            
+             match($(cache : name))
+              {
+                  | null
+                  | tuple when !tuple.Item1.Equals($parm_values) =>
+                  {
+                    def ret = $body;
+                    $(cache : name) = System.Tuple.Create(($parm_values), ret);
+                    ret
+                  }
+                  | tuple =>  tuple.Item2
+                    
+              }
+            ]>
+        }
+
+        if (synch)
+          <[ lock ($(lockVar : name))
+              $res
+          ]>
+        else
+          res
+    });
+
+    meth.Body = newBody;
+  }
+}

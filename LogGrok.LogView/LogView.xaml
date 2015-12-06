@@ -112,8 +112,8 @@
                             VirtualizingStackPanel.VirtualizationMode="Recycling"
                             be:ListMouseMultiSelectionBehavior.Enabled="True"
                             controls:HighlightedTextBlock.HighlightedText="{Binding HighlightedText}"
-                            controls:HighlightedTextBlock.IsCaseSensitive="{Binding IsCaseSensitive}">
-
+                            controls:HighlightedTextBlock.IsCaseSensitive="{Binding IsCaseSensitive}"
+                            infracontrols:NavigateToLineBehavior.NavigateToLineRequest="{Binding NavigateToLineRequest}">
                 <be:ListMouseMultiSelectionBehavior.SelectionRectangleBrush>
                     <x:Static Member="SystemColors.HighlightBrush" />
                 </be:ListMouseMultiSelectionBehavior.SelectionRectangleBrush>
@@ -122,45 +122,48 @@
                 </be:ListMouseMultiSelectionBehavior.SelectionRectanglePen>
                 <infra:ListView.ItemsPanel>
                     <ItemsPanelTemplate>
-                        <VirtualizingStackPanel Tag="{Binding SelectedItems, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type infra:ListView}}}" infracontrols:NavigateToLineBehavior.NavigateToLineRequest="{Binding NavigateToLineRequest}">
-                            <VirtualizingStackPanel.ContextMenu>
-                                <ContextMenu infra:AvalonRegion.Name="ContextMenu">
-                                    <MenuItem Command="Copy" />
-                                    <MenuItem Command="{Binding AddToScratchPad}"
-                                              CommandParameter="{Binding PlacementTarget.Tag,
-                                                                         RelativeSource={RelativeSource FindAncestor,
+                        <controls:VirtualizingStackPanel 
+                             Tag="{Binding SelectedIndexes, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type infra:ListView}}}">
+                            <controls:VirtualizingStackPanel.ContextMenu>
+                          <ContextMenu infra:AvalonRegion.Name="ContextMenu">
+                            <MenuItem Command="Copy" />
+                            <MenuItem Command="{Binding AddToScratchPad}"
+                                      CommandParameter="{Binding PlacementTarget.Tag,
+                                                                           RelativeSource={RelativeSource FindAncestor,
                                                                                                         AncestorType={x:Type ContextMenu}}}"
-                                              Header="Add to scratch pad" />
+                                      Header="Add to scratch pad" />
 
-                                    <MenuItem Header="Exclude" Visibility="{Binding CanFilter, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                        <MenuItem.ItemsSource>
-                                            <MultiBinding Converter="{index:MetaInfoToMenuItemsConverter}">
-                                                <Binding Path="MetaInformation" />
-                                                <Binding Path="ExcludeCommand" />
-                                                <Binding Path="SelectedItems" />
-                                            </MultiBinding>
-                                        </MenuItem.ItemsSource>
-                                    </MenuItem>
+                            <MenuItem Header="Exclude" Visibility="{Binding CanFilter, Converter={StaticResource BooleanToVisibilityConverter}}">
+                              <MenuItem.ItemsSource>
+                                <MultiBinding Converter="{index:MetaInfoToMenuItemsConverter}">
+                                  <Binding Path="MetaInformation" />
+                                  <Binding Path="ExcludeCommand" />
+                                  <Binding Path="SelectedItems" />
+                                </MultiBinding>
+                              </MenuItem.ItemsSource>
+                            </MenuItem>
 
-                                    <MenuItem Header="Exclude All But" Visibility="{Binding CanFilter, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                        <MenuItem.ItemsSource>
-                                            <MultiBinding Converter="{index:MetaInfoToMenuItemsConverter}">
-                                                <Binding Path="MetaInformation" />
-                                                <Binding Path="IncludeCommand" />
-                                                <Binding Path="SelectedItems" />
-                                            </MultiBinding>
-                                        </MenuItem.ItemsSource>
-                                    </MenuItem>
+                            <MenuItem Header="Exclude All But" Visibility="{Binding CanFilter, Converter={StaticResource BooleanToVisibilityConverter}}">
+                              <MenuItem.ItemsSource>
+                                <MultiBinding Converter="{index:MetaInfoToMenuItemsConverter}">
+                                  <Binding Path="MetaInformation" />
+                                  <Binding Path="IncludeCommand" />
+                                  <Binding Path="SelectedItems" />
+                                </MultiBinding>
+                              </MenuItem.ItemsSource>
+                            </MenuItem>
 
-                                    <MenuItem Command="{Binding ClearFiltersCommand}"
-                                              Header="Clear Filters"
-                                              IsEnabled="{Binding IsFiltersEnabled}"
-                                              Visibility="{Binding CanFilter,
+                            <MenuItem Command="{Binding ClearFiltersCommand}"
+                                      Header="Clear Filters"
+                                      IsEnabled="{Binding IsFiltersEnabled}"
+                                      Visibility="{Binding CanFilter,
                                                                    Converter={StaticResource BooleanToVisibilityConverter}}" />
 
-                                </ContextMenu>
-                            </VirtualizingStackPanel.ContextMenu>
-                        </VirtualizingStackPanel>
+                          </ContextMenu>
+                        </controls:VirtualizingStackPanel.ContextMenu>
+                      </controls:VirtualizingStackPanel>
+                    
+                    
                     </ItemsPanelTemplate>
                 </infra:ListView.ItemsPanel>
             </infra:ListView>

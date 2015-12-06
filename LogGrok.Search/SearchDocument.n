@@ -50,7 +50,7 @@ namespace LogGrok.Search
             _gridViewFactory = gridViewFactory;
             _lineViewModelProviderFactory = lineViewModelProviderFactory;
             
-            AddToScratchPad = DelegateCommand(o => (o : IEnumerable[object]).Cast.[LineViewModel]().Iter(x => scratchPad.AddText(x.RawLine)) );
+            AddToScratchPad = DelegateCommand(o => (o : IEnumerable[object]).Cast.[VirtualLineViewModel]().Iter(x => scratchPad.AddText(x.RawLine)) );
             AddSingleLineToScratchPad = DelegateCommand(o => AddToScratchPad.Execute([o]));
         }
         
@@ -129,7 +129,7 @@ namespace LogGrok.Search
             _searchFilter.Reset(SearchText, options);
         }
         
-        public SearchResults : VirtualList[LineViewModel] { get; set; }
+        public SearchResults : VirtualItemsList[LineViewModel, VirtualLineViewModel] { get; set; }
 
         [NotifyChangedOptions(Dependent = [IsIndeterninateProgress, IsSearching])]
         public SearchProgress : double { get; private set }
@@ -150,7 +150,7 @@ namespace LogGrok.Search
             }
         }
         
-        public SelectedValue : LineViewModel 
+        public SelectedValue : VirtualLineViewModel 
         {
             get 
             { 
@@ -160,7 +160,7 @@ namespace LogGrok.Search
             { 
                 _selectedValue = value; 
                 when (value != null)
-                    _navigationService.NavigateTo(value.Index);
+                    _navigationService.NavigateTo(value.GetProperty(l => l.Index));
             }
         }
 
@@ -174,7 +174,8 @@ namespace LogGrok.Search
             _itemProvider = itemProvider;
             _itemProvider.ProgressChanged += _ => SearchProgress = _itemProvider.Progress;
             
-            SearchResults  = VirtualList(_lineViewModelProviderFactory(itemProvider), _syncContext);
+            def lines = VirtualList(_lineViewModelProviderFactory(itemProvider), _syncContext);
+            SearchResults  = VirtualItemsList(lines, lines, (l, i) => VirtualLineViewModel(l, i));
             SearchProgress = _itemProvider.Progress;
         }
         
@@ -182,7 +183,7 @@ namespace LogGrok.Search
         public AddSingleLineToScratchPad : ICommand { get; private set; }
         
         private _navigationService : ILogNavigation;
-        private mutable _selectedValue : LineViewModel;    
+        private mutable _selectedValue : VirtualLineViewModel;    
         private mutable _itemProvider : DynamicFilteredLinesProvider;
         private _lineViewModelProviderFactory : IItemProvider[int] -> IItemProvider[LineViewModel];
         private _searchFilter  : SearchFilter;

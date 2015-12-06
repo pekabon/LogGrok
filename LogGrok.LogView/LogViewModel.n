@@ -30,6 +30,7 @@ using LogGrok.IndexedFilter;
 using Microsoft.Practices.Prism.Commands;
 using Microsoft.Practices.Prism.Interactivity.InteractionRequest;
 
+
 namespace LogGrok.LogView
 {
     [NotifyPropertyChanged]
@@ -94,12 +95,18 @@ namespace LogGrok.LogView
                     RaisePropertyChanged(IsFiltersEnabled)
                 };
 
-            AddToScratchPad = DelegateCommand(o => (o : IEnumerable[object])
-                .Cast.[VirtualItem[LineViewModel]]()
-                .Select(_.SourceItem)
-                .Iter(x => scratchPad.AddText(x.RawLine)) );
-                
-            AddSingleLineToScratchPad = DelegateCommand(o => AddToScratchPad.Execute([o]));
+            def GetOrderedLineViewModels(indexes)
+            {
+                indexes.OrderBy(i => i).Select(i => this.VirtualLines[i] : VirtualLineViewModel)
+            }
+            
+            AddToScratchPad = DelegateCommand(o =>
+                            GetOrderedLineViewModels(o: IEnumerable[int]).Iter(ln => scratchPad.AddText(ln.RawLine)));
+
+            AddSingleLineToScratchPad = DelegateCommand(o : object => 
+            {
+                scratchPad.AddText(o.ToString())
+            });
 
             _indexProvider = OriginalLineProvider(_documentLineProvider, _logInfo);
             
@@ -125,8 +132,8 @@ namespace LogGrok.LogView
                     }                    
             }
 
-            
-            
+
+
             def titlePrefix = match(_logInfo.ParsedHeader)
                                  {
                                      | Some(header) => $<#$(header.Mode) (0x$(header.Pid.ToString("X"))) #>
@@ -176,7 +183,7 @@ namespace LogGrok.LogView
             get
             {
                 DelegateCommand(() => Clipboard.SetText(_logInfo.FullPath))
-        }
+            }
         }
 
         public ExcludeCommand : ICommand
@@ -328,9 +335,9 @@ namespace LogGrok.LogView
             get; set;
         }
 
-        public GetSelectedLines() : IEnumerable[LineViewModel]
+        public GetSelectedLines() : IEnumerable[VirtualLineViewModel]
         {
-            (SelectedItems ?? []).Cast.[VirtualItem[LineViewModel]]().Select(_.SourceItem);
+            (SelectedItems ?? []).Cast.[VirtualLineViewModel]()
         }
 
         public AddToScratchPad : ICommand { get; private set; }

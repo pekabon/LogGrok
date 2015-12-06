@@ -73,6 +73,9 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CacheLastResult.n">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Diagnostics\TraceMethod.n">
       <SubType>Code</SubType>
     </Compile>

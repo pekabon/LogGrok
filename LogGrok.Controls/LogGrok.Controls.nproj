@@ -92,6 +92,12 @@
     <Compile Include="ResizeablePopupContent.n">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="VirtualizingStackPanel.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="VisualTreeWalker.n">
+      <SubType>Code</SubType>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Resources\" />
@@ -129,6 +135,13 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <MacroProjectReference Include="..\LogGrok.Macros\LogGrok.Macros.nproj">
+      <Name>LogGrok.Macros</Name>
+      <Project>{b5c80e41-f1f6-4ac0-a584-507808cba010}</Project>
+      <Private>False</Private>
+    </MacroProjectReference>
   </ItemGroup>
   <Import Project="$(Nemerle)\Nemerle.MSBuild.targets" />
   <Import Project="$(SolutionDir)\.nuget\NuGet.targets" Condition="Exists('$(SolutionDir)\.nuget\NuGet.targets')" />

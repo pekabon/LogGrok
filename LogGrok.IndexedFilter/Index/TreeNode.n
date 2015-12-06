@@ -56,7 +56,7 @@ namespace LogGrok.IndexedFilter.Index
             TreeNode.Node(array(nodeSize), array(nodeSize + 1)) 
         }
         
-         public static Insert(this node :TreeNode, newKey : int, newValue : int, [NotNull] leafFactory : void ->TreeNode.Leaf) :TreeNode
+        public static Insert(this node :TreeNode, newKey : int, newValue : int, [NotNull] leafFactory : void ->TreeNode.Leaf) :TreeNode
         {
             match (InsertCore(node, newKey, newValue, leafFactory))
             {
@@ -123,9 +123,6 @@ namespace LogGrok.IndexedFilter.Index
                                 }
                             }
                         }
-                    
-                    
-                       
                 }
             }
                 
@@ -164,7 +161,7 @@ namespace LogGrok.IndexedFilter.Index
             }
         }
         
-        static InsertCore(this node :TreeNode, newKey : int, newValue : int, 
+        public static InsertCore(this node :TreeNode, newKey : int, newValue : int, 
                                             [NotNull] leafFactory: void ->TreeNode.Leaf) : option[TreeNode * int]
         {
             match (node)

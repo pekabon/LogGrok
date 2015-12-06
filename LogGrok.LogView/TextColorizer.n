@@ -38,7 +38,8 @@ namespace LogGrok.LogView
                 {
                     | ColorRuleUsage.None        => []
                     | ColorRuleUsage.Line        => [line.RawLine]
-                    | ColorRuleUsage.ParsedAreas => rule.SearchAreas.Select(area => line[area].ToString())
+                    | ColorRuleUsage.ParsedAreas => rule.SearchAreas.Select(area => 
+                                if (line[area] == null) string.Empty else line[area].ToString())
                 }
             }
             
