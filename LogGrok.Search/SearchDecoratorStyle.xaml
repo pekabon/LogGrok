@@ -176,10 +176,17 @@
                                         ItemsSource="{Binding SearchResults}"
                                         SelectedValue="{Binding SelectedValue}"
                                         View="{Binding CustomView}"
+                                        infrabe:ListMouseMultiSelectionBehavior.Enabled="True"
                                         VirtualizingStackPanel.IsVirtualizing="True"
                                         VirtualizingStackPanel.VirtualizationMode="Recycling"
                                         controls:HighlightedTextBlock.HighlightedText="{Binding SearchText}"
                                         controls:HighlightedTextBlock.IsCaseSensitive="{Binding IsCaseSensitive}">
+                          <infrabe:ListMouseMultiSelectionBehavior.SelectionRectangleBrush>
+                            <x:Static Member="SystemColors.HighlightBrush" />
+                          </infrabe:ListMouseMultiSelectionBehavior.SelectionRectangleBrush>
+                          <infrabe:ListMouseMultiSelectionBehavior.SelectionRectanglePen>
+                            <Pen Brush="Black" Thickness="1" />
+                          </infrabe:ListMouseMultiSelectionBehavior.SelectionRectanglePen>
                           <infra:ListView.ItemsPanel>
                             <ItemsPanelTemplate>
                               <controls:VirtualizingStackPanel Tag="{Binding SelectedItems, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type infra:ListView}}}">
