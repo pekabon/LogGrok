@@ -1,14 +1,17 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Runtime.CompilerServices;
 
 namespace LogGrok.Unsafe
 {
 	public static class ByteArrayTools
 	{
+		public static unsafe bool IsBeginOf(byte[] left, byte[] right)
+		{
+			if (left.Length > right.Length)
+				return false;
+
+			return FastEquals(left, 0, right, 0, left.Length);
+		}
+
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static unsafe bool FastEquals(byte[] left, int leftStart, byte[] right, int rightStart, int length)
 		{

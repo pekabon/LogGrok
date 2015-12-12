@@ -33,20 +33,6 @@ namespace LogGrok.Controls
             MeasureOverrideCore(availableSize, VerticalOffset, count);
         }
 
-        [Record]
-        private class ItemLists
-        {
-            public realizedItems : list[int*UIElement];
-            public recyclableItems : list[int*UIElement];
-
-            public Update(update : (list[int*UIElement]*list[int*UIElement]) ->list[int*UIElement]*list[int*UIElement]) : ItemLists
-            {
-                def (realized, recyclable) = update(realizedItems, recyclableItems);
-
-                ItemLists(realized, recyclable)
-            }
-        }
-
         [CacheLastResult]
         private MeasureOverrideCore(availableSize : Size,  verticalOffset : double, itemsCount : int) : Size
         {

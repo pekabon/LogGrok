@@ -136,6 +136,11 @@
       <Project>{eacc0308-9405-4511-a2f5-48fb438c9ea0}</Project>
       <Private>True</Private>
     </ProjectReference>
+    <ProjectReference Include="..\LogGrok.Unsafe\LogGrok.Unsafe.csproj">
+      <Name>LogGrok.Unsafe</Name>
+      <Project>{37fd8941-1840-48df-9f81-f6603ca4490e}</Project>
+      <Private>True</Private>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(Nemerle)\Nemerle.MSBuild.targets" />
   <!--

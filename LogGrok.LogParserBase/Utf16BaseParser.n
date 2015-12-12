@@ -20,6 +20,11 @@ namespace LogGrok.LogParserBase
             BufferArrayLength = _buffer.Bytes.Length / 2;
         }
 
+        protected GetEncoding() : Encoding
+        {
+            Encoding.Unicode
+        }
+        
         public virtual Dispose() : void
         {
             Stream.Dispose();

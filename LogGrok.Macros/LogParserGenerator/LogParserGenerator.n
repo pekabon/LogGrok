@@ -384,7 +384,16 @@ namespace LogGrok.Macros.LogParserGenerator
                     }
 
                 }
-
+                // skip preamble
+                def encoding = GetEncoding();
+                def preambleBytes = encoding.GetPreamble();
+                def filePreamble = array(preambleBytes.Length);
+                _ = Stream.Read(filePreamble, 0, preambleBytes.Length);
+                unless (ByteArrayTools.IsBeginOf(preambleBytes, filePreamble))
+                {
+                    _ = Stream.Seek(0, System.IO.SeekOrigin.Begin);
+                }
+                
                 _ = Stream.Seek(0, System.IO.SeekOrigin.Begin);
                 when (!TryReadBuffer())
                     throw LogGrok.LogParserBase.ParseException("File is empty");
