@@ -256,8 +256,11 @@ namespace LogGrok.Controls
                     def itemScroll = pixels - upOffset;
                     def itemScrollPercent = itemScroll / (downOffset - upOffset);
                     SetVerticalOffset(index + itemScrollPercent);
-                | None => ()
-            }
+                | None => 
+                        def newOffset = 
+                            if (LessOrEquals(pixels, 0)) _itemOffsets.Min((itemIndex, _, _)=>itemIndex) else _itemOffsets.Max((itemIndex, _, _)=>itemIndex);
+                        SetVerticalOffset(newOffset);
+           }
         }
 
         protected override BringIndexIntoView(index : int) : void
