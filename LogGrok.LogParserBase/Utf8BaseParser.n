@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
+using System.Text;
 
 using LogGrok.Core;
 using LogGrok.Macros;
@@ -25,6 +26,11 @@ namespace LogGrok.LogParserBase
         protected mutable BufferLength : int;// { get; private set; }
         protected mutable BufferArrayLength : int;// { get; private set; }
         protected mutable BufferOffset : long;// { get; private set; }
+        
+        protected GetEncoding() : Encoding
+        {
+            Encoding.UTF8
+        }
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected Find(position : int, value : byte) : int
