@@ -6,6 +6,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
+using LogGrok.Unsafe;
+
 namespace LogGrok.Macros.LogParserGenerator
 {
     class Generator
@@ -395,7 +397,9 @@ namespace LogGrok.Macros.LogParserGenerator
         type.DefineWithSource( <[ decl:
             public GetEnumerator() : IEnumerator[LogGrok.LogParserBase.Line]
             {
-             // skip preamble
+                _ = Stream.Seek(0, System.IO.SeekOrigin.Begin);
+
+                // skip preamble
                 def encoding = GetEncoding();
                 def preambleBytes = encoding.GetPreamble();
                 def filePreamble = array(preambleBytes.Length);
@@ -404,12 +408,12 @@ namespace LogGrok.Macros.LogParserGenerator
                 {
                     _ = Stream.Seek(0, System.IO.SeekOrigin.Begin);
                 }
-                _ = Stream.Seek(0, System.IO.SeekOrigin.Begin);
+
                 when (!TryReadBuffer())
                     throw LogGrok.LogParserBase.ParseException("File is empty");
-                
+
                 def lineFormat = DetectLineBegin(0);
-                
+
                 def (lineFormat, beginPosition) = 
                     if (lineFormat != -1) 
                         (lineFormat, 0)
@@ -418,13 +422,12 @@ namespace LogGrok.Macros.LogParserGenerator
                         def (format, endPosition) = FindEndOfLine(0);
                         (format, endPosition + EolLength)
                     }
-            
+
                  when (lineFormat == -1)
                  {
                     throw LogGrok.LogParserBase.ParseException("Unable to find first line");
                  }
-                    
-                    
+
                 ReadLines(lineFormat, beginPosition);
             } ]> );
 
