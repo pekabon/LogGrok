@@ -24,11 +24,8 @@ namespace LogGrok.Controls
 {
     public class HighlightedTextBlock : Control
     {
-        [DependencyProperty(IsAttached, Metadata=FrameworkPropertyMetadata(string.Empty, Inherits | AffectsRender))]
-        public static GetHighlightedText(d : DependencyObject) : string;
-
-        [DependencyProperty(IsAttached, Metadata=FrameworkPropertyMetadata(false, Inherits | AffectsRender))]
-        public static GetIsCaseSensitive(d : DependencyObject) : bool;
+        [DependencyProperty(IsAttached, Metadata=FrameworkPropertyMetadata(null, Inherits | AffectsRender))]
+        public static GetHighlightRegex(d : DependencyObject) : Regex;
 
         [DependencyProperty(Metadata=FrameworkPropertyMetadata(string.Empty, AffectsMeasure | AffectsRender))]
         public Text : string { get; set; }
@@ -56,7 +53,7 @@ namespace LogGrok.Controls
             when (Background != null)
                 drawingContext.DrawRectangle(Background, Pen(Background, 0), Rect(0, 0, ActualWidth, ActualHeight));
                 
-            foreach(highlighting in GetDrawingGeometries(Text, GetHighlightedText(this), GetIsCaseSensitive(this)))
+            foreach(highlighting in GetDrawingGeometries(Text, GetHighlightRegex(this)))
             {
                 drawingContext.DrawGeometry(Brushes.Moccasin, Pen(Brushes.Moccasin, 0), highlighting);
             }
@@ -65,15 +62,14 @@ namespace LogGrok.Controls
         }
         
         [CacheLastResult]
-        private GetDrawingGeometries(text: string, highlightString : string, highlightIsCaseSensitive : bool) : IEnumerable[Geometry]
+        private GetDrawingGeometries(text: string, regex : Regex) : IEnumerable[Geometry]
         {
-            if (string.IsNullOrEmpty(text) || string.IsNullOrEmpty(highlightString))
+            if (string.IsNullOrEmpty(text) || regex == null)
             {
                 Enumerable.Empty()
             }
             else
             {
-                def regex = Regex($"($(Regex.Escape(highlightString)))", if (highlightIsCaseSensitive) RegexOptions.None else RegexOptions.IgnoreCase);
                 def matchs = regex.Matches(Text).Cast.[Match]().ToList();
                 matchs .Select(
                     mtch => 

@@ -91,7 +91,6 @@ namespace LogGrok.Search
             }
         }
 
-
         [Throttle(TimeSpan.FromMilliseconds(500))]
         private CommitSearchPattern() : void
         {
@@ -116,8 +115,8 @@ namespace LogGrok.Search
                     Documents.Add(newDocument);
                     CurrentDocument = newDocument;
                 }
-                
-                _highlighter.SetTextForHighlight(searchPatternToCommit.Text, searchPatternToCommit.GetSearchOptions());
+
+                _highlighter.SetRegexForHighlight(searchPatternToCommit.GetRegex());
                 IsFilterEnabled = !searchPatternToCommit.Text.IsEmpty();
             }
         }
@@ -143,11 +142,11 @@ namespace LogGrok.Search
                 
                 _searchPatternCurrentlyEditing =  
                     if (value != null)
-                        SearchPattern(value.SearchText, value.UseRegex, value.IsCaseSensitive)
+                        _currentDocument.SearchPattern
                     else
                         SearchPattern(string.Empty, false, false);
                                                     
-                _highlighter.SetTextForHighlight(_searchPatternCurrentlyEditing.Text, _searchPatternCurrentlyEditing.GetSearchOptions());
+                _highlighter.SetRegexForHighlight(_searchPatternCurrentlyEditing.GetRegex());
             }
         }
 

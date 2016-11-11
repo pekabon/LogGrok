@@ -6,6 +6,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
+using LogGrok.Unsafe;
+
 namespace LogGrok.Macros.LogParserGenerator
 {
     class Generator
@@ -389,7 +391,7 @@ namespace LogGrok.Macros.LogParserGenerator
                 def preambleBytes = encoding.GetPreamble();
                 def filePreamble = array(preambleBytes.Length);
                 _ = Stream.Read(filePreamble, 0, preambleBytes.Length);
-                unless (ByteArrayTools.IsBeginOf(preambleBytes, filePreamble))
+                unless (LogGrok.Unsafe.ByteArrayTools.IsBeginOf(preambleBytes, filePreamble))
                 {
                     _ = Stream.Seek(0, System.IO.SeekOrigin.Begin);
                 }

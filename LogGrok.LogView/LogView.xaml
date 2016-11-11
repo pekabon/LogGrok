@@ -111,8 +111,7 @@
                             VirtualizingStackPanel.IsVirtualizing="True"
                             VirtualizingStackPanel.VirtualizationMode="Recycling"
                             be:ListMouseMultiSelectionBehavior.Enabled="True"
-                            controls:HighlightedTextBlock.HighlightedText="{Binding HighlightedText}"
-                            controls:HighlightedTextBlock.IsCaseSensitive="{Binding IsCaseSensitive}"
+                            controls:HighlightedTextBlock.HighlightRegex="{Binding HighlightRegex}"
                             infracontrols:NavigateToLineBehavior.NavigateToLineRequest="{Binding NavigateToLineRequest}">
                 <be:ListMouseMultiSelectionBehavior.SelectionRectangleBrush>
                     <x:Static Member="SystemColors.HighlightBrush" />

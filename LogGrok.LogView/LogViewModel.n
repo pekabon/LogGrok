@@ -16,6 +16,7 @@ using System.IO.Path;
 using System.IO;
 using System.Windows.Threading;
 using System.Windows.Input;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Linq;
 using System.Windows;
@@ -307,9 +308,7 @@ namespace LogGrok.LogView
                 _syncContext.Post(_ => NavigateTo(line.Index), null);
         }
 
-        public HighlightedText : string { get; private set; }
-
-        public IsCaseSensitive : bool { get; private set; }
+        public HighlightRegex : Regex { get; private set; }
 
         public Progress : int { get; private set; }
 
@@ -321,12 +320,16 @@ namespace LogGrok.LogView
 
         public Select(_line : IEnumerable[long]) : void { }
 
-        public SetTextForHighlight(text : string, searchOptions : SearchOptions) : void
+        public SetRegexForHighlight(regex : option[Regex]) : void
         {
             _ = Application.Current.Dispatcher.BeginInvoke(Action(() =>  
                 { 
-                    HighlightedText = text;
-                    IsCaseSensitive = searchOptions.HasFlag(SearchOptions.CaseSensitive);
+                    HighlightRegex =
+                        match (regex)
+                        {
+                            | Some(r) => r
+                            | None()  => null
+                        }
                 }), DispatcherPriority.ApplicationIdle);
         }
 
