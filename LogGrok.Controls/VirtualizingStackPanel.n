@@ -176,8 +176,9 @@ namespace LogGrok.Controls
             
             def onScreenCount = _itemOffsets
                     .FindAll((_, upOffset, downOffset) => 
-                        GreaterOrEquals(upOffset, 0.0) && LessOrEquals(downOffset, screenBound)).Length;
-            
+                        GreaterOrEquals(downOffset, 0.0) && LessOrEquals(upOffset, screenBound))
+                    .Map((_, min,max) => (Math.Min(max, screenBound) - Math.Max(min, 0.0)) / (max - min))
+                    .Sum();
             
             UpdateViewPort(finalSize, onScreenCount);
             
