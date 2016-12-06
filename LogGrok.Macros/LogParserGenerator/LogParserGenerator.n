@@ -367,41 +367,53 @@ namespace LogGrok.Macros.LogParserGenerator
             }; ]> );   
 
         type.Define( <[ decl:
-            public GetEnumerator() : IEnumerator[LogGrok.LogParserBase.Line]
+            private ReadLines(lineFormat_ : int, beginPosition_ : int) : IEnumerator[LogGrok.LogParserBase.Line]
             {
-                def ReadLines(lineFormat, beginPosition)
+                mutable exit = false;
+                mutable lineFormat = lineFormat_;
+                mutable beginPosition = beginPosition_;
+                while (!exit)
                 {
                     match (FindEndOfLine(beginPosition + MinimalHeaderLength))
                     {
                         | (-1, _) =>
                             MoveBufferEndToBegin(beginPosition);
                             if (TryReadBuffer(BufferLength - beginPosition))
-                                ReadLines(lineFormat, 0)
+                                beginPosition = 0;
                             else 
-                                when (BufferLength > EolLength)
-                                    yield CreateLine(lineFormat, 0, BufferLength - EolLength); //TODO: check eol
+                                exit = true;
                         | (nextlineFormat, lineEndPosition) => 
                             yield CreateLine(lineFormat, beginPosition, lineEndPosition); 
-                            ReadLines(nextlineFormat, lineEndPosition + EolLength)
+                            lineFormat = nextlineFormat;
+                            beginPosition = lineEndPosition + EolLength;
                     }
-
                 }
+
+                when (BufferLength > EolLength)
+                    yield CreateLine(lineFormat, 0, BufferLength - EolLength); //TODO: check eol
+            }
+            ]>);
+                
+        type.DefineWithSource( <[ decl:
+            public GetEnumerator() : IEnumerator[LogGrok.LogParserBase.Line]
+            {
+                _ = Stream.Seek(0, System.IO.SeekOrigin.Begin);
+
                 // skip preamble
                 def encoding = GetEncoding();
                 def preambleBytes = encoding.GetPreamble();
                 def filePreamble = array(preambleBytes.Length);
                 _ = Stream.Read(filePreamble, 0, preambleBytes.Length);
-                unless (LogGrok.Unsafe.ByteArrayTools.IsBeginOf(preambleBytes, filePreamble))
+                unless (ByteArrayTools.IsBeginOf(preambleBytes, filePreamble))
                 {
                     _ = Stream.Seek(0, System.IO.SeekOrigin.Begin);
                 }
-                
-                _ = Stream.Seek(0, System.IO.SeekOrigin.Begin);
+
                 when (!TryReadBuffer())
                     throw LogGrok.LogParserBase.ParseException("File is empty");
-                
+
                 def lineFormat = DetectLineBegin(0);
-                
+
                 def (lineFormat, beginPosition) = 
                     if (lineFormat != -1) 
                         (lineFormat, 0)
@@ -410,13 +422,12 @@ namespace LogGrok.Macros.LogParserGenerator
                         def (format, endPosition) = FindEndOfLine(0);
                         (format, endPosition + EolLength)
                     }
-            
+
                  when (lineFormat == -1)
                  {
                     throw LogGrok.LogParserBase.ParseException("Unable to find first line");
                  }
-                    
-                    
+
                 ReadLines(lineFormat, beginPosition);
             } ]> );
 

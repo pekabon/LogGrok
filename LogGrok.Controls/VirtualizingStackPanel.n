@@ -48,87 +48,63 @@ namespace LogGrok.Controls
             {
                 def GenerateVisibleItems(itemsToRecycle)
                 {
-                    def Generate(startOffset, offset : option[double], newItems : list[int*UIElement], itemsToRecycle) 
+                    def Generate(index, advanceIndexFunc, startOffset, offset : option[double], newItems : list[int*UIElement], itemsToRecycle) 
                     {
-                        def (item, newItemsToRecycle) = GenerateNextItem(newItems, itemsToRecycle);
+                        def (itm, newItemsToRecycle) = GenerateNextItem(index, newItems, itemsToRecycle);
+                        def item = itm.Map(i => (index, i));
                         match(item)
                         {
                             | Some((index, item)) =>
-
                                 def newOffset = offset.Map(o => o + item.DesiredSize.Height).WithDefault(startOffset * item.DesiredSize.Height);
+                                
                                 if (newOffset > availableSize.Height)
                                     ((index, item)::newItems, newItemsToRecycle)
                                 else
-                                    Generate(startOffset, Some(newOffset), (index, item)::newItems, newItemsToRecycle);
+                                    Generate(advanceIndexFunc(index), advanceIndexFunc, startOffset, Some(newOffset), (index, item)::newItems, newItemsToRecycle);
                             | _ => (newItems, itemsToRecycle)
                         }
                     }
-                    GenerateItems(() => Generate(startOffset, None(), [], itemsToRecycle), Math.Max(firstVisibleItemIndex, 0), GeneratorDirection.Forward);
+                    def startIndex = Math.Max(firstVisibleItemIndex, 0);
+                    
+                    GenerateItems((startIndex, advanceIndexFunc) => Generate(startIndex, advanceIndexFunc, startOffset, None(), [], itemsToRecycle), 
+                        startIndex, GeneratorDirection.Forward);
                 }
 
                 def GenerateItemAboveVisible(startOffset, realizedItems, itemsToRecycle)
                 {
-                    mutable currentIndex = firstVisibleItemIndex - 1;
-
-                    def GenerateItemBack(realizedItems, itemsToRecycle)
+                    def Generate(index, advanceIndexFunc, offset, realizedItems , itemsToRecycle) 
                     {
-                        def startPosition = Math.Max(currentIndex, 0);
-                        def generatorPosition = ItemContainerGenerator.GeneratorPositionFromIndex(startPosition);
-                        using (ItemContainerGenerator.StartAt(generatorPosition, GeneratorDirection.Forward, true))
-                        {
-                            def GetItem(realizedItems, itemsToRecycle)
-                            {
-                                def result= GenerateNextItem(realizedItems, itemsToRecycle);
-                                match(result)
-                                {
-                                    | (Some((index, item)), itemsToRecycle) =>
-                                        // don't know why itemcontainergenerator return wrong item sometimes
-                                            if (index == currentIndex) 
-                                                result 
-                                            else 
-                                                GetItem((index, item)::realizedItems, itemsToRecycle)
-                                    | _ => result
-                                }
-                            }
-
-                            def res = GetItem(realizedItems, itemsToRecycle);
-                            --currentIndex;
-                            res
-                        }
-                    }
-
-                    def Generate(offset, realizedItems, itemsToRecycle)
-                    {
-                        if (currentIndex < 0)
+                        if (index < 0)
                             (realizedItems, itemsToRecycle)
                         else
                         {
-                            def (item, newItemsToRecycle) = GenerateItemBack(realizedItems, itemsToRecycle);
+                            def (itm, newItemsToRecycle) = GenerateNextItem(index, realizedItems, itemsToRecycle);
+                            def item = itm.Map(i => (index, i));
                             match(item)
                             {
                                 | Some((index, item)) =>
                                     def newOffset = offset - item.DesiredSize.Height;
                                     if (newOffset < - ScrollUnitPixels)
                                         ((index, item)::realizedItems, newItemsToRecycle)
-                                else
-                                    Generate(newOffset, (index, item)::realizedItems, newItemsToRecycle);
+                                    else
+                                        Generate(advanceIndexFunc(index), advanceIndexFunc, newOffset, (index, item)::realizedItems, newItemsToRecycle);
                                 | _ => (realizedItems, itemsToRecycle)
-
                             }
                         }
                     }
 
-                    if (firstVisibleItemIndex == 0)
-                        (realizedItems, itemsToRecycle)
-                    else
+                    match(realizedItems.Find((i, _) => i == firstVisibleItemIndex))
                     {
-                        def (_, firstVisibleItem) = realizedItems.First((i, _) => i == firstVisibleItemIndex);
-                        Generate(firstVisibleItem.DesiredSize.Height * (1.0 + startOffset), realizedItems, itemsToRecycle)
+                        | Some((_, firstVisibleItem)) => 
+                            def offset = firstVisibleItem.DesiredSize.Height * (1.0 + startOffset);
+                            GenerateItems((startIndex, advanceIndexFunc) => 
+                                Generate(startIndex, advanceIndexFunc, offset, realizedItems, itemsToRecycle), 
+                                firstVisibleItemIndex - 1, GeneratorDirection.Backward)
+                        | _ => (realizedItems, itemsToRecycle)                                        
                     }
                 }
 
                 def (visibleItems, itemsToRecycle) = GenerateVisibleItems(itemsToRecycle);
-
                 
                 def (finalItems, itemsToRecycle) = GenerateItemAboveVisible(startOffset, visibleItems, itemsToRecycle);
 
@@ -200,7 +176,9 @@ namespace LogGrok.Controls
             
             def onScreenCount = _itemOffsets
                     .FindAll((_, upOffset, downOffset) => 
-                        GreaterOrEquals(upOffset, 0.0) && LessOrEquals(downOffset, screenBound)).Length;
+                        GreaterOrEquals(downOffset, 0.0) && LessOrEquals(upOffset, screenBound))
+                    .Map((_, min,max) => (Math.Min(max, screenBound) - Math.Max(min, 0.0)) / (max - min))
+                    .Sum();
             
             UpdateViewPort(finalSize, onScreenCount);
             
@@ -272,17 +250,22 @@ namespace LogGrok.Controls
             }
         }
 
-        private GenerateItems[T](generator : void->T, startIndex : int, direction : GeneratorDirection) : T
+        private GenerateItems[T](generator : (int*(int-> int))->  T, startIndex : int, direction : GeneratorDirection) : T
         {
             def startPosition = Math.Max(startIndex, 0);
             def generatorPosition = ItemContainerGenerator.GeneratorPositionFromIndex(startPosition);
+
             using (ItemContainerGenerator.StartAt(generatorPosition, direction, true))
             {
-                generator()
+                match(direction)
+                {
+                    | Forward =>  generator(startIndex, _ + 1)
+                    | Backward => generator(startIndex, _ - 1)
+                }
             }
         }
         
-        private GenerateNextItem(realizedItems : list[int * UIElement], itemsToRecyle : list[int * UIElement]) : option[int*UIElement]*list[int*UIElement]
+        private GenerateNextItem(index : int, realizedItems : list[int * UIElement], itemsToRecyle : list[int * UIElement]) : option[UIElement]*list[int*UIElement]
         {
             def RecycleItemIfNeeded(items, alreadyRealized : list[int*UIElement])
             {
@@ -306,9 +289,8 @@ namespace LogGrok.Controls
                 (None(), newItemsToRecycle)
             else
             {
-                def index = (generator :> ItemContainerGenerator).IndexFromContainer(item);
                 InsertAndMeasureItem(item, index, _recycled.Contains(item), isNewItem);
-                (Some(index, item), newItemsToRecycle)
+                (Some(item), newItemsToRecycle)
             }
         }
         
@@ -381,7 +363,9 @@ namespace LogGrok.Controls
             def visualChildIndex = generator.IndexFromContainer(item);
             def childGeneratorPos = ItemContainerGenerator.GeneratorPositionFromIndex(visualChildIndex);
 
-            (ItemContainerGenerator :> IRecyclingItemContainerGenerator).Recycle(childGeneratorPos, 1);
+            when (childGeneratorPos.Index >= 0)
+                (ItemContainerGenerator :> IRecyclingItemContainerGenerator).Recycle(childGeneratorPos, 1);
+            
             _ = _recycled.Add(item);
         }
 
@@ -581,7 +565,7 @@ namespace LogGrok.Controls
             get{ _viewPort.Width }
         }
 
-        private UpdateViewPort(availableSize : Size, visibleItemCount : int) : void
+        private UpdateViewPort(availableSize : Size, visibleItemCount : double) : void
         {
             def viewPort = Size(availableSize.Width, visibleItemCount);
 
@@ -589,6 +573,7 @@ namespace LogGrok.Controls
             {
                 _viewPort = viewPort;
                 when (ScrollOwner != null) ScrollOwner.InvalidateScrollInfo();
+                SetVerticalOffset(VerticalOffset);
             }
         }
 
@@ -632,7 +617,7 @@ namespace LogGrok.Controls
         private mutable _offset : Point;
         private mutable _viewPort : Size;
         private mutable _visibleElements : list[int*UIElement] = [];
-        private mutable _itemOffsets : list[int*double*double];
+        private mutable _itemOffsets : list[int*double*double]; // item*upOffset*downOffset
         private _trans : TranslateTransform = TranslateTransform();
     }
 }
