@@ -213,18 +213,23 @@ namespace LogGrok.Controls
                     _itemOffsets.Find((_, upOffset, downOffset) => Less(upOffset, pixels) && GreaterOrEquals(downOffset, pixels));
                 else
                     _itemOffsets.Find((_, upOffset, downOffset) => LessOrEquals(upOffset, pixels) && Greater(downOffset, pixels));
-                    
+
+            def verticalOffset =                     
             match(found)
             {
                 | Some((index, upOffset, downOffset)) =>
                     def itemScroll = pixels - upOffset;
                     def itemScrollPercent = itemScroll / (downOffset - upOffset);
-                    SetVerticalOffset(index + itemScrollPercent);
-                | None => 
-                        def newOffset = 
-                            if (LessOrEquals(pixels, 0)) _itemOffsets.Min((itemIndex, _, _)=>itemIndex) else _itemOffsets.Max((itemIndex, _, _)=>itemIndex);
-                        SetVerticalOffset(newOffset);
+                    index + itemScrollPercent
+                | None when _itemOffsets.IsEmpty => 0
+                | None =>
+                       if (LessOrEquals(pixels, 0)) 
+                            _itemOffsets.Min((itemIndex, _, _)=>itemIndex) 
+                       else 
+                            _itemOffsets.Max((itemIndex, _, _)=>itemIndex);
            }
+           
+           SetVerticalOffset(verticalOffset)
         }
 
         protected override BringIndexIntoView(index : int) : void
