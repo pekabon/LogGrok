@@ -148,7 +148,7 @@
                                            infrabe:DocumentCollectionBindingBehavior.OnDocumentCloseCommand="{Binding CloseDocument}">
                   <avalonDock:DockingManager.LayoutItemContainerStyle>
                     <Style TargetType="{x:Type avalonDock:LayoutItem}">
-                      <Setter Property="Title" Value="{Binding Model.Content.SearchText}" />
+                        <Setter Property="Title" Value="{Binding Model.Content.SearchPattern.Text}" />
                     </Style>
                   </avalonDock:DockingManager.LayoutItemContainerStyle>
                   <infrabe:DocumentCollectionBindingBehavior.DocumentViewTemplate>
@@ -168,7 +168,7 @@
                                                                                   Converter={StaticResource BooleanToVisibilityConverter}}"
                                      Value="{Binding SearchProgress,
                                                                              Mode=OneWay}" />
-                        <infra:ListView Grid.Row="1"
+                                                <infra:ListView Grid.Row="1"
                                         FontFamily="Consolas"
                                         IsSynchronizedWithCurrentItem="True"
                                         IsTextSearchEnabled="False"
@@ -179,9 +179,8 @@
                                         infrabe:ListMouseMultiSelectionBehavior.Enabled="True"
                                         VirtualizingStackPanel.IsVirtualizing="True"
                                         VirtualizingStackPanel.VirtualizationMode="Recycling"
-                                        controls:HighlightedTextBlock.HighlightedText="{Binding SearchText}"
-                                        controls:HighlightedTextBlock.IsCaseSensitive="{Binding IsCaseSensitive}">
-                          <infrabe:ListMouseMultiSelectionBehavior.SelectionRectangleBrush>
+                                        controls:HighlightedTextBlock.HighlightRegex="{Binding HighlightRegex}">
+                           <infrabe:ListMouseMultiSelectionBehavior.SelectionRectangleBrush>
                             <x:Static Member="SystemColors.HighlightBrush" />
                           </infrabe:ListMouseMultiSelectionBehavior.SelectionRectangleBrush>
                           <infrabe:ListMouseMultiSelectionBehavior.SelectionRectanglePen>

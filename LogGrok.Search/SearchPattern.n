@@ -2,6 +2,7 @@
 using Nemerle.Collections;
 using Nemerle.Text;
 using Nemerle.Utility;
+using Nemerle.WPF;
 
 using System;
 using System.Collections.Generic;
@@ -13,6 +14,7 @@ using LogGrok.Core;
 namespace LogGrok.Search
 {
     [Record]
+    [NotifyPropertyChanged]
     class SearchPattern
     {
         [Record]
@@ -32,10 +34,28 @@ namespace LogGrok.Search
         public CaseSensitive : bool { get; set;}
         public UseRegex      : bool { get; set }
 
+        public GetRegex() : option[Regex]
+        {
+            GetRegex(RegexOptions.None)
+        }
+
+        public GetRegex(regexAdditionalOptions : RegexOptions) : option[Regex]
+        {
+            if (!IsValid || string.IsNullOrWhiteSpace(Text))
+            {
+                None()
+            }
+            else
+            {
+                def regexOptions = if (CaseSensitive) RegexOptions.None else RegexOptions.IgnoreCase;
+                def pattern = if (UseRegex) Text else Regex.Escape(Text);
+                Some(Regex(pattern, regexOptions | regexAdditionalOptions))
+            }
+        }
 
         public IsValid : bool
         {
-                public get 
+            public get 
             {
                 if (!UseRegex)
                 {
@@ -70,13 +90,13 @@ namespace LogGrok.Search
             mutable options = SearchOptions.None;
             when (CaseSensitive)
                 options |= SearchOptions.CaseSensitive;
-            
+
             when (UseRegex) 
                 options |= SearchOptions.UseRegex;
-                
+
             options
         }
-        
+
         private ValidateRegex() : void
         {
             unless (_patternValidationResult.Pattern == Text)

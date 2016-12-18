@@ -56,10 +56,25 @@ namespace LogGrok.Search
         
         public SetSearchPattern(pattern : SearchPattern) : void
         {
-            SearchText = pattern.Text;
-            IsCaseSensitive = pattern.CaseSensitive;
-            UseRegex = pattern.UseRegex;
+            SearchPattern = pattern;
+            
+            match(pattern.GetRegex())
+            {
+                | Some(r) => HighlightRegex = r
+                | _ => ()
+            }
+            
             StartSearch();
+        }
+
+        public HighlightRegex : Regex
+        {
+            get; private set; 
+        }
+
+        public SearchPattern : SearchPattern
+        {
+            get; private set;
         }
         
         public CustomView : ViewBase 
@@ -69,46 +84,7 @@ namespace LogGrok.Search
                 _gridViewFactory.CreateView(false)
             }
         }
-      
-        public SearchText : string
-        {
-            get { _searchText }; 
-            set 
-            { 
-                unless (_searchText == value)
-                {
-                    _searchText = value; 
-                          
-                     
-                }
-            } 
-        }
 
-        public IsCaseSensitive : bool 
-        { 
-            get { _isCaseSensitive }; 
-            set 
-            { 
-                unless (_isCaseSensitive == value)
-                {
-                    _isCaseSensitive = value;
-                }
-                
-            }; 
-        }
-        
-        public UseRegex : bool 
-        { 
-            get { _useRegex }; 
-            set 
-            { 
-                unless (_useRegex == value)
-                {
-                    _useRegex = value;
-                }
-            }
-        }
-        
         public Dispose() : void
         { 
             _searchFilter.Reset(string.Empty, SearchOptions.None);
@@ -120,13 +96,13 @@ namespace LogGrok.Search
             SearchProgress = 0;
             
             mutable options = SearchOptions.None;
-            when (IsCaseSensitive)
+            when (SearchPattern.CaseSensitive)
                 options |= SearchOptions.CaseSensitive;
             
-            when (UseRegex) 
+            when (SearchPattern.UseRegex) 
                 options |= SearchOptions.UseRegex;
                 
-            _searchFilter.Reset(SearchText, options);
+            _searchFilter.Reset(SearchPattern.Text, options);
         }
         
         public SearchResults : VirtualItemsList[LineViewModel, VirtualLineViewModel] { get; set; }

@@ -1,21 +1,9 @@
-using Nemerle;
-using Nemerle.Collections;
-using Nemerle.Text;
-using Nemerle.Utility;
-
-using System;
-using System.Collections.Generic;
-using System.Linq;
-
-using LogGrok.Core;
+using System.Text.RegularExpressions;
 
 namespace LogGrok.LogView
 {
-  /// <summary>
-  /// Description of ILogHighlight.
-  /// </summary>
   public interface ILogHighlight
   {
-      SetTextForHighlight(text : string, searchOptions : SearchOptions) : void;
+      SetRegexForHighlight(highlightRegex : option[Regex]) : void;
   }
 }
