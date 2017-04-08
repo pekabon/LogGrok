@@ -80,13 +80,16 @@ namespace LogGrok.Infrastructure.Behaviors.ListMouseMultiSelectionBehaviorBacken
         
         private OnKeyDown(_ : object, e : KeyEventArgs) : void
         {
+            e.Handled = true;
             match (e.Key)
             {
-                | Key.Down when Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) => _target.ExpandSelectionDown(); e.Handled = true
-                | Key.Up   when Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) => _target.ExpandSelectionUp(); e.Handled = true
-                | Key.Down                                                     => _target.NavigateDown(); e.Handled = true
-                | Key.Up                                                       => _target.NavigateUp(); e.Handled = true
-                | _                                                            => ()
+                | Key.Down when Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) => _target.ExpandSelectionDown()
+                | Key.Up   when Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) => _target.ExpandSelectionUp()
+                | Key.Down                                                     => _target.NavigateDown()
+                | Key.Up                                                       => _target.NavigateUp()
+                | Key.PageUp                                                   => _target.PageUp()
+                | Key.PageDown                                                 => _target.PageDown()
+                | _                                                            => e.Handled = false;
             }
             
             when (e.Handled)

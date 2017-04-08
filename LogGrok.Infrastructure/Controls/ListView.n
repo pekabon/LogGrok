@@ -69,6 +69,16 @@ namespace LogGrok.Infrastructure
             GetPanel().BringIndexIntoViewWhileNavigatingDown(index);
         }
 
+        public PageUp() : void
+        {
+            GetPanel().PageUp();
+        }
+        
+        public PageDown() : void
+        {
+            GetPanel().PageDown();
+        }
+        
         protected override ClearContainerForItemOverride(_ : DependencyObject, _ : object) : void
         {}
         

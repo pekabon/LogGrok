@@ -301,6 +301,25 @@ namespace LogGrok.Infrastructure.Behaviors.ListMouseMultiSelectionBehaviorBacken
                 _listView.BringIndexIntoViewWhileNavigatingDown(CurrentItem);
             }
         }
+        
+        public PageUp() : void
+        {
+            SelectedItems.Clear();
+            _listView.PageUp();
+            CurrentItem = _listView.Items.CurrentPosition;
+            _ = SelectedItems.Add(CurrentItem);
+            
+        }
+        
+        public PageDown() : void
+        {
+            SelectedItems.Clear();
+            _listView.PageDown();
+            
+            CurrentItem = _listView.Items.CurrentPosition;
+            _ = SelectedItems.Add(CurrentItem);
+            
+        }
                 
         public Focus() : void
         {
