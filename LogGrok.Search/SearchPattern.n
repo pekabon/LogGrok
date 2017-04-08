@@ -39,6 +39,11 @@ namespace LogGrok.Search
             GetRegex(RegexOptions.None)
         }
 
+        public Clone() : SearchPattern
+        {
+            SearchPattern(Text, CaseSensitive, UseRegex)
+        }
+        
         public GetRegex(regexAdditionalOptions : RegexOptions) : option[Regex]
         {
             if (!IsValid || string.IsNullOrWhiteSpace(Text))

@@ -159,7 +159,7 @@ namespace LogGrok.Search
                 DelegateCommand(() =>
                 {
                     def newDocument = _searchDocumentFactory.Create();
-                    newDocument.SetSearchPattern(_searchPatternCurrentlyEditing);
+                    newDocument.SetSearchPattern(_searchPatternCurrentlyEditing.Clone());
                     Documents.Add(newDocument);
                     CurrentDocument = newDocument;
                 })
