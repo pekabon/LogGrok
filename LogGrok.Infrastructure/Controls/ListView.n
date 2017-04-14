@@ -50,6 +50,9 @@ namespace LogGrok.Infrastructure
         }
         
         [DependencyProperty]
+		public ChangeCurrentItemOnPageChange : bool { get; set; }
+        
+        [DependencyProperty]
         public ReadOnlySelectedItems : IEnumerable { get; set }
 
         [DependencyProperty(Metadata=PropertyMetadata(Enumerable.Empty.[int](), OnSelectedIndexesChanged))]
@@ -71,12 +74,12 @@ namespace LogGrok.Infrastructure
 
         public PageUp() : void
         {
-            GetPanel().PageUp();
+            GetPanel().PageUp(ChangeCurrentItemOnPageChange);
         }
         
         public PageDown() : void
         {
-            GetPanel().PageDown();
+            GetPanel().PageDown(ChangeCurrentItemOnPageChange);
         }
         
         protected override ClearContainerForItemOverride(_ : DependencyObject, _ : object) : void

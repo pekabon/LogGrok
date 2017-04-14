@@ -320,7 +320,7 @@ namespace LogGrok.Infrastructure.Behaviors.ListMouseMultiSelectionBehaviorBacken
             _ = SelectedItems.Add(CurrentItem);
             
         }
-                
+        
         public Focus() : void
         {
             _ = _listView.Focus();   

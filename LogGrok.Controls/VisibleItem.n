@@ -1,0 +1,48 @@
+﻿using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Windows;
+
+namespace LogGrok.Controls
+{
+    
+    internal class VisibleItem
+    {
+        public this(element : UIElement, index : int, upperBound : double, lowerBound : double)
+        {
+            Element = element;
+            Index = index;
+            UpperBound = upperBound;
+            LowerBound = lowerBound;
+            assert(Height > 0);
+        }
+        
+        public Element : UIElement;
+        
+        public Index : int;
+        
+        public UpperBound : double;
+        
+        public LowerBound : double;
+        
+        public Height : double
+        {
+            get { LowerBound - UpperBound }
+        }
+        
+        public Move(offset : double) : VisibleItem
+        {
+            VisibleItem(Element, Index, UpperBound + offset, LowerBound + offset);
+        }
+        
+        public override ToString() : string
+        {
+            $<#$Index, $(UpperBound.ToString("##.##")) : $(LowerBound.ToString("##.##")) -- $Element#>
+        }
+    }
+}

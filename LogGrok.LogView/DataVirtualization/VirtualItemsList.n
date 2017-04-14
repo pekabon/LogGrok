@@ -156,7 +156,11 @@ namespace LogGrok.LogView.DataVirtualization
 		public IndexOf(item : object) : int
             implements System.Collections.IList.IndexOf
 		{
-		   IndexOf(item :> TVirtualItem)
+		    match(item)
+		    {
+		        | i is TVirtualItem => IndexOf(i)
+		        | _ => -1
+		    }
 		}
 
 		public Item[_ : int] : object

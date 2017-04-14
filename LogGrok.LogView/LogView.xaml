@@ -108,6 +108,7 @@
                             SelectedIndex="{Binding SelectedIndex}"
                             SelectionMode="Extended"
                             View="{Binding CustomView}"
+                            ChangeCurrentItemOnPageChange="True"
                             VirtualizingStackPanel.IsVirtualizing="True"
                             VirtualizingStackPanel.VirtualizationMode="Recycling"
                             be:ListMouseMultiSelectionBehavior.Enabled="True"
@@ -122,7 +123,8 @@
                 <infra:ListView.ItemsPanel>
                     <ItemsPanelTemplate>
                         <controls:VirtualizingStackPanel 
-                             Tag="{Binding SelectedIndexes, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type infra:ListView}}}">
+                             Tag="{Binding SelectedIndexes, 
+                                RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type infra:ListView}}}">
                             <controls:VirtualizingStackPanel.ContextMenu>
                           <ContextMenu infra:AvalonRegion.Name="ContextMenu">
                             <MenuItem Command="Copy" />
