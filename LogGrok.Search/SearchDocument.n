@@ -52,6 +52,13 @@ namespace LogGrok.Search
             
             AddToScratchPad = DelegateCommand(o => (o : IEnumerable[object]).Cast.[VirtualLineViewModel]().Iter(x => scratchPad.AddText(x.RawLine)) );
             AddSingleLineToScratchPad = DelegateCommand(o => AddToScratchPad.Execute([o]));
+            NavigateToIndex = DelegateCommand(
+                i : object => match(i) { 
+                    | i is int => 
+                        def vm : VirtualLineViewModel = SearchResults[i];
+                        _navigationService.NavigateTo(vm.GetProperty(v => v.Index));
+                    | _ => ()}
+                    );
         }
         
         public SetSearchPattern(pattern : SearchPattern) : void
@@ -157,6 +164,7 @@ namespace LogGrok.Search
         
         public AddToScratchPad : ICommand { get; private set; }
         public AddSingleLineToScratchPad : ICommand { get; private set; }
+        public NavigateToIndex : ICommand { get; private set; }
         
         private _navigationService : ILogNavigation;
         private mutable _selectedValue : VirtualLineViewModel;    

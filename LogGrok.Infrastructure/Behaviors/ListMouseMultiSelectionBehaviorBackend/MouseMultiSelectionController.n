@@ -187,17 +187,17 @@ namespace LogGrok.Infrastructure.Behaviors.ListMouseMultiSelectionBehaviorBacken
             {
                 def mousePosition = _target.GetMousePosition();
                 def itemUnderMouse = _target.GetItemUnderMouse();
-                
-                if (itemUnderMouse.IsSome && itemUnderMouse.Value.Equals(_firstSelectedItem))
+
+                match(itemUnderMouse, mousePosition)
                 {
-                    _target.SelectOnlyItem(itemUnderMouse.Value);
+                    | (Some(item), _) when item.Equals(_firstSelectedItem) =>
+                        _target.SelectOnlyItem(item);
+                        _target.ItemClicked(item);
+                    | (_, Some(position)) when Point.Subtract(_startMousePosition, position).Length < 10.0d 
+                         //TODO : what is it
+                    | _ => ()
+                    
                 }
-                else if (mousePosition.IsSome && Point.Subtract(_startMousePosition, mousePosition.Value).Length < 10.0d)
-                    {
-                        //TODO : what is it
-                    }
-                else {}
-                        
                 EndDragging();
             }
         }

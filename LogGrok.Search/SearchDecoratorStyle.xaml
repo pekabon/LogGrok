@@ -6,9 +6,7 @@
                     xmlns:controls="clr-namespace:LogGrok.Controls;assembly=LogGrok.Controls"
                     xmlns:infra="clr-namespace:LogGrok.Infrastructure;assembly=LogGrok.Infrastructure"
                     xmlns:infrabe="clr-namespace:LogGrok.Infrastructure.Behaviors;assembly=LogGrok.Infrastructure"
-                    xmlns:infracontrols="clr-namespace:LogGrok.Infrastructure.Controls;assembly=LogGrok.Infrastructure"
                     xmlns:metroControls="clr-namespace:MahApps.Metro.Controls;assembly=MahApps.Metro"
-                    xmlns:toolkit="clr-namespace:Xceed.Wpf.Toolkit;assembly=Xceed.Wpf.Toolkit"
                     xmlns:properties="clr-namespace:LogGrok.Resources.Properties;assembly=LogGrok.Resources">
 
   <ResourceDictionary.MergedDictionaries>
@@ -177,6 +175,7 @@
                                         SelectedValue="{Binding SelectedValue}"
                                         View="{Binding CustomView}"
                                         infrabe:ListMouseMultiSelectionBehavior.Enabled="True"
+                                        infrabe:ListMouseMultiSelectionBehavior.OnClickCommand="{Binding NavigateToIndex}"
                                         VirtualizingStackPanel.IsVirtualizing="True"
                                         VirtualizingStackPanel.VirtualizationMode="Recycling"
                                         controls:HighlightedTextBlock.HighlightRegex="{Binding HighlightRegex}">

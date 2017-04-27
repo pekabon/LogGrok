@@ -37,6 +37,9 @@ namespace LogGrok.Infrastructure.Behaviors
         public GetSelectionRectanglePen(_ : DependencyObject) : Pen { get; set; }
         
         [DependencyProperty(IsAttached)]
+        public GetOnClickCommand(_ : ListView) : ICommand { get; set; }
+        
+        [DependencyProperty(IsAttached)]
         GetMouseMultiSelectionController(_ : ListView) : MouseMultiSelectionController { get; set; }
         
         EnabledChanged(dependencyObject : DependencyObject, args : DependencyPropertyChangedEventArgs ) : void

@@ -197,6 +197,17 @@ namespace LogGrok.Infrastructure.Behaviors.ListMouseMultiSelectionBehaviorBacken
             SelectOnlyRange(position, position);
         }
         
+        public ItemClicked(item : ListViewItem) : void
+        {
+            def command = ListMouseMultiSelectionBehavior.GetOnClickCommand(_listView);
+            
+            match (command, GetItemIndex(item))
+            {
+                | (null, _) => ()
+                | (c, Some(i)) => c.Execute(i)
+            }
+        }
+        
         public SelectOnlyItem(item : ListViewItem) : void
         {
             GetItemIndex(item).Iter(SelectOnlyItem);
