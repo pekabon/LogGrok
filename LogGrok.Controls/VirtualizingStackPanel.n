@@ -107,7 +107,6 @@ namespace LogGrok.Controls
 			}
 		}
 
-		[CacheLastResult]
 		private MeasureOverrideCore(availableSize : Size,  verticalOffset : double, itemsCount : int) : Size
 		{
 			def firstVisibleItemIndex = Math.Floor(verticalOffset) :> int;
