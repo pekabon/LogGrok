@@ -54,6 +54,7 @@ namespace LogGrok.Infrastructure.Behaviors.ListMouseMultiSelectionBehaviorBacken
             _target.MouseUp += OnMouseUp;
             _target.MouseMove += OnMouseMove;
             _target.KeyDown += OnKeyDown;
+            _target.PreviewKeyDown += OnPreviewKeyDown;
             
             _adorner.Attach();            
             _adorner.MouseMove += OnMouseMove;
@@ -71,11 +72,22 @@ namespace LogGrok.Infrastructure.Behaviors.ListMouseMultiSelectionBehaviorBacken
             _target.MouseUp -= OnMouseUp;
             _target.MouseMove -= OnMouseMove;
             _target.KeyDown -= OnKeyDown;
+            _target.PreviewKeyDown -= OnPreviewKeyDown;
             
             _adorner.Detach();
             _adorner.MouseMove -= OnMouseMove;
             _adorner.MouseUp -= OnMouseUp;
             _adorner.PreviewMouseDown -= OnPreviewMouseDown;
+        }
+        
+        private OnPreviewKeyDown(_ : object, e : KeyEventArgs) : void
+        {
+            e.Handled = true;
+            match (e.Key)
+            {
+                | Key.A when Keyboard.Modifiers.HasFlag(ModifierKeys.Control)  => ()
+                | _                                                            => e.Handled = false;
+            }
         }
         
         private OnKeyDown(_ : object, e : KeyEventArgs) : void

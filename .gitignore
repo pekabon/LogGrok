@@ -4,3 +4,4 @@ bin/
 packages/
 *.csproj.user
 *.suo
+/.vs/LogGrok/v15

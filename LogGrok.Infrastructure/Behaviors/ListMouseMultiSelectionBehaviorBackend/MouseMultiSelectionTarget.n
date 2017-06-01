@@ -108,6 +108,12 @@ namespace LogGrok.Infrastructure.Behaviors.ListMouseMultiSelectionBehaviorBacken
             remove { _listView.KeyDown -= value; }
         }
         
+        public event PreviewKeyDown : KeyEventHandler 
+        {
+            add { _listView.PreviewKeyDown += value; }
+            remove { _listView.PreviewKeyDown -= value; }
+        }
+        
         public event ScrollContentPresenterChanged : EventHandler;
         
         public SelectedIndex : int
