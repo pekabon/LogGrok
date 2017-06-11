@@ -12,10 +12,8 @@ using LogGrok.Unsafe;
 
 namespace LogGrok.Core
 {
-    [Record]
-    public class Text  : IComparable, IComparable[Text]
+    public abstract class Text : IComparable, IComparable[Text]
     {
-       
         public static Empty : Text
         {
             get
@@ -24,14 +22,56 @@ namespace LogGrok.Core
             }
         }
         
-        public IsEmpty : bool
+        public abstract GetHashCode() : int;
+        
+        public abstract Equals(other : object) : bool;
+        
+        public virtual CompareTo(obj : Text) : int 
         {
-            get
-            {
-                _end == _start;
-            }
+            this.ToString().CompareTo(obj.ToString())
         }
         
+        public NonGenericCompareTo(obj : object) : int 
+                            implements IComparable.CompareTo
+        {
+            | text is Text => this.ToString().CompareTo(text.ToString())
+            | _ => throw ArgumentException("Cannot compare $obj to Text");
+        }
+
+        private static _empty : Text = Text8(0, 0, array(0));
+    }
+    
+    [Record]
+    public class StringText : Text 
+    {
+        public override GetHashCode() : int
+        {
+            _str.GetHashCode(_begin, _len)
+        }
+        
+        public override Equals(other : object) : bool
+        {
+            match(other)
+            {
+                | s is StringText when _len == s._len => 
+                    ByteArrayTools.FastEquals(_str, _begin, s._str, s._begin, _len) 
+                | _ => false
+            }
+        }
+
+        public override ToString() : string
+        {
+            _str.Substring(_begin, _len)
+        }
+        
+        private _str : string ;
+        private _begin : int;
+        private _len : int;
+    }
+    
+    [Record]
+    public class ByteText  : Text
+    {
         public Length : int
         {
             get
@@ -47,7 +87,7 @@ namespace LogGrok.Core
         
         public override Equals(other : object) : bool
         {
-            | otherText is Text =>
+            | otherText is ByteText =>
             {
                 if (Length != otherText.Length)
                     false
@@ -61,15 +101,8 @@ namespace LogGrok.Core
             }
             | _ => false
         }
-        
-        public NonGenericCompareTo(obj : object) : int 
-                            implements IComparable.CompareTo
-        {
-            | text is Text => this.ToString().CompareTo(text.ToString())
-            | _ => throw ArgumentException("Cannot compare $obj to Text");
-        }
-        
-        public CompareTo(obj : Text) : int 
+                
+        public override CompareTo(obj : Text) : int 
         {
             this.ToString().CompareTo(obj.ToString())
         }
@@ -91,7 +124,7 @@ namespace LogGrok.Core
         private _buffer : array[byte];
     }
     
-    public class TextWithCopy : Text, IComparable, IComparable[Text]
+    public class TextWithCopy : ByteText, IComparable, IComparable[Text]
     {
         protected this(start : int, end : int, buffer : array[byte])
         {

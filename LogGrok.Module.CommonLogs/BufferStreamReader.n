@@ -29,7 +29,7 @@ namespace LogGrok.Module.CommonLogs
         { 
             get 
             {
-                _encoding.Value
+                _encoding.Value 
             }
         };
         
@@ -284,7 +284,6 @@ namespace LogGrok.Module.CommonLogs
             }
             
             (BitConverter.ToUInt64(rPattern, 0), BitConverter.ToUInt64(nPattern, 0), ToLongBE(minusPattern), ToLongBE(andPattern))
-            
         }
         
         [StructLayout(LayoutKind.Explicit)]

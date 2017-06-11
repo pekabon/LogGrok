@@ -12,7 +12,17 @@ namespace LogGrok.Unsafe
 			return FastEquals(left, 0, right, 0, left.Length);
 		}
 
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	    public static bool FastEquals(string left, int leftStart, string right, int rightStart, int length)
+	    {
+	        for (var i = 0; i < length; i++)
+	        {
+	            if (left[i + leftStart] != right[i + rightStart])
+	                return false;
+	        }
+	        return true;
+	    }
+
+	    [MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static unsafe bool FastEquals(byte[] left, int leftStart, byte[] right, int rightStart, int length)
 		{
 			var loopCount = length / 8;

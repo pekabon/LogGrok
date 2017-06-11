@@ -10,7 +10,7 @@ using System.Linq;
 namespace LogGrok.Core
 {
     [Record]
-    public class TextWithEncoding : Text
+    public class TextWithEncoding : ByteText
     {
         public override ToString() : string 
         {

@@ -108,6 +108,11 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="mscorlib" />
+    <Reference Include="Nemerle.Unsafe, Version=1.2.0.543, Culture=neutral, PublicKeyToken=e080a9c724e2bfcd">
+      <Name>Nemerle.Unsafe</Name>
+      <AssemblyName>Nemerle.Unsafe.dll</AssemblyName>
+      <HintPath>..\..\..\..\Program Files (x86)\Nemerle\net-4.0\Nemerle.Unsafe.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
