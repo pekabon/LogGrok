@@ -8,6 +8,7 @@ using Nemerle.Utility;
 using System;
 using System.Collections.Generic;
 using System.Collections;
+using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
 using System.IO;
@@ -100,31 +101,6 @@ namespace LogGrok.Module.CommonLogs
             EmptyLine
         }
         
-        private static Combine[T, U](this source : IEnumerable[T], convert : T -> U, needCombine : T -> bool, combine : (U*T) -> U) : IEnumerable[U]
-        {
-            def enumerator = source.GetEnumerator();
-            when (enumerator.MoveNext())
-            {
-                mutable current = convert(enumerator.Current);    
-                while(enumerator.MoveNext())
-                {
-                    if (needCombine(enumerator.Current))
-                    {
-                        current = combine(current, enumerator.Current);
-                        
-                    }
-                    else
-                    {
-                        yield current;
-                        current = convert(enumerator.Current);
-                    }
-                }
-                
-                yield current;
-            }
-           
-        }
-        
         private ParseLine(s : string, offset : int*int) : option[Line]
         {
             def (begin, len) = offset;
@@ -215,14 +191,22 @@ namespace LogGrok.Module.CommonLogs
             def parts = GetParts(0, []).Reverse().ToArray();            
             
             def resArray = array(parts.Length);
-            Parallel.For(0, parts.Length,
-                i =>
-                {
-                    def part = parts[i];
-                    def (start, length) = part;
-                    def result = parser.ParseBuffer(buffer, start, length); 
-                    resArray[i] = result;          
-                });
+            
+            foreach(part in parts with i)
+            {
+                //def part = parts[i];
+                def (start, length) = part;
+                def result = parser.ParseBuffer(buffer, start, length);
+                resArray[i] = result;          
+            }
+            //Parallel.For(0, parts.Length,
+            //    i =>
+            //    {
+            //        def part = parts[i];
+            //        def (start, length) = part;
+            //        def result = parser.ParseBuffer(buffer, start, length); 
+            //        resArray[i] = result;          
+            //    });
             
             def lastResult = resArray.Last(r => r.ResultCount > 0);
             (NList.ToList(resArray), lastResult.LastBytePosition)            
@@ -264,8 +248,10 @@ namespace LogGrok.Module.CommonLogs
         public GetEnumerator() : IEnumerator[Line]
             implements IEnumerable.[Line].GetEnumerator
         { 
+            mutable offset;
             foreach((buffer, results, position) in ReadAndParse().GetConsumingEnumerable())
             {
+                
                 foreach(result in results)
                 {
                     using (result)
@@ -284,6 +270,7 @@ namespace LogGrok.Module.CommonLogs
                             
                             def line = RegexBasedLine(stringBuffer, stringIndices, indicesOffset, groupNameMapping)
                                 <- { Offset = beginOffset; EndOffset = endOffset; }; 
+                            offset = line.Offset;
                             yield line
                         }
                     }
@@ -334,26 +321,6 @@ namespace LogGrok.Module.CommonLogs
                     RegexBasedLine(stringBuffer, stringIndices, indicesOffset, groupNameMapping).Clone();
                 }
             }
-                //}    for (mutable idx =0; idx < result.ResultCount; idx ++)
-                //    {
-                //        def lineStart = result.GetLineStart(idx);
-                //        def lineLength = result.GetLineLength(idx);
-
-                //        def stringBuffer = result.StringBuffer;
-                //        def stringIndices = result.StringIndices;
-                //        def indicesOffset = result.GetStringIndicesOffset(idx);
-                //        def groupNameMapping = result.GetGroupNameMapping(idx); 
-                //        def beginOffset = lineStart :> long + position;
-                //        def endOffset = lineLength :> long + beginOffset;
-                        
-                //        yield RegexBasedLine(stringBuffer, stringIndices, indicesOffset, groupNameMapping)
-                //            <- { Offset = beginOffset; EndOffset = endOffset; };
-
-            //match(ParseLine(str, (0, str.Length)))
-            //{
-            //    | Some(line) => line <- { Offset = beginOffset; EndOffset = endOffset; };
-            //    | _ => EmptyLine
-            //}
         }
 
         private static GetFieldAccessor[T,R](fieldName : string ) : Func[T,R]

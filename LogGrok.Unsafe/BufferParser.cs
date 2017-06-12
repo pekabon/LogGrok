@@ -72,10 +72,6 @@ namespace LogGrok.Unsafe
                 return _groupMappings[regexIndex];
             }
 
-            private readonly SimpleObjectPool<string> _stringPool;
-            private readonly SimpleObjectPool<int[]> _intArrayPool;
-            private readonly int _maxResultSize;
-
             public Result(byte[] buffer, SimpleObjectPool<string> stringPool, SimpleObjectPool<int[]> intArrayPool, int maxResultSize, Dictionary<string, int>[] groupMappings)
             {
                 Buffer = buffer;
@@ -88,12 +84,22 @@ namespace LogGrok.Unsafe
                 _groupMappings = groupMappings;
             }
 
+            public override string ToString()
+            {
+                var lastIndex = ResultCount - 1;
+                return $"ResultCount = {ResultCount}, from = {ByteIndices[0]}, to = {GetLineStart(lastIndex) + GetLineLength(lastIndex)}";
+            }
+
             public void Dispose()
             {
                 _stringPool.Release(StringBuffer);
                 _intArrayPool.Release(ByteIndices);
                 _intArrayPool.Release(StringIndices);
             }
+
+            private readonly SimpleObjectPool<string> _stringPool;
+            private readonly SimpleObjectPool<int[]> _intArrayPool;
+            private readonly int _maxResultSize;
         }
 
         public Result ParseBuffer(byte[] buffer, int from, int len)
@@ -138,7 +144,7 @@ namespace LogGrok.Unsafe
             if ((context.ResultCount + 1)* 2 >= context.ByteIndices.Length)
             {
                 var newByteIndices = new int[2 * context.ByteIndices.Length];
-                Buffer.BlockCopy(context.ByteIndices, 0, newByteIndices, 0, context.ResultCount*2);
+                Array.Copy(context.ByteIndices, 0, newByteIndices, 0, context.ResultCount*2);
                 context.ByteIndices = newByteIndices;
             }
             

@@ -17,6 +17,11 @@ namespace LogGrok.Unsafe
             public int crlfCount;
             public int current;
             public int lineStart;
+
+            public SearcherState(int start)
+            {
+                lineStart = start;
+            }
         }
 
         private struct Patterns
@@ -39,7 +44,7 @@ namespace LogGrok.Unsafe
 
         public unsafe void ProcessBuffer(byte[] buffer, int from, int len, T context)
         {
-            var searcherState = new SearcherState();
+            var searcherState = new SearcherState(from);
             fixed (byte* r = _r)
             fixed (byte* n = _n)
             fixed (byte* bytes = buffer)
@@ -52,7 +57,7 @@ namespace LogGrok.Unsafe
                 {
                     if (CompareTwo(r, n, byteBuffer, i, _charSize))
                     {
-                        ProcessCrlf(i, searcherState, context);
+                        ProcessCrlf(i + from, searcherState, context);
                     }
                 }
 
@@ -69,19 +74,19 @@ namespace LogGrok.Unsafe
                     for (var i = bytePosition; i <= bytePosition + 8 - _charSize; i += _charSize)
                     {
                         if (CompareTwo(r, n, byteBuffer, i, _charSize))
-                            ProcessCrlf(i, searcherState, context);
+                            ProcessCrlf(i + from, searcherState, context);
                     }
                 }
 
                 for (var i = mod + longsCount * 8; i <= bufferSize - _charSize; i += _charSize)
                 {
                     if (CompareTwo(r, n, byteBuffer, i, _charSize))
-                        ProcessCrlf(i, searcherState, context);
+                        ProcessCrlf(i + from, searcherState, context);
                 }
 
                 ProcessCrlfs(searcherState, context);
-                if (searcherState.lineStart > len)
-                    ProcessLine(searcherState.lineStart, len - searcherState.lineStart, context);
+                if (searcherState.lineStart > from + len)
+                    ProcessLine(searcherState.lineStart, from + len - searcherState.lineStart, context);
             }
         }
 
