@@ -218,6 +218,11 @@
     <MacroReference Include="Nemerle.Peg.Macros">
       <HintPath>$(Nemerle)\Nemerle.Peg.Macros.dll</HintPath>
     </MacroReference>
+    <ProjectReference Include="..\LogGrok.Diagnostics\LogGrok.Diagnostics.nproj">
+      <Name>LogGrok.Diagnostics</Name>
+      <Project>{eacc0308-9405-4511-a2f5-48fb438c9ea0}</Project>
+      <Private>True</Private>
+    </ProjectReference>
     <ProjectReference Include="..\LogGrok.LogParserBase\LogGrok.LogParserBase.nproj">
       <Name>LogGrok.LogParserBase</Name>
       <Project>{c497c2c5-893b-4be4-92a6-fce9b65f083e}</Project>

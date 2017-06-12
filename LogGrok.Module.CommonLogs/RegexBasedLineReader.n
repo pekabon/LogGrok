@@ -21,6 +21,7 @@ using LogGrok.Core;
 using LogGrok.LogParserBase;
 using LogGrok.Macros;
 using LogGrok.Unsafe;
+using LogGrok.Macros.Diagnostics;
 
 namespace LogGrok.Module.CommonLogs
 {
@@ -170,7 +171,14 @@ namespace LogGrok.Module.CommonLogs
             
             Find(searchFrom, false)                        
         }
-
+        
+        [TraceMethod]
+        private ParseImpl(parser: BufferParser, buffer : array[byte], start : int, length : int) : BufferParser.Result
+        {
+            parser.ParseBuffer(buffer, start, length);
+        }
+        
+        [TraceMethod]
         private ParseBuffer(parser : BufferParser, buffer : array[byte], len : int) : list[BufferParser.Result]*int
         {
             def partSize = 1024*1024;
@@ -191,22 +199,23 @@ namespace LogGrok.Module.CommonLogs
             def parts = GetParts(0, []).Reverse().ToArray();            
             
             def resArray = array(parts.Length);
-            
+            /*
             foreach(part in parts with i)
             {
                 //def part = parts[i];
                 def (start, length) = part;
-                def result = parser.ParseBuffer(buffer, start, length);
+                def result = ParseImpl(parser, buffer, start, length);
+                //def result = parser.ParseBuffer(buffer, start, length);
                 resArray[i] = result;          
-            }
-            //Parallel.For(0, parts.Length,
-            //    i =>
-            //    {
-            //        def part = parts[i];
-            //        def (start, length) = part;
-            //        def result = parser.ParseBuffer(buffer, start, length); 
-            //        resArray[i] = result;          
-            //    });
+            }*/
+            Parallel.For(0, parts.Length,
+                i =>
+                {
+                    def part = parts[i];
+                    def (start, length) = part;
+                    def result = ParseImpl(parser, buffer, start, length);
+                    resArray[i] = result;          
+                });
             
             def lastResult = resArray.Last(r => r.ResultCount > 0);
             (NList.ToList(resArray), lastResult.LastBytePosition)            
