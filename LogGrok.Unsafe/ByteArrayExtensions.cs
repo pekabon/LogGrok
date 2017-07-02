@@ -4,7 +4,7 @@ namespace LogGrok.Unsafe
 {
 	public static class ByteArrayTools
 	{
-		public static unsafe bool IsBeginOf(byte[] left, byte[] right)
+	    public static unsafe bool IsBeginOf(byte[] left, byte[] right)
 		{
 			if (left.Length > right.Length)
 				return false;

@@ -1,23 +1,20 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace LogGrok.Unsafe
 {
-    public class BufferParser : CrLfSearcher<BufferParser.Result>
+    public sealed class BufferParser : CrLfSearcherBase<BufferParser.Result>
     {
         private readonly Regex[] _regexes;
         private readonly Encoding _encoding;
 
         private readonly SimpleObjectPool<string> _stringPool = new SimpleObjectPool<string >(() => new string('\0', 1024*1024));
         private readonly SimpleObjectPool<int[]> _intArrayPool = new SimpleObjectPool<int[]>(() => new int[16384]);
-        private readonly int[] _resultSizes;
         private readonly int _maxResultSize;
-        private static Dictionary<string, int>[] _groupMappings;
+        private Dictionary<string, int>[] _groupMappings;
 
         public BufferParser(Encoding encoding, Regex[] regexes)
                 : base(encoding.GetBytes("\r"), encoding.GetBytes("\n"), encoding.GetBytes("\n").Length)
@@ -25,8 +22,8 @@ namespace LogGrok.Unsafe
             _encoding = encoding;
             _regexes = regexes;
 
-            _resultSizes = _regexes.Select(r => 2 * r.GetGroupNumbers().Length + 1).ToArray();
-            _maxResultSize = _resultSizes.Max();
+            var resultSizes = _regexes.Select(r => 2 * r.GetGroupNumbers().Length + 1).ToArray();
+            _maxResultSize = resultSizes.Max();
 
             _groupMappings = _regexes.Select(regex =>
                 Enumerable.Zip(
@@ -99,6 +96,7 @@ namespace LogGrok.Unsafe
 
             private readonly SimpleObjectPool<string> _stringPool;
             private readonly SimpleObjectPool<int[]> _intArrayPool;
+            private readonly Dictionary<string, int>[] _groupMappings;
             private readonly int _maxResultSize;
         }
 

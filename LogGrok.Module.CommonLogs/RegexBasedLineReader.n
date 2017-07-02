@@ -40,7 +40,11 @@ namespace LogGrok.Module.CommonLogs
                     {
                         def start = _groups[groupNum*2 + _groupsOffset ];
                         def len = _groups[groupNum*2 + 1 + _groupsOffset ];
-                        LogGrok.Core.StringText(_stringBuffer, start, len)
+                        def result = LogGrok.Core.StringText(_stringBuffer, start, len);
+                        
+                        when (result.ToString().Contains(":2"))
+                            Console.WriteLine("");
+                        result
                     }
                     else
                         Text.Empty;
@@ -92,7 +96,10 @@ namespace LogGrok.Module.CommonLogs
             _stream = streamFactory();
             _meta = meta;
             _encoding = encoding;
-            _parser = LogGrok.Unsafe.BufferParser(encoding, regexes.ToArray());
+            //_rBytes = encoding.GetBytes("\r");
+            //_nBytes = encoding.GetBytes("\n");
+            //_crSize = _rBytes.Length;
+            ///_parser = LogGrok.Unsafe.BufferParser3(encoding, regexes.ToArray());
             _lineStream = streamFactory();
             _regexes    = regexes;
         }
@@ -147,110 +154,129 @@ namespace LogGrok.Module.CommonLogs
             }            
         }
         
-        private FindNextLineStart(buffer : array[byte], searchFrom : int) : int
-        {
-            def crSize = _encoding.GetBytes("\r").Length;
-            def r = _encoding.GetBytes("\r");
-            def n = _encoding.GetBytes("\n");
+        //private FindLastLineStart(buffer : array[byte], searchFrom : int) : int
+        //{
+        //    def Find(postion)
+        //    {
+        //        if (position <= 0)
+        //        {
+        //            // TODO: process this correctly
+        //            buffer.Length - 1024
+        //        }
+        //        else
+        //        {
+        //            def isCrlf = ByteArrayTools.FastEquals(buffer, position, _rBytes, 0, _crSize) 
+        //                        || ByteArrayTools.FastEquals(buffer, position, _nBytes, 0, _crSize);
+        //            if (isCrlf)
+        //                position + _crSize
+        //            else
+        //                Find(position - _crSize)
+        //        }
+        //    }
             
-            def Find(position, crlfFound)
-            {
-                if (position == buffer.Length -1)
-                    position + crSize
-                else
-                {
-                    def isCrlf = ByteArrayTools.FastEquals(buffer, position, r, 0, crSize) 
-                                || ByteArrayTools.FastEquals(buffer, position, n, 0, crSize);
-                    match(isCrlf, crlfFound)
-                    {
-                        | (false, true) => position
-                        | _             => Find(position + crSize, isCrlf)
-                    }
-                }
-            }
-            
-            Find(searchFrom, false)                        
-        }
+        //    Find(searchFrom - _crSize)
+        //}
         
-        [TraceMethod]
-        private ParseImpl(parser: BufferParser, buffer : array[byte], start : int, length : int) : BufferParser.Result
-        {
-            parser.ParseBuffer(buffer, start, length);
-        }
+        //private FindNextLineStart(buffer : array[byte], searchFrom : int) : int
+        //{
+        //    def crSize = _crSize;
+        //    def r = _rBytes;
+        //    def n = _nBytes;
+            
+        //    def Find(position, crlfFound)
+        //    {
+        //        if (position == buffer.Length -1)
+        //            position + crSize
+        //        else
+        //        {
+        //            def isCrlf = ByteArrayTools.FastEquals(buffer, position, r, 0, crSize) 
+        //                        || ByteArrayTools.FastEquals(buffer, position, n, 0, crSize);
+        //            match(isCrlf, crlfFound)
+        //            {
+        //                | (false, true) => position
+        //                | _             => Find(position + crSize, isCrlf)
+        //            }
+        //        }
+        //    }
+            
+        //    Find(searchFrom, false)                        
+        //}
         
-        [TraceMethod]
-        private ParseBuffer(parser : BufferParser, buffer : array[byte], len : int) : list[BufferParser.Result]*int
-        {
-            def partSize = 1024*1024;
-            def GetParts(position, partList)
-            {
-                if (len - position < partSize)
-                {
-                    (position, len - position) :: partList
-                }
-                else
-                {
-                    def nextPartStart = FindNextLineStart(buffer, position + partSize);
-                    def newPartList = (position, nextPartStart - position) :: partList;
-                    GetParts(nextPartStart, newPartList)
-                }
-            }
-            
-            def parts = GetParts(0, []).Reverse().ToArray();            
-            
-            def resArray = array(parts.Length);
-            /*
-            foreach(part in parts with i)
-            {
-                //def part = parts[i];
-                def (start, length) = part;
-                def result = ParseImpl(parser, buffer, start, length);
-                //def result = parser.ParseBuffer(buffer, start, length);
-                resArray[i] = result;          
-            }*/
-            Parallel.For(0, parts.Length,
-                i =>
-                {
-                    def part = parts[i];
-                    def (start, length) = part;
-                    def result = ParseImpl(parser, buffer, start, length);
-                    resArray[i] = result;          
-                });
-            
-            def lastResult = resArray.Last(r => r.ResultCount > 0);
-            (NList.ToList(resArray), lastResult.LastBytePosition)            
-        }
+        //[TraceMethod]
+        //private ParseImpl(parser: BufferParser3, buffer : array[byte], start : int, length : int) : RegexParser.Result
+        //{
+        //    parser.ParseBuffer(buffer, start, length);
+        //}
         
-        private readLength = 4*1024*1024;
+        //[TraceMethod]
+        //private ParseBuffer(parser : BufferParser3, buffer : array[byte], len : int) : list[RegexParser.Result]*int
+        //{
+        //    def partSize = 2048*1024;
+        //    def GetParts(position, partList)
+        //    {
+        //        if (len - position < partSize)
+        //        {
+        //            (position, len - position) :: partList
+        //        }
+        //        else
+        //        {
+        //            def nextPartStart = FindNextLineStart(buffer, position + partSize);
+        //            def newPartList = (position, nextPartStart - position) :: partList;
+        //            GetParts(nextPartStart, newPartList)
+        //        }
+        //    }
+            
+        //    def parts = GetParts(0, []).Reverse().ToArray();            
+            
+        //    def resArray = array(parts.Length);
+            
+        //    //foreach(part in parts with i)
+        //    //{
+        //    //    def part = parts[i];
+        //    //    def (start, length) = part;
+        //    //    def result = ParseImpl(parser, buffer, start, length);
+        //    //    def result = parser.ParseBuffer(buffer, start, length);
+        //    //    resArray[i] = result;          
+        //    //}
+        //    Parallel.For(0, parts.Length,
+        //        i =>
+        //        {
+        //            def part = parts[i];
+        //            def (start, length) = part;
+        //            def result = ParseImpl(parser, buffer, start, length);
+        //            resArray[i] = result;          
+        //        });
+            
+        //    def lastResult = resArray.Last(r => r.ResultCount > 0);
+        //    (NList.ToList(resArray), lastResult.LastBytePosition)            
+        //}
+        
+        private readLength = 8*1024*1024;
         private bufferPool : SimpleObjectPool[array[byte]] = SimpleObjectPool.[array[byte]](() => array(readLength));
         
-        private ReadAndParseCore(parser : BufferParser, collection : BlockingCollection[array[byte]*list[BufferParser.Result]*long]) : void
+        private ReadAndParseCore(resultCollection : BlockingCollection[Task[RegexParser.Result]]) : void
         {
-            mutable position = _stream.Position;
-            def crSize = _encoding.GetBytes("\r").Length;
-           
-            while (position < _stream.Length - crSize)
-            {
-                def byteBuffer = bufferPool.Get();
-                def bytesRead = _stream.Read(byteBuffer, 0, byteBuffer.Length);
-                def (results, end) = ParseBuffer(parser, byteBuffer, bytesRead);
-                
-                if (end < bytesRead && bytesRead < readLength)
-                    _stream.Position= position + end;
-                else
-                    _stream.Position = position + bytesRead;
+            def rawLineCollection = BlockingCollection.[Task[CrlfSearcher.Result]](3);
+            def rawLineReader = RawLineReader(_stream, _encoding, bufferPool);
+            _ = Task.Factory.StartNew(() => rawLineReader.StartReadRawLines(rawLineCollection));
 
-                collection.Add((byteBuffer, results, position));
-                position = _stream.Position;
-            };
-            collection.CompleteAdding();
+            def regexParser = RegexParser(_encoding, _regexes.ToArray());
+            
+            foreach(t in rawLineCollection.GetConsumingEnumerable())
+            {
+                def task = t.ContinueWith(r => regexParser.Parse(r.Result));
+                resultCollection.Add(task);
+            }
+
+            resultCollection.CompleteAdding();
         }
         
-        private ReadAndParse() : BlockingCollection[array[byte]*list[BufferParser.Result]*long]
+        private ReadAndParse() : BlockingCollection[Task[RegexParser.Result]]
         {
-            def collection = BlockingCollection.[array[byte]*list[BufferParser.Result]*long](2);
+            def collection = BlockingCollection.[Task[RegexParser.Result]](2);
             SkipPreamble();                
-            _ = Task.Factory.StartNew(() => ReadAndParseCore(_parser, collection), TaskCreationOptions.LongRunning);
+
+            _ = Task.Factory.StartNew(() => ReadAndParseCore(collection), TaskCreationOptions.LongRunning);
             collection
         }
         
@@ -258,33 +284,32 @@ namespace LogGrok.Module.CommonLogs
             implements IEnumerable.[Line].GetEnumerator
         { 
             mutable offset;
-            foreach((buffer, results, position) in ReadAndParse().GetConsumingEnumerable())
+            foreach(task in ReadAndParse().GetConsumingEnumerable())
             {
-                
-                foreach(result in results)
+                def result = task.Result;
+                def buffer = result.CrlfsResult.Buffer;
+                using (result)
                 {
-                    using (result)
+                    for (mutable idx =0; idx < result.ResultCount; idx ++)
                     {
-                        for (mutable idx =0; idx < result.ResultCount; idx ++)
-                        {
-                            def lineStart = result.GetLineStart(idx);
-                            def lineLength = result.GetLineLength(idx);
+                        def lineStart = result.GetLineStart(idx);
+                        def lineLength = result.GetLineLength(idx);
+                        def position = result.Position;
 
-                            def stringBuffer = result.StringBuffer;
-                            def stringIndices = result.StringIndices;
-                            def indicesOffset = result.GetStringIndicesOffset(idx);
-                            def groupNameMapping = result.GetGroupNameMapping(idx); 
-                            def beginOffset = lineStart :> long + position;
-                            def endOffset = lineLength :> long + beginOffset;
+                        def stringBuffer = result.StringBuffer;
+                        def stringIndices = result.StringIndices;
+                        def indicesOffset = result.GetStringIndicesOffset(idx);
+                        def groupNameMapping = result.GetGroupNameMapping(idx); 
+                        def beginOffset = lineStart :> long + position;
+                        def endOffset = lineLength :> long + beginOffset;
                             
-                            def line = RegexBasedLine(stringBuffer, stringIndices, indicesOffset, groupNameMapping)
-                                <- { Offset = beginOffset; EndOffset = endOffset; }; 
-                            offset = line.Offset;
-                            yield line
-                        }
+                        def line = RegexBasedLine(stringBuffer, stringIndices, indicesOffset, groupNameMapping)
+                            <- { Offset = beginOffset; EndOffset = endOffset; }; 
+                        offset = line.Offset;
+                        yield line
                     }
-                    bufferPool.Release(buffer);
                 }
+                bufferPool.Release(buffer);
             }
             
         }
@@ -307,29 +332,65 @@ namespace LogGrok.Module.CommonLogs
             (encoding.GetString(buffer, 0, bytesRead).TrimEnd(System.Environment.NewLine.ToCharArray()), buffer);
         }
 
+        [Memoize]
+        private GetGroupNamesMapping(regex : Regex) : Dictionary[string, int]
+        {
+            Enumerable.Zip(regex.GetGroupNames(), regex.GetGroupNumbers(), (name, num)=> (name, num)).ToDictionary(n => n[0], n => n[1]);
+        }
+
         public ReadLineAt(beginOffset : long, endOffset : long) : LogGrok.Core.ILine
         {
             def (str, buffer) = ReadTextAt(_encoding, _lineStream, beginOffset, endOffset);
-            def parser = LogGrok.Unsafe.BufferParser(_encoding, _regexes.ToArray());
-            using(def result = _parser.ParseBuffer(buffer))
+            
+            def ParseLine(regexes, idx)
             {
-                if (result.ResultCount < 1)
-                {
-                    EmptyLine
-                }
-                else
-                {
-                    def lineStart = result.GetLineStart(0);
-                    def lineLength = result.GetLineLength(0);
-
-                    def stringBuffer = result.StringBuffer;
-                    def stringIndices = result.StringIndices;
-                    def indicesOffset = result.GetStringIndicesOffset(0);
-                    def groupNameMapping = result.GetGroupNameMapping(0); 
+                | (regex :: rest, _)
+                    =>  def mtch = regex.Match(str);
+                        if (!mtch.Success)
+                            ParseLine(rest, idx + 1)
+                        else
+                        {
+                            def indicesSize =  2 * regex.GetGroupNumbers().Length + 1;
+                            def indices = array(indicesSize) : array[int];
+                            indices[0] = idx;
+                            mutable position = 1;
+                            foreach(group : Group in mtch.Groups)
+                            {
+                                indices[position] = group.Index;
+                                indices[position + 1] = group.Length;
+                                position += 2;
+                            }
+                            def line = RegexBasedLine(str, indices, 1, GetGroupNamesMapping(regex));
+                            line                                               
+                        }
+                            
                         
-                    RegexBasedLine(stringBuffer, stringIndices, indicesOffset, groupNameMapping).Clone();
-                }
+                | _ =>  EmptyLine
             }
+            
+            ParseLine(_regexes, 0)
+//            EmptyLine
+            //
+            //def parser = LogGrok.Unsafe.BufferParser3(_encoding, _regexes.ToArray());
+            //using(def result = _parser.ParseBuffer(buffer, 0, buffer.Length))
+            //{
+            //    if (result.ResultCount < 1)
+            //    {
+            //        EmptyLine
+            //    }
+            //    else
+            //    {
+            //        def lineStart = result.GetLineStart(0);
+            //        def lineLength = result.GetLineLength(0);
+
+            //        def stringBuffer = result.StringBuffer;
+            //        def stringIndices = result.StringIndices;
+            //        def indicesOffset = result.GetStringIndicesOffset(0);
+            //        def groupNameMapping = result.GetGroupNameMapping(0); 
+                        
+            //        RegexBasedLine(stringBuffer, stringIndices, indicesOffset, groupNameMapping).Clone();
+            //    }
+            //}
         }
 
         private static GetFieldAccessor[T,R](fieldName : string ) : Func[T,R]
@@ -343,11 +404,11 @@ namespace LogGrok.Module.CommonLogs
             lambda.Compile() :> Func[T,R]; 
         }
 
-        [Memoize]
-        private GetGroupNamesMapping(regex : Regex) : Dictionary[string, int]
-        {
-            Enumerable.Zip(regex.GetGroupNames(), regex.GetGroupNumbers(), (name, num)=> (name, num)).ToDictionary(n => n[0], n => n[1]);
-        }
+        //[Memoize]
+        //private GetGroupNamesMapping(regex : Regex) : Dictionary[string, int]
+        //{
+        //    Enumerable.Zip(regex.GetGroupNames(), regex.GetGroupNumbers(), (name, num)=> (name, num)).ToDictionary(n => n[0], n => n[1]);
+        //}
         
 
         private class EmptyLinePrivate : Line
@@ -362,7 +423,7 @@ namespace LogGrok.Module.CommonLogs
         private _lineStream : Stream;
         private _stream : Stream;
         private _encoding : Encoding;
-        private _parser : LogGrok.Unsafe.BufferParser;
+        
         private _regexes      : list[Regex];
         private _meta         : MetaInformation;
         private _matchesGetter : Func[Match, array[array[int]]] = GetFieldAccessor.[Match, array[array[int]]]("_matches");

@@ -47,9 +47,13 @@
   <ItemGroup>
     <Compile Include="BufferConverter.cs" />
     <Compile Include="BufferParser.cs" />
+    <Compile Include="RegexParser.cs" />
+    <Compile Include="BufferParser3.cs" />
     <Compile Include="ByteArrayExtensions.cs" />
     <Compile Include="CrlfSearcher.cs" />
+    <Compile Include="CrLfSearcherBase.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="RawLineReader.cs" />
     <Compile Include="SimpleObjectPool.cs" />
     <Compile Include="StringExtensions.cs" />
   </ItemGroup>
