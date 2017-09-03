@@ -14,6 +14,7 @@ using System.IO;
 using LogGrok.Core;
 using LogGrok.Core.EncodingDetector;
 using LogGrok.LogParserBase;
+using LogGrok.RegexParser;
 
 namespace LogGrok.Module.CommonLogs
 {
@@ -33,7 +34,7 @@ namespace LogGrok.Module.CommonLogs
                 }
                 else
                 {
-                    def processor = LogProcessor(name, streamFactory, RegexBasedLineReader(_, encoding, Regexes, MetaInformation), 
+                    def processor = LogProcessor(name, streamFactory, sf => RegexLineReader(Func.[Stream](sf), encoding, Regexes, MetaInformation) :> ILineReader, 
                                                  FileSearcher.GetOffsets(encoding, _, _, _, _) , _ => None(), 
                                                  container, startOffset, endOffset);
 

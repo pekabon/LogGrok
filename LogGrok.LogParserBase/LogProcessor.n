@@ -124,7 +124,7 @@ namespace LogGrok.LogParserBase
                         foreach(indexedLineConsumer in indexedLineConsumers)
                             indexedLineConsumer.Process(line, index);
 
-                            ++ProcessedLineCount;
+                        ++ProcessedLineCount;
                         LoadedPercent = (line.Offset:double) / FileSize * 100.0;
                     }
                     LoadedPercent  = 100;

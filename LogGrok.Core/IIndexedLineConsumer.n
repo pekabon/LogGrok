@@ -3,6 +3,7 @@ namespace LogGrok.Core
     public interface IIndexedLineConsumer
     {
         Process(line : ILine, index : int) : void;
+        //Process[T](line : T, index : int) : void where T : ILine;
         Finish() : void;
     }
 }

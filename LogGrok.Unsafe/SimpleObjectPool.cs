@@ -1,29 +1,40 @@
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 
 namespace LogGrok.Unsafe
 {
     public class SimpleObjectPool<T> 
     {
         private readonly Func<T> _createFunc;
-        private readonly ConcurrentBag<T> _pool = new ConcurrentBag<T>();
+        private readonly object _lock;
+        private readonly Stack<T> _pool = new Stack<T>();
+
 
         public SimpleObjectPool(Func<T> createFunc)
         {
             _createFunc = createFunc;
+            _lock = new Object();
         }
 
         public T Get()
         {
-            T result;
-            if (!_pool.TryTake(out result))
-                result = _createFunc();
-            return result;
+            lock (_lock)
+            {
+                if (_pool.Count > 0)
+                    return _pool.Pop();
+            }
+            return _createFunc();
         }
 
         public void Release(T t)
         {
-            _pool.Add(t);
+            lock (_lock)
+            {
+                _pool.Push(t);
+            }
         }
+
+
     }
 }

@@ -280,8 +280,8 @@ namespace LogGrok.Module.CommonLogs
             collection
         }
         
-        public GetEnumerator() : IEnumerator[Line]
-            implements IEnumerable.[Line].GetEnumerator
+        public GetEnumerator() : IEnumerator[ILine]
+            implements IEnumerable.[ILine].GetEnumerator
         { 
             mutable offset;
             foreach(task in ReadAndParse().GetConsumingEnumerable())
@@ -320,17 +320,17 @@ namespace LogGrok.Module.CommonLogs
             (this : ILineReader).GetEnumerator() 
         }
         
-        private static ReadTextAt(encoding : System.Text.Encoding, stream : Stream, beginOffset : long, endOffset : long) : string*array[byte]
-        {
-            def length = (endOffset - beginOffset) :> int;
+            private static ReadTextAt(encoding : System.Text.Encoding, stream : Stream, beginOffset : long, endOffset : long) : string*array[byte]
+            {
+                def length = (endOffset - beginOffset) :> int;
 
-            def buffer    = array(length);
+                def buffer    = array(length);
 
-            stream.Position = beginOffset;
-            def bytesRead = stream.Read(buffer, 0, length);
+                stream.Position = beginOffset;
+                def bytesRead = stream.Read(buffer, 0, length);
             
-            (encoding.GetString(buffer, 0, bytesRead).TrimEnd(System.Environment.NewLine.ToCharArray()), buffer);
-        }
+                (encoding.GetString(buffer, 0, bytesRead).TrimEnd(System.Environment.NewLine.ToCharArray()), buffer);
+            }
 
         [Memoize]
         private GetGroupNamesMapping(regex : Regex) : Dictionary[string, int]

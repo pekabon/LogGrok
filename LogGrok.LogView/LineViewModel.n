@@ -32,6 +32,9 @@ namespace LogGrok.LogView
                 get { _line[s] }
             }
         
+            public Offset : long { get; set; }
+            public EndOffset : long { get; set; }
+            
             public Time : TimeSpan { get { _line.Time } }
         
             public RawLine : string { get; private set; }

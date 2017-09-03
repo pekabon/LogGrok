@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -11,10 +12,20 @@ namespace LogGrok.Unsafe
         private readonly Regex[] _regexes;
         private readonly Encoding _encoding;
 
-        private readonly SimpleObjectPool<string> _stringPool = new SimpleObjectPool<string >(() => new string('\0', 1024*1024));
+        private readonly SimpleObjectPool<string> _stringPool = new SimpleObjectPool<string >(() => new string('\0', 4*1024*1025));
         private readonly SimpleObjectPool<int[]> _intArrayPool = new SimpleObjectPool<int[]>(() => new int[16384]);
         private readonly int _maxResultSize;
         private Dictionary<string, int>[] _groupMappings;
+
+        private readonly Func<Match, int[][]> _matchesGetter  = GetFieldAccessor<Match, int[][]>("_matches");
+
+        private static Func<T,R> GetFieldAccessor<T, R> (string fieldName) 
+        { 
+            var param = Expression.Parameter(typeof(T), "arg");
+            var member = Expression.Field(param, fieldName);
+            var lambda = Expression.Lambda(typeof(Func<T, R>), member, param);
+            return (Func<T,R>)lambda.Compile(); 
+        }
 
         public BufferParser(Encoding encoding, Regex[] regexes)
                 : base(encoding.GetBytes("\r"), encoding.GetBytes("\n"), encoding.GetBytes("\n").Length)
@@ -153,34 +164,47 @@ namespace LogGrok.Unsafe
                 context.StringIndices = newStringIndices;
             }
 
-            var currentRegexIndex = 0;
-            foreach (var regex in _regexes)
+            unchecked
             {
-                var match = regex.Match(context.StringBuffer, lineStart, lineLength);
-                if (match.Success)
+                var currentRegexIndex = 0;
+                foreach (var regex in _regexes)
                 {
-                    var results = context.StringIndices;
-                    var position = context.StringIndicesPosition;
-                    results[position] = currentRegexIndex;
-                    position++;
-                    foreach (Group group in match.Groups)
+                    var match = regex.Match(context.StringBuffer, lineStart, lineLength);
+                    if (match.Success)
                     {
-                        results[position] = group.Index;
-                        results[position + 1] = group.Length;
-                        position += 2;
+                        var results = context.StringIndices;
+                        var position = context.StringIndicesPosition;
+                        results[position] = currentRegexIndex;
+                        position++;
+
+                        var matches = _matchesGetter(match);
+
+                        foreach (var mtch in matches)
+                        {
+                            results[position] = mtch[0];
+                            results[position + 1] = mtch[1];
+                            position += 2;
+                        }
+                        //foreach (Group group in match.Groups)
+                        //{
+                        //    results[position] = group.Index;
+                        //    results[position + 1] = group.Length;
+                        //    position += 2;
+                        //}
+
+                        context.ByteIndices[context.ResultCount * 2] = start;
+                        context.ByteIndices[context.ResultCount * 2 + 1] = len;
+
+                        context.StringIndicesPosition += _maxResultSize;
+                        context.ResultCount++;
+                        break;
+
                     }
-
-                    context.ByteIndices[context.ResultCount * 2] = start;
-                    context.ByteIndices[context.ResultCount * 2 + 1] = len;
-
-                    context.StringIndicesPosition += _maxResultSize;
-                    context.ResultCount++;
-                    break;
+                    currentRegexIndex++;
                 }
-                currentRegexIndex++;
-            }
 
-            context.LastBytePosition = start + len;
+                context.LastBytePosition = start + len;
+            }
         }
     }
 }

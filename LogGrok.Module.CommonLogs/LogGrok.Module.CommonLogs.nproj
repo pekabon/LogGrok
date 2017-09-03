@@ -228,6 +228,11 @@
       <Project>{c497c2c5-893b-4be4-92a6-fce9b65f083e}</Project>
       <Private>True</Private>
     </ProjectReference>
+    <ProjectReference Include="..\LogGrok.RegexParser\LogGrok.RegexParser.csproj">
+      <Name>LogGrok.RegexParser</Name>
+      <Project>{9396406f-46d2-4c9a-a439-7dd5b1813c71}</Project>
+      <Private>True</Private>
+    </ProjectReference>
     <ProjectReference Include="..\LogGrok.Unsafe\LogGrok.Unsafe.csproj">
       <Name>LogGrok.Unsafe</Name>
       <Project>{37fd8941-1840-48df-9f81-f6603ca4490e}</Project>

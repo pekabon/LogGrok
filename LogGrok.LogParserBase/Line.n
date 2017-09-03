@@ -8,6 +8,7 @@ using LogGrok.LogParserBase;
 
 namespace LogGrok.LogParserBase
 {
+   
     public abstract class Line : ILine
     {
         public Offset : long { get; set; }

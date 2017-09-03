@@ -26,9 +26,6 @@ namespace LogGrok.LogView
     {
         public Initialize() : void 
         {
-            
-            
-
             _ = _container.RegisterType.[DocumentManager](ContainerControlledLifetimeManager());
 
             _ = _container.RegisterType.[TextColorizerService](ContainerControlledLifetimeManager());

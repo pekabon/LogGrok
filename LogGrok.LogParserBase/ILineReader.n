@@ -4,10 +4,8 @@ using LogGrok.Core;
 
 namespace LogGrok.LogParserBase
 {
-    public interface ILineReader : IEnumerable[Line], IDisposable
+    public interface ILineReader : IEnumerable[ILine], IDisposable
     {
-        
-        
         GetLastLine() : ILine;
         
         ReadLineAt(beginOffset : long, endOffset : long) : ILine;
