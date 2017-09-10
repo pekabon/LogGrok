@@ -24,13 +24,17 @@ namespace LogGrok.Module.CommonLogs
         [Record]
         internal class GenericLine : Line
         {
-            public override Item[s : string] : object
+            public override Item[s : string] : TextRange
             {
                 get
                 {
                     match(s)
                     {
-                        | "Message" => GetRawLine()
+                        | "Message" => 
+                        {
+                            def str = GetRawLine();
+                            TextRange(0, str.Length, StringStorage(str))
+                        }
                         | _ => throw NotSupportedException()
                     }
                 }

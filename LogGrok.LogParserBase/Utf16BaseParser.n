@@ -16,6 +16,7 @@ namespace LogGrok.LogParserBase
         {
             Stream = stream;
             _buffer = UnionArray() <- { Bytes = array(1024 * 1024) }; //has to be more than max string length
+            _byteStorage = LogGrok.Core.ByteStorage(_buffer.Bytes, System.Text.Encoding.Unicode);
             Buffer = _buffer.UShorts;
             BufferArrayLength = _buffer.Bytes.Length / 2;
         }
@@ -104,9 +105,15 @@ namespace LogGrok.LogParserBase
             }
         }
 
-        protected CreateLazyText(begin: int, end : int) : LazyText16 { LazyText16(begin*2, end*2, _buffer.Bytes) }
+        protected CreateLazyText(begin: int, end : int) : TextRange 
+        { 
+            TextRange(begin*2, end*2 - begin*2, _byteStorage); 
+        }
         
-        protected CreateTextBytes(begin : int, end : int) : Text { Text16(begin*2, end*2, _buffer.Bytes) }
+        protected CreateTextBytes(begin : int, end : int) : TextRange 
+        { 
+            TextRange(begin*2, end*2 - begin*2, _byteStorage).MoveToLocalStorage()
+        }
 
         protected GrowBuffer(desiredSize : int) : void
         {
@@ -116,7 +123,8 @@ namespace LogGrok.LogParserBase
                 Buffer.BlockCopy(_buffer.Bytes, 0, newBuffer, 0, _buffer.Bytes.Length);
                 
                 _buffer = UnionArray() <- { Bytes = newBuffer };
-                
+                _byteStorage = LogGrok.Core.ByteStorage(_buffer.Bytes, System.Text.Encoding.Unicode);
+
                 Buffer = _buffer.UShorts;
                 BufferArrayLength = _buffer.Bytes.Length / 2;
             }
@@ -138,10 +146,11 @@ namespace LogGrok.LogParserBase
         }
 
         private mutable _buffer : UnionArray;
+        private mutable _byteStorage : LogGrok.Core.ByteStorage;
         private static AByte : ushort;
         private static ABigByte : ushort;
         private static ZeroByte : ushort;
-
+        
         [StructLayout(LayoutKind.Explicit)]
         struct UnionArray
         {

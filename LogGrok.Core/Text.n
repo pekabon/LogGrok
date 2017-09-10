@@ -9,64 +9,232 @@ using System.Collections.Generic;
 using System.Linq;
 
 using LogGrok.Unsafe;
+using System.Threading;
 
 namespace LogGrok.Core
 {
-    public abstract class Text : IComparable, IComparable[Text]
+    public module TextTools
     {
-        public static Empty : Text
+        public Empty : Text
         {
-            get
+            get { _empty }
+        }
+        
+        private _empty : Text = Text8(0, 0, array(0));
+    }
+  
+    public class StorageProvider[T]
+    {
+        public this(storageFactory : int -> T, initialSize : int)
+        {
+            _storageFactory = storageFactory;
+            _currentStorageSize = initialSize;
+            _currentStorage = storageFactory(_currentStorageSize);
+        }
+        
+        public GetStorage(length : int) : T*int
+        {
+            if (_begin + length <= _currentStorageSize)
             {
-                _empty
+                def result = (_currentStorage, _begin);
+                _begin += length;
+                result
+            }
+            else
+            {
+                when (length > _currentStorageSize)
+                    _currentStorageSize = length;
+                
+                _currentStorage = _storageFactory(_currentStorageSize);
+                _begin = length;
+                (_currentStorage, 0)
+            }
+        }
+       
+        private _storageFactory : int -> T;
+        private mutable _currentStorage : T;
+        private mutable _currentStorageSize : int;
+        private mutable _begin : int;
+    }
+    
+    public interface ITextStorage 
+    {
+        GetHashCode(begin : int, len : int) : int;
+        Equals(begin : int, len : int, otherTextRange: TextRange) : bool;
+        ToString(begin : int, len : int) : string;
+        CopyToLocalStorage(begin : int, len : int) : TextRange; 
+    }
+    
+    [Record]
+    public class StringStorage : ITextStorage
+    {
+        static this()
+        {
+            _localStorageProvider = ThreadLocal(() => StorageProvider(size => StringStorage(string('\0', size)), 1024*1024));
+        }
+        
+        public GetHashCode(begin : int, len : int) : int
+        {
+            _storage.GetHashCode(begin, len);
+        }
+        
+        public Equals(begin : int, len : int, otherTextRange: TextRange) : bool
+        {
+            if (len != otherTextRange.Length) false
+            else
+            match (otherTextRange.Storage)
+            {
+                | otherStorage is StringStorage => 
+                    if (len == 0) true
+                    else
+                    ByteArrayTools.FastEquals(_storage, begin, otherStorage._storage, otherTextRange.Begin, len)
+                | _ => false
             }
         }
         
-        public abstract GetHashCode() : int;
+        public ToString(begin : int, len : int) : string
+        {
+            _storage.Substring(begin, len)
+        }
         
-        public abstract Equals(other : object) : bool;
+        public CopyToLocalStorage(begin : int, len : int) : TextRange
+        {
+            def (localStorage, storageBegin) = _localStorageProvider.Value.GetStorage(len); 
+            _storage.UnsafeCopyTo(begin, localStorage._storage, storageBegin, len);
+            TextRange(storageBegin, len, localStorage)
+        }
+
+        private static _localStorageProvider : ThreadLocal[StorageProvider[StringStorage]];
         
-        public virtual CompareTo(obj : Text) : int 
+        private _storage : string;
+    }
+         
+    [Record]
+    public class ByteStorage : ITextStorage
+    {
+        static this()
+        {
+            _localStorageProvider = ThreadLocal(() => StorageProvider((size) => array(size), 1024*1024));
+        }
+        public GetHashCode(begin : int, len : int) : int
+        {
+            _storage.GetModifiedFNVHash(begin, len)
+        }
+        
+        public Equals(begin : int, len : int, otherTextRange: TextRange) : bool
+        {
+            if (len != otherTextRange.Length) false
+            else
+            match (otherTextRange.Storage)
+            {
+                | otherStorage is ByteStorage => 
+                    if (len == 0) 
+                        true 
+                    else
+                        ByteArrayTools.FastEquals(_storage, begin, otherStorage._storage, otherTextRange.Begin, len);
+
+                | _ => false
+            }
+        }
+        
+        public CopyToLocalStorage(begin : int, len : int) : TextRange
+        {
+            def (localStorage, storageBegin) = _localStorageProvider.Value.GetStorage(len); 
+            Buffer.BlockCopy(_storage, begin, localStorage, storageBegin, len);
+            TextRange(storageBegin, len, ByteStorage(localStorage, _encoding))
+        }
+
+        private static _localStorageProvider : ThreadLocal[StorageProvider[array[byte]]];
+        
+        public ToString(begin : int, len : int) : string
+        {
+            _encoding.GetString(_storage, begin, len);
+        }
+        
+        private _storage : array[byte];
+        private _encoding : System.Text.Encoding;
+    }
+
+    
+    [Record]
+    public struct TextRange : IEquatable[TextRange], Text
+    {
+        public Begin : int;
+        public Length: int;
+        public Storage : ITextStorage;
+        
+        public static Empty : TextRange { get { _empty } };
+
+        public static Invalid : TextRange { get { _invalid } };
+        
+        public static FromString(str : string) : TextRange
+        {
+            TextRange(0, str.Length, StringStorage(str)).MoveToLocalStorage()
+        }
+        
+        public MoveToLocalStorage() : TextRange
+        {
+            Storage.CopyToLocalStorage(Begin, Length)
+        }
+        
+        public Equals(other : TextRange) : bool
+        {
+            Storage.Equals(Begin, Length, other)
+        }
+        
+        public override ToString() : string
+        {
+            Storage.ToString(Begin, Length)
+        }
+        
+        public override GetHashCode() : int
+        {
+            Storage.GetHashCode(Begin, Length)
+        }
+        
+        public CompareTo(obj : Text) : int 
         {
             this.ToString().CompareTo(obj.ToString())
         }
         
-        public NonGenericCompareTo(obj : object) : int 
-                            implements IComparable.CompareTo
+        public CompareTo(obj : object) : int
+            implements IComparable[Text].CompareTo
         {
-            | text is Text => this.ToString().CompareTo(text.ToString())
-            | _ => throw ArgumentException("Cannot compare $obj to Text");
+            this.ToString().CompareTo(obj.ToString())
         }
 
-        private static _empty : Text = Text8(0, 0, array(0));
+        private static _empty : TextRange = TextRange(0,0, StringStorage(String.Empty));
+        private static _invalid : TextRange = TextRange(0, -1, StringStorage(String.Empty));
     }
     
-    [Record]
-    public class StringText : Text 
+    public interface Text : IComparable, IComparable[Text]
     {
-        public override GetHashCode() : int
-        {
-            _str.GetHashCode(_begin, _len)
-        }
         
-        public override Equals(other : object) : bool
-        {
-            match(other)
-            {
-                | s is StringText when _len == s._len => 
-                    ByteArrayTools.FastEquals(_str, _begin, s._str, s._begin, _len) 
-                | _ => false
-            }
-        }
+        //public static Empty : Text
+        //{
+        //    get
+        //    {
+        //        _empty
+        //    }
+        //}
+        
+        //public abstract GetHashCode() : int;
+        
+        //public abstract Equals(other : object) : bool;
+        
+        //public virtual CompareTo(obj : Text) : int 
+        //{
+        //    this.ToString().CompareTo(obj.ToString())
+        //}
+        
+        //public NonGenericCompareTo(obj : object) : int 
+        //                    implements IComparable.CompareTo
+        //{
+        //    | text is Text => this.ToString().CompareTo(text.ToString())
+        //    | _ => throw ArgumentException("Cannot compare $obj to Text");
+        //}
 
-        public override ToString() : string
-        {
-            _str.Substring(_begin, _len)
-        }
-        
-        private _str : string ;
-        private _begin : int;
-        private _len : int;
+        //private static _empty : Text = Text8(0, 0, array(0));
     }
     
     [Record]
@@ -102,7 +270,13 @@ namespace LogGrok.Core
             | _ => false
         }
                 
-        public override CompareTo(obj : Text) : int 
+        public CompareTo(obj : Text) : int 
+            implements IComparable[Text].CompareTo
+        {
+            this.ToString().CompareTo(obj.ToString())
+        }
+        
+        public CompareTo(obj : object) : int
         {
             this.ToString().CompareTo(obj.ToString())
         }
@@ -124,7 +298,7 @@ namespace LogGrok.Core
         private _buffer : array[byte];
     }
     
-    public class TextWithCopy : ByteText, IComparable, IComparable[Text]
+    public class TextWithCopy : ByteText//, IComparable, IComparable[Text]
     {
         protected this(start : int, end : int, buffer : array[byte])
         {
@@ -136,11 +310,8 @@ namespace LogGrok.Core
                 base(0, Buffer.Length, Buffer)
             }
         }      
-        
        
         protected Buffer : array[byte];
-        
-        
                 
         public override ToString() : string
         {
@@ -148,6 +319,5 @@ namespace LogGrok.Core
         }
         
         private static _empty : Text = Text8(0, 0, array(0));
-        
     }
 }

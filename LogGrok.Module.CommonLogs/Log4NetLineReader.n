@@ -29,17 +29,18 @@ namespace LogGrok.Module.CommonLogs
                 get; set;
             }
             
-            public override Item[s : string] : object
+            public override Item[s : string] : TextRange
             {
                 get
                 {
                     def (timestamp, fields) = GetFields();
+                    TextRange.FromString(
                     match(s)
                     {
                         | "timestamp"                  => timestamp.ToString()
-                        | _ when fields.ContainsKey(s) => fields[s]
-                        | _                            => Text.Empty
-                    }
+                        | _ when fields.ContainsKey(s) => fields[s].ToString()
+                        | _                            => string.Empty
+                    });
                 };
             }
             

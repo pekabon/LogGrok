@@ -23,7 +23,7 @@ namespace LogGrok.Module.CommonLogs
         {
             try
             {
-                def processor = LogProcessor(name, streamFactory, VBLineReader, FileSearcher.GetOffsetsWithUtf8Text, _ => None(), container,
+                def processor = LogProcessor.CreateInstance.[ILine](name, streamFactory, VBLineReader, FileSearcher.GetOffsetsWithUtf8Text, _ => None(), container,
                                              startOffset, endOffset);
                 Some((processor, MetaInformation))
             }

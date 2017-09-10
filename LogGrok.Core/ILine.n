@@ -11,7 +11,7 @@ namespace LogGrok.Core
         Offset : long { get; set; }
         EndOffset : long { get; set; }
 
-        Item[s : string] : object
+        Item[s : string] : TextRange
         {
             get;
         }

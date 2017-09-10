@@ -21,7 +21,7 @@ namespace LogGrok.IndexedFilter
             get; private set;
         }
 
-        public Category : Text 
+        public Category : TextRange
         {
             get; private set; 
         }

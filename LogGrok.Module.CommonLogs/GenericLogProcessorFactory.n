@@ -26,7 +26,7 @@ namespace LogGrok.Module.CommonLogs
             {
                 def encoding = DetectEncoding(streamFactory());
 
-                def processor = LogProcessor(name, streamFactory, GenericLineReader(_, encoding), FileSearcher.GetOffsets(encoding, _, _, _, _) , _ => None(), 
+                def processor = LogProcessor.CreateInstance.[ILine](name, streamFactory, GenericLineReader(_, encoding), FileSearcher.GetOffsets(encoding, _, _, _, _) , _ => None(), 
                                              container, startOffset, endOffset);
                 
                 Some((processor, MetaInformation))

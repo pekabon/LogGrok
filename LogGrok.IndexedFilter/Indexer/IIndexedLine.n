@@ -13,7 +13,7 @@ namespace LogGrok.IndexedFilter.Indexer
 {
     public interface IIndexedLine
     {
-        Item[s : string] : Text
+        Item[s : string] : TextRange
         {
             get;
         }

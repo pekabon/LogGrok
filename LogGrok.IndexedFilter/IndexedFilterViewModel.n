@@ -33,8 +33,8 @@ namespace LogGrok.IndexedFilter
             _indexedFilter = indexedFilter;
 
             _elementFactory =
-          (component : Text, isActive : bool) => ElementViewModel(component.ToString(), 
-                                                                  component, isActive, () => indexer.GetIndexCountForComponent(componentKey, component));
+                (component : TextRange, isActive : bool) => ElementViewModel(component.ToString(), 
+                    component, isActive, () => indexer.GetIndexCountForComponent(componentKey, component));
 
             Categories = indexer.GetAllComponents(componentKey);
 
@@ -114,7 +114,7 @@ namespace LogGrok.IndexedFilter
             }
         }
 
-        public AddNewCategory(category : Text) : void
+        public AddNewCategory(category : TextRange) : void
         {
             Categories = [category].Concat(Categories).ToList();
             def newCategories = Categories.Except(Elements.Select(_.Category).Where(c => Categories.Contains(c)));
@@ -123,14 +123,14 @@ namespace LogGrok.IndexedFilter
                 Elements.Add(_elementFactory(category, true))
         }
 
-        protected OnExcludedCategoriesChanged(excludedCategories : IEnumerable[Text]) : void
+        protected OnExcludedCategoriesChanged(excludedCategories : IEnumerable[TextRange]) : void
         {
             _indexedFilter.SetExclusions(_componentKey, excludedCategories);
         }
 
-        protected Categories : IEnumerable[Text] { get; set; };
+        protected Categories : IEnumerable[TextRange] { get; set; };
 
-        private GetExcludedCategories() : IEnumerable[Text]
+        private GetExcludedCategories() : IEnumerable[TextRange]
         {
             Elements.Where(vm => !vm.IsActive).Select(vm => vm.Category)
         }
@@ -150,7 +150,7 @@ namespace LogGrok.IndexedFilter
                 }, null);
         }
 
-        private _elementFactory : (Text*bool) -> ElementViewModel;
+        private _elementFactory : (TextRange*bool) -> ElementViewModel;
         private _componentKey : string;
         private _indexedFilter : IndexedFilter;
     }

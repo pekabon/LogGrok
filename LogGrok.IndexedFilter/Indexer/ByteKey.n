@@ -8,7 +8,7 @@ using LogGrok.Core;
 namespace LogGrok.IndexedFilter.Indexer
 {
     [Record]
-    public class ByteKey
+    public struct ByteKey : IEquatable[ByteKey]
     {
         public override GetHashCode() : int
         {
@@ -23,37 +23,29 @@ namespace LogGrok.IndexedFilter.Indexer
             }
         }
         
-        public override Equals(other : object) : bool
+        public Equals(otherKey : ByteKey) : bool
         {
-            | null => false
-            | otherKey is ByteKey => 
+            if (otherKey._data.Length != _data.Length)
+                false
+            else
+            {
+                mutable result = true;
+                mutable i =0;
+                def otherData = otherKey._data;
+                while (i < _data.Length && result)
                 {
-                    if (otherKey._data.Length != _data.Length)
-                        false
-                    else
-                    {
-                        mutable result = true;
-                        mutable i =0;
-                        def otherData = otherKey._data;
-                        while (i < _data.Length && result)
-                        {
-                            result = _data[i].Equals(otherData[i]);
-                            i ++;
-                        }
-                        
-                        result
-                    }
+                    result = _data[i].Equals(otherData[i]);
+                    i ++;
                 }
-            | _ => throw ArgumentException($"Cannot compare ByteKey to $other");
+                result
+            }
         }
         
-        public GetComponent(i : int) : Text
+        public GetComponent(i : int) : TextRange
         {
             _data[i]
         }
         
-        
-        
-        private _data : array[Text];
+        private _data : array[TextRange];
     }
 }

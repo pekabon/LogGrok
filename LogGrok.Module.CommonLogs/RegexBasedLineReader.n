@@ -31,7 +31,7 @@ namespace LogGrok.Module.CommonLogs
         [Record]
         internal class RegexBasedLine : Line
         {
-            public override Item[s : string] : object
+            public override Item[s : string] : TextRange
             {
                 get
                 {
@@ -40,14 +40,12 @@ namespace LogGrok.Module.CommonLogs
                     {
                         def start = _groups[groupNum*2 + _groupsOffset ];
                         def len = _groups[groupNum*2 + 1 + _groupsOffset ];
-                        def result = LogGrok.Core.StringText(_stringBuffer, start, len);
                         
-                        when (result.ToString().Contains(":2"))
-                            Console.WriteLine("");
+                        def result = LogGrok.Core.TextRange(start, len, LogGrok.Core.StringStorage(_stringBuffer));
                         result
                     }
                     else
-                        Text.Empty;
+                        TextRange.Empty;
                 }
             }
 
@@ -413,7 +411,7 @@ namespace LogGrok.Module.CommonLogs
 
         private class EmptyLinePrivate : Line
         {
-            public override Item[_ : string] : object { get { Text.Empty } }
+            public override Item[_ : string] : TextRange { get { TextRange.Empty } }
 
             public override Time : System.TimeSpan { get; set; }
 

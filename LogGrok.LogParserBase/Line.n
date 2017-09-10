@@ -24,7 +24,7 @@ namespace LogGrok.LogParserBase
         
         public GetTime() : TimeSpan implements ILine.get_Time { Time }
         
-        public abstract Item[s : string] : object
+        public abstract Item[s : string] : TextRange
         {
             get;
         }

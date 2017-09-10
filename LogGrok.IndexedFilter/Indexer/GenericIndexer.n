@@ -28,25 +28,28 @@ namespace LogGrok.IndexedFilter.Indexer
             _componentsMap = _keyFields.ToDictionary(k => k, _=> ComponentSet());
 
             NewComponentFound += (_, _) => {}
+            _cachedKey = ByteKey(array[TextRange.Invalid]);
         }        
 
-        public Process(line : LogGrok.Core.ILine, index : int) : void
+        public Process[T](line : T, index : int) : void where T : ILine
         {
             def keyBytes = array(_keyFields.Length);
 
             foreach (keyField in _keyFields with idx)
             {
-                def component = (line[keyField] ?? Text.Empty) :> Text;
-                
-                keyBytes[idx] = component;
+                // TODO: fix compilation line[keyField]
+                def component = line.Item[keyField];
                 def components = _componentsMap[keyField];
+                def (localComponent, isNewComponent) = components.Insert(component);
                 
-                when (components.Insert(component))
-                    NewComponentFound(keyField, component)
+                keyBytes[idx] = localComponent;
+                
+                when(isNewComponent)
+                    NewComponentFound(keyField, localComponent);
             }
 
+            
             def key = ByteKey(keyBytes);
-
             unless (key.Equals(_cachedKey))
             {
                 _cachedKey = key;
@@ -61,7 +64,7 @@ namespace LogGrok.IndexedFilter.Indexer
             _countsIndex.Add(index, _indices);
         }
 
-        public event NewComponentFound : Action[string, Text];
+        public event NewComponentFound : Action[string, TextRange];
 
         private static Distinct[TSource](source : IEnumerable[TSource], comparer : IEqualityComparer[TSource]) : IEnumerable[TSource]
         {
@@ -76,14 +79,14 @@ namespace LogGrok.IndexedFilter.Indexer
             }
         }
         
-        public GetAllComponents(componentKey : string) : IEnumerable[Text]
+        public GetAllComponents(componentKey : string) : IEnumerable[TextRange]
         {
             def componentIndex =  _keyFields.IndexOf(componentKey);
             
             _indices.Select(keyValuePair => keyValuePair.Key.GetComponent(componentIndex)).Distinct().ToArray()
         }
 
-        public GetIndexCountForComponent(componentKey : string, componentValue : Text) : int
+        public GetIndexCountForComponent(componentKey : string, componentValue : TextRange) : int
         {
             def componentIndex = _keyFields.IndexOf(componentKey);
             _indices
@@ -91,7 +94,7 @@ namespace LogGrok.IndexedFilter.Indexer
                 .Sum(kv => kv.Value.Count)
         }
         
-        public GetFilteredIndices(excludedComponents : Dictionary[string, array[Text]]) : IEnumerable[int]
+        public GetFilteredIndices(excludedComponents : Dictionary[string, array[TextRange]]) : IEnumerable[int]
         {
             mutable finished;
             mutable cursors = Dictionary.[ByteKey, TreeCursor]();
@@ -114,12 +117,12 @@ namespace LogGrok.IndexedFilter.Indexer
             _finished = true;
         }
         
-        public GetFetcher(excludedComponents : Dictionary[string, array[Text]]) : IItemProvider[int]
+        public GetFetcher(excludedComponents : Dictionary[string, array[TextRange]]) : IItemProvider[int]
         {
             Fetcher(this, excludedComponents)
         }
                 
-        private MergeIndicies(lastIndex : int, excludedComponents : Dictionary[string, array[Text]], cursors : Dictionary[ByteKey, TreeCursor]) : IEnumerable[int] * Dictionary[ByteKey, TreeCursor]
+        private MergeIndicies(lastIndex : int, excludedComponents : Dictionary[string, array[TextRange]], cursors : Dictionary[ByteKey, TreeCursor]) : IEnumerable[int] * Dictionary[ByteKey, TreeCursor]
         {
             def TryAdd(dictionary, key, value) : void
             {
@@ -139,7 +142,7 @@ namespace LogGrok.IndexedFilter.Indexer
             (CollectionUtils.MergeSorted(indicesCollections,  (i1, i2) => i2 == i1 + 1), cursors)
         }
         
-        private GetActiveIndicies(excludedComponents : Dictionary[string, array[Text]]) : IEnumerable[KeyValuePair[ByteKey, IndexTree]]
+        private GetActiveIndicies(excludedComponents : Dictionary[string, array[TextRange]]) : IEnumerable[KeyValuePair[ByteKey, IndexTree]]
         {
             def excludedComponentsByIndex = excludedComponents.Select(
                     keyValuePair => new (ComponentIndex = _keyFields.IndexOf(keyValuePair.Key), ExcludedComponentValues = keyValuePair.Value));
@@ -151,7 +154,7 @@ namespace LogGrok.IndexedFilter.Indexer
         
         private class Fetcher : IItemProvider[int]
         {
-            public this([NotNull] indexer : GenericIndexer, excludedComponents : Dictionary[string, array[Text]])
+            public this([NotNull] indexer : GenericIndexer, excludedComponents : Dictionary[string, array[TextRange]])
             {
                 _indexer = indexer;
                 CountChanged += _ => {}
@@ -166,9 +169,6 @@ namespace LogGrok.IndexedFilter.Indexer
                     
                 _countsIndexer = 
                     FilteredCountIndicesProvider(
-                            
-                    
-                    
                             predicate, indexer._countsIndex.CountIndices, indexer._countsIndex.Granularity);
             }
             
@@ -238,32 +238,44 @@ namespace LogGrok.IndexedFilter.Indexer
             
         private class ComponentSet
         {
-            public Insert(newComponent : Text) : bool
+            public Insert(newComponent : TextRange) : TextRange*bool
             {
-                if (ByteArrayExtensions.Equals(newComponent, _last))
+                if (newComponent.Equals(_last))
                 {
-                    false
+                    (_last, false)
                 }
                 else
                 {
-                    _last = newComponent;
-                    _components.Add(newComponent)
+                    mutable localComponent;
+                    def isNewComponent = !_components.TryGetValue(newComponent, out localComponent);
+                    
+                    _last = 
+                        if(isNewComponent)
+                        {
+                            def localComponent = newComponent.MoveToLocalStorage();
+                            _ = _components.Add(localComponent, localComponent);
+                            localComponent
+                        }
+                        else
+                        {
+                            localComponent
+                        };
+                        
+                    (_last, isNewComponent)
                 }
             }
 
-            public GetAllComponents() : IEnumerable[Text]
+            public GetAllComponents() : IEnumerable[TextRange]
             {
-                _components
+                _components.Keys
             }
 
+            _components = Dictionary.[TextRange, TextRange]();
 
-            _components = HashSet.[Text]();
-            mutable _last : Text = null;
+            mutable _last : TextRange = TextRange.Invalid;
         }
 
-        
-        
-
+  
         private _indices = ConcurrentDictionary.[ByteKey, IndexTree]();
         private _countsIndex : CountsIndex[ByteKey] = CountsIndex();
         private _componentsMap : Dictionary[string, ComponentSet] = Dictionary(); 

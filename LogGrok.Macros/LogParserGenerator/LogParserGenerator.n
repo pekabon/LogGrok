@@ -5,7 +5,7 @@ using Nemerle.Collections;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-
+using LogGrok.Core;
 using LogGrok.Unsafe;
 
 namespace LogGrok.Macros.LogParserGenerator
@@ -60,8 +60,6 @@ namespace LogGrok.Macros.LogParserGenerator
 
         internal MakeLineClassAndMetaInformation(type : TypeBuilder, lineFormats : IEnumerable[string]) : void
         {
-            
-
             def uniqueNamedAtoms = 
                                       DistinctByName(lineFormats.SelectMany(lineFormat => 
                         {
@@ -88,8 +86,8 @@ namespace LogGrok.Macros.LogParserGenerator
                                 {
                                     | Atom.Heximal
                                     | Decimal       => <[decl: public $(Macros.UseSiteSymbol(atom.Name.Value) : name): int { get; set; }]>
-                                    | LazyText      => <[decl: public $(Macros.UseSiteSymbol(atom.Name.Value) : name): object { get; set; }]>
-                                    | Text          => <[decl: public $(Macros.UseSiteSymbol(atom.Name.Value) : name): LogGrok.Core.Text { get; set; }]>
+                                    | LazyText      => <[decl: public $(Macros.UseSiteSymbol(atom.Name.Value) : name): LogGrok.Core.TextRange { get; set; }]>
+                                    | Text          => <[decl: public $(Macros.UseSiteSymbol(atom.Name.Value) : name): LogGrok.Core.TextRange { get; set; }]>
                                 
                                     | Variant 
                                     | _ => Message.Error($"$atom is unsuported"); throw NotSupportedException();
@@ -115,10 +113,15 @@ namespace LogGrok.Macros.LogParserGenerator
                         })
                         .Select(text =>
                         {
-                            <[case: |  $(text.Name.Value) =>  $(Macros.UseSiteSymbol(text.Name.Value) : name) ]>
+                            match(text)
+                            {
+                                | Atom.Time => <[case: |  $(text.Name.Value) =>  TextRange.FromString($(Macros.UseSiteSymbol(text.Name.Value) : name).ToString()) ]>
+                                | _ => <[case: |  $(text.Name.Value) =>  $(Macros.UseSiteSymbol(text.Name.Value) : name) ]>
+                            }
                         })
                         .Concat([<[case : | name => throw IndexOutOfRangeException(name)]>]);
-                lineTb.Define(<[decl:   public override Item[index : string] : object
+                        
+                lineTb.Define(<[decl:   public override Item[index : string] : TextRange
                                 {
                                     get
                                     {

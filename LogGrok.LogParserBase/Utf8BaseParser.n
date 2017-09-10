@@ -18,9 +18,12 @@ namespace LogGrok.LogParserBase
         {
             Stream = stream;
             Buffer = array(1024 * 1024); //has to be more than max string length or ParseException will be thrown
+            _byteStorage = LogGrok.Core.ByteStorage(Buffer, System.Text.Encoding.UTF8);
+
             BufferArrayLength = Buffer.Length;
         }
         
+        private mutable _byteStorage : LogGrok.Core.ByteStorage;
         protected mutable Stream :  Stream;// { get; private set; }
         protected mutable Buffer : array[byte];// { get ; private set; }
         protected mutable BufferLength : int;// { get; private set; }
@@ -114,13 +117,21 @@ namespace LogGrok.LogParserBase
                 Buffer = newBuffer;
                 BufferArrayLength = Buffer.Length;
             }
-            
+                            
+            _byteStorage = LogGrok.Core.ByteStorage(Buffer, System.Text.Encoding.UTF8);
+
         }
  
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        protected CreateLazyText(begin: int, end : int) : LazyText { LazyText(begin, end, Buffer) }
+        protected CreateLazyText(begin: int, end : int) : TextRange
+        { 
+            TextRange(begin, end - begin, _byteStorage); 
+        }
         
-        protected CreateTextBytes(begin : int, end : int) : Text { Text8(begin, end, Buffer) }
+        protected CreateTextBytes(begin : int, end : int) : TextRange
+        { 
+            TextRange(begin, end - begin, _byteStorage).MoveToLocalStorage()
+        }
         
         protected static MakeConstant(v : char) : byte { Convert.ToByte(v) }
         

@@ -34,9 +34,13 @@ namespace LogGrok.Module.CommonLogs
                 }
                 else
                 {
-                    def processor = LogProcessor(name, streamFactory, sf => RegexLineReader(Func.[Stream](sf), encoding, Regexes, MetaInformation) :> ILineReader, 
-                                                 FileSearcher.GetOffsets(encoding, _, _, _, _) , _ => None(), 
-                                                 container, startOffset, endOffset);
+                    def processor = LogProcessor.CreateInstance.[RegexLineReader.RegexBasedLine](name, 
+                                    streamFactory, 
+                                    sf => RegexLineReader(Func.[Stream](sf), encoding, Regexes, MetaInformation), 
+                                    FileSearcher.GetOffsets(encoding, _, _, _, _) , _ => None(), 
+                                    container, 
+                                    startOffset, 
+                                    endOffset);
 
                     Some((processor, MetaInformation))
                 }

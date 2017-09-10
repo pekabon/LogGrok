@@ -18,7 +18,7 @@ namespace LogGrok.LogView
     {
         public this(sourceList : IList[LineViewModel], index : int) { base(sourceList, index); }
         
-        public Item[s : string] : object { get { GetProperty(i => i.Item[s]); } }
+        public Item[s : string] : LogGrok.Core.TextRange { get { GetProperty(i => i.Item[s]); } }
         
         public Background : Color { get { GetProperty(_.Background); } }
         

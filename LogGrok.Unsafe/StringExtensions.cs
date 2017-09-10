@@ -1,13 +1,27 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace LogGrok.Unsafe
 {
     public static class StringExtensions
     {
+        public static void UnsafeCopyTo(this string source, int begin, string target, int targetBegin, int length)
+        {
+            if (targetBegin + length > target.Length || begin + length > source.Length)
+                throw new ArgumentOutOfRangeException(nameof(length));
+
+            unsafe
+            {
+                fixed (char* sourceChars = source)
+                fixed (char* targetChars = target)
+                {
+                    for (var i = 0; i < length; i++)
+                    {
+                        targetChars[i + targetBegin] = sourceChars[i + begin];
+                    }
+                }
+            }
+        }
+
         public static int GetHashCode(this string str, int from, int len)
         {
             unchecked

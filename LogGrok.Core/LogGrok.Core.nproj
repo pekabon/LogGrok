@@ -206,9 +206,6 @@
     <Compile Include="Text8.n">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="TextWithEncoding.n">
-      <SubType>Code</SubType>
-    </Compile>
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Properties\" />

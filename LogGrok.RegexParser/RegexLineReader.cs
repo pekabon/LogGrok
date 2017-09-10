@@ -14,13 +14,13 @@ using System.Threading;
 
 namespace LogGrok.RegexParser
 {
-    public class RegexLineReader : ILineReader
+    public class RegexLineReader : ILineReader, IEnumerable<RegexLineReader.RegexBasedLine>
     {
-        private struct RegexBasedLine : ILine
+        public struct RegexBasedLine : ILine
         {
-            public RegexBasedLine(string stringBuffer, int[] groups, int groupsOffset, Dictionary<string, int> groupNameMapping, long beginOffset, long endOffset)
+            public RegexBasedLine(StringStorage storage, int[] groups, int groupsOffset, Dictionary<string, int> groupNameMapping, long beginOffset, long endOffset)
             {
-                _stringBuffer = stringBuffer;
+                _stringStorage = storage;
                 _groups = groups;
                 _groupsOffset = groupsOffset;
                 _groupNameMapping = groupNameMapping;
@@ -28,31 +28,38 @@ namespace LogGrok.RegexParser
                 _endOffset = endOffset;
             }
 
-            public object this[string s]
+            public TextRange this[string s]
             { 
                 get
                 {
-                    if (!_groupNameMapping.TryGetValue(s, out int groupNum))
+                    if (!_groupNameMapping.TryGetValue(s, out var groupNum))
                     {
-                        return Text.Empty;
+                        return TextRange.Empty;
                     }
-                    else
-                    {
-                        var offset = groupNum * 2 + _groupsOffset;
-                        var start = _groups[offset];
-                        var len = _groups[offset + 1];
-                        var result = new StringText(_stringBuffer, start, len);
-                        return result;
-                    }
+
+                    var offset = groupNum * 2 + _groupsOffset;
+                    var start = _groups[offset];
+                    var len = _groups[offset + 1];
+                    var result = new TextRange(start, len, _stringStorage);
+                    return result;
                 }
             }
 
-            public long Offset { get { return _beginOffset; } set { throw new NotSupportedException(); } }
-            public long EndOffset { get { return _endOffset; } set { throw new NotSupportedException(); } }
+            public long Offset
+            {
+                get => _beginOffset;
+                set => throw new NotSupportedException();
+            }
+            public long EndOffset
+            {
+                get => _endOffset;
+                set => throw new NotSupportedException();
+            }
 
-            public TimeSpan Time { get { return TimeSpan.Zero; } }
+            public TimeSpan Time => TimeSpan.Zero;
 
-            public string RawLine { get { return _stringBuffer.Substring(_groups[_groupsOffset], _groups[_groupsOffset + 1]); } }
+            public string RawLine =>
+                new TextRange(_groups[_groupsOffset], _groups[_groupsOffset + 1], _stringStorage).ToString();
 
             public RegexBasedLine Clone()
             {
@@ -61,7 +68,7 @@ namespace LogGrok.RegexParser
                 var ln = this;
                 var strings = _groupNameMapping.Select(kv => ln[kv.Key].ToString());
 
-                int current = 0;
+                var current = 0;
                 foreach (var str in strings)
                 {
                     builder.Append(str);
@@ -69,16 +76,16 @@ namespace LogGrok.RegexParser
                     groups.Add(str.Length);
                     current += str.Length;
                 }
-
-                return new RegexBasedLine(builder.ToString(), groups.ToArray(), 0, _groupNameMapping, 0, 0);
+                
+                return new RegexBasedLine(new StringStorage(builder.ToString()), groups.ToArray(), 0, _groupNameMapping, 0, 0);
             }
 
-            private string _stringBuffer;
-            private int[] _groups;
-            private int _groupsOffset;
-            private Dictionary<string, int> _groupNameMapping;
-            private long _beginOffset;
-            private long _endOffset;
+            private readonly int[] _groups;
+            private readonly int _groupsOffset;
+            private readonly Dictionary<string, int> _groupNameMapping;
+            private readonly long _beginOffset;
+            private readonly long _endOffset;
+            private readonly StringStorage _stringStorage;
         }
 
         public RegexLineReader(Func<Stream> streamFactory, Encoding encoding, IEnumerable<Regex> regexes, MetaInformation meta)
@@ -96,10 +103,8 @@ namespace LogGrok.RegexParser
             _rBytes = encoding.GetBytes("\r");
         }
 
-
         public void Dispose()
         {
-            
         }
 
         public ILine GetLastLine()
@@ -136,9 +141,37 @@ namespace LogGrok.RegexParser
             }
         }
 
+        IEnumerable<RegexBasedLine> GetRegexBasedLineEnumerable()
+        {
+            var taskCollection = new BlockingCollection<Task<(List<RegexBasedLine>, BufferParser.Result)>>(Environment.ProcessorCount);
+            Task.Factory.StartNew(() => ReadBuffers(taskCollection), TaskCreationOptions.LongRunning);
+
+            foreach (var task in taskCollection.GetConsumingEnumerable())
+            {
+                (var lineList, var parseResult) = task.Result;
+
+                using (parseResult)
+                    foreach (var line in lineList)
+                        yield return line;
+
+                lineList.Clear();
+                _listPool.Release(lineList);
+            }
+        }
+
+        IEnumerator<ILine> IEnumerable<ILine>.GetEnumerator()
+        {
+            return GetRegexBasedLineEnumerable().Cast<ILine>().GetEnumerator();
+        }
+        
+        IEnumerator<RegexBasedLine> IEnumerable<RegexBasedLine>.GetEnumerator()
+        {
+            return GetRegexBasedLineEnumerable().GetEnumerator();
+        }
+
         IEnumerator IEnumerable.GetEnumerator()
         {
-            return ((IEnumerable<ILine>)this).GetEnumerator();
+            return GetRegexBasedLineEnumerable().GetEnumerator();
         }
 
         private void SkipPreamble(Stream stream) 
@@ -201,13 +234,13 @@ namespace LogGrok.RegexParser
             using (bufferReadResult)
             {
                 var parseResult = bufferParser.ParseBuffer(bufferReadResult.Buffer, 0, bufferReadResult.Length);
-
+                var stringStorage = new StringStorage(parseResult.StringBuffer);
                 for (var idx = 0; idx < parseResult.ResultCount; idx++)
                 {
                     var lineStart = parseResult.GetLineStart(idx);
                     var lineLength = parseResult.GetLineLength(idx);
                     var position = bufferReadResult.Position;
-                    var line = new RegexBasedLine(parseResult.StringBuffer, parseResult.StringIndices, parseResult.GetStringIndicesOffset(idx),
+                    var line = new RegexBasedLine(stringStorage, parseResult.StringIndices, parseResult.GetStringIndicesOffset(idx),
                         parseResult.GetGroupNameMapping(idx), lineStart + position, lineStart + lineLength + position);
                     list.Add(line);
                 }
@@ -273,27 +306,10 @@ namespace LogGrok.RegexParser
             taskCollection.CompleteAdding();
         }
 
-        IEnumerator<ILine> IEnumerable<ILine>.GetEnumerator()
-        {
-            var taskCollection = new BlockingCollection<Task<(List<RegexBasedLine>, BufferParser.Result)>>(Environment.ProcessorCount * 2);
-            Task.Factory.StartNew(() => ReadBuffers(taskCollection), TaskCreationOptions.LongRunning);
-            
-            foreach (var task in taskCollection.GetConsumingEnumerable())
-            {
-                (var lineList, var parseResult) = task.Result;
-
-                using (parseResult)
-                foreach (var line in lineList)
-                    yield return line;
-
-                lineList.Clear();
-                _listPool.Release(lineList);
-            }
-        }
-
+        
         private class EmptyLinePrivate : ILine
         {
-            public object this[string s] => Text.Empty;
+            public TextRange this[string s] => TextRange.Empty;
 
             public TimeSpan Time => TimeSpan.Zero;
 

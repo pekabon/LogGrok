@@ -27,7 +27,7 @@ namespace LogGrok.IndexedFilter
                     .Select(x => LineOrProgress.Line(x))
             }
 
-            private _exclusions : Dictionary.[string, array[Text]];
+            private _exclusions : Dictionary.[string, array[TextRange]];
             private _indexer : GenericIndexer; 
         }
 
@@ -41,20 +41,20 @@ namespace LogGrok.IndexedFilter
 
         public event Changed : Action;
 
-        public SetExclusions(categoryKey : string, excludedCategories : IEnumerable[Text]) : void 
+        public SetExclusions(categoryKey : string, excludedCategories : IEnumerable[TextRange]) : void 
         {
             _exclusions[categoryKey] = excludedCategories.ToArray();
             Changed();
         }
 
-        public ExcludeAllExcept(categoryKey : string, includedCategories : IEnumerable[Text]) : void
+        public ExcludeAllExcept(categoryKey : string, includedCategories : IEnumerable[TextRange]) : void
         {
             def included = HashSet(includedCategories);
             def excluded = _indexer.GetAllComponents(categoryKey).Where(category => !included.Contains(category));
             SetExclusions(categoryKey, excluded);
         }
         
-        public AddExclusions(categoryKey : string, excludedCategories : IEnumerable[Text]) : void
+        public AddExclusions(categoryKey : string, excludedCategories : IEnumerable[TextRange]) : void
         {
             GetExclusions(categoryKey).Concat(excludedCategories).Distinct() |> SetExclusions(categoryKey, _)
         }
@@ -70,7 +70,7 @@ namespace LogGrok.IndexedFilter
             _indexer.GetFetcher(_exclusions)
         }
 
-        public GetExclusions(categoryKey : string) : IEnumerable[Text]
+        public GetExclusions(categoryKey : string) : IEnumerable[TextRange]
         {
             if (_exclusions.ContainsKey(categoryKey)) 
                 _exclusions[categoryKey]
@@ -92,6 +92,6 @@ namespace LogGrok.IndexedFilter
         private _meta : MetaInformation;
         private _indexer : GenericIndexer;
 
-        private _exclusions = Dictionary.[string, array[Text]]();
+        private _exclusions = Dictionary.[string, array[TextRange]]();
     }
 }

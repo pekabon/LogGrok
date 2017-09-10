@@ -22,27 +22,27 @@ namespace LogGrok.LogParserBase
 
     public class LogProcessor : ILogProcessor
     {
-        public this([NotNullOrEmpty] filePath   : string,
+        private this([NotNullOrEmpty] filePath   : string,
                     [NotNull] streamFactory     : StreamFactory,
-                    [NotNull] lineReaderFactory : LineReaderFactory,
+                    [NotNull] lineReader        : ILineReader,
+                    [NotNull] loadFunc          : LogProcessor*IEnumerable[IIndexedLineConsumer]*CancellationToken -> void,
                     [NotNull] fileSearcher      : FileSearcher.GetOffsetsWithTextFunction,
                     [NotNull] headerParser      : Stream -> option[Header*string],
-                    [NotNull] container         : IUnityContainer,
-                    beginOffset = 0l,
-                    endOffset = -1l)
+                    [NotNull] container         : IUnityContainer)
         {
-            _streamFactory = streamFactory;
-            _lineReaderFactory = lineReaderFactory;
-            _beginOffset = beginOffset;
-            _endOffset = endOffset;
             FullPath = filePath;
+            _streamFactory = streamFactory;
+            _loadFunc = loadFunc;
+            
             _lineIndex = LineIndex();
             _fileSearcher = fileSearcher;
             _errorPresenter = container.Resolve.[ErrorPresenter]();
+            
             Loaded += (_, _) => _lineIndex.OnLoaded();
 
-            def stream = CreateSubStream();
-            _lineReader = _lineReaderFactory(CreateSubStream);
+            _lineReader = lineReader;
+            
+            def stream = streamFactory();
             FileSize = stream.Length;
             StartTime =  _lineReader.First().Time;
             FinishTime = _lineReader.GetLastLine().Time;
@@ -54,9 +54,38 @@ namespace LogGrok.LogParserBase
 
         public Load(indexedLineConsumers : IEnumerable[IIndexedLineConsumer]) : void
         {
-            _task = Task.Factory.StartNew( () => LoadCore(indexedLineConsumers, _cancellationTokenSource.Token) );
+            _task = Task.Factory.StartNew(() => _loadFunc(this, indexedLineConsumers, _cancellationTokenSource.Token));
+                //LoadCore.[LogGrok.Core.ILine, LogGrok.LogParserBase.IL;ineReader](indexedLineConsumers, _cancellationTokenSource.Token));
         }
 
+        public static CreateInstance[T](
+                    [NotNullOrEmpty] filePath   : string,
+                    [NotNull] streamFactory     : StreamFactory,
+                    [NotNull] lineReaderFactory : (void -> Stream) -> ILineReader,
+                    [NotNull] fileSearcher      : FileSearcher.GetOffsetsWithTextFunction,
+                    [NotNull] headerParser      : Stream -> option[Header*string],
+                    [NotNull] container         : IUnityContainer,
+                    beginOffset = 0l,
+                    endOffset = -1l) : LogProcessor where T : ILine
+       {
+            def LoadFunc(logProcessor, indexedLineConsumers, cancellationToken)  
+            { 
+                using (lineReader = lineReaderFactory(streamFactory))
+                    logProcessor.LoadCore.[T](indexedLineConsumers, lineReader, cancellationToken); 
+            }
+            
+            def CreateSubStream()
+            {
+                if (beginOffset == 0l && endOffset == -1l)
+                    streamFactory()
+                else
+                    ReadSubStream(streamFactory(), beginOffset, endOffset);
+            }
+            
+            LogProcessor(filePath, streamFactory, lineReaderFactory(CreateSubStream), 
+                LoadFunc, fileSearcher, headerParser, container);
+        }
+        
         public FullPath : string { get; private set; }
         public FileSize : long { get; private set; }
         public Header : string { get; private set; }
@@ -82,7 +111,7 @@ namespace LogGrok.LogParserBase
 
         public GetLineWithText(text: string, options : SearchOptions, fromIndex : int) : IEnumerable[LineOrProgress]
         {
-            _lineIndex.GetLineLocations(fromIndex) |> _fileSearcher(CreateSubStream, text, options, _lineIndex.GetLineOffset(fromIndex))
+            _lineIndex.GetLineLocations(fromIndex) |> _fileSearcher(_streamFactory, text, options, _lineIndex.GetLineOffset(fromIndex))
         }        
 
         public Dispose() : void
@@ -111,24 +140,25 @@ namespace LogGrok.LogParserBase
         }
 
         [TraceMethod]               
-        private LoadCore(indexedLineConsumers : IEnumerable[IIndexedLineConsumer], cancellationToken : CancellationToken) : void
+        private LoadCore[T](
+            indexedLineConsumers : IEnumerable[IIndexedLineConsumer], 
+            lineReader : ILineReader,
+            cancellationToken : CancellationToken) : void 
+                where T : ILine         
         {
-
             try
             {
-                using (lineReader = _lineReaderFactory(CreateSubStream))
+                foreach (line in lineReader.TakeWhile(_ => !cancellationToken.IsCancellationRequested))
                 {
-                    foreach (line in lineReader.TakeWhile(_ => !cancellationToken.IsCancellationRequested))
+                    def index = _lineIndex.AddNextLine(line.Offset, line.EndOffset);
+                    foreach(indexedLineConsumer in indexedLineConsumers)
                     {
-                        def index = _lineIndex.AddNextLine(line.Offset, line.EndOffset);
-                        foreach(indexedLineConsumer in indexedLineConsumers)
-                            indexedLineConsumer.Process(line, index);
-
-                        ++ProcessedLineCount;
-                        LoadedPercent = (line.Offset:double) / FileSize * 100.0;
+                        indexedLineConsumer.Process(line, index);
                     }
-                    LoadedPercent  = 100;
+                    ++ProcessedLineCount;
+                    LoadedPercent = (line.Offset:double) / FileSize * 100.0;
                 }
+                LoadedPercent  = 100;
             }
             catch 
             {
@@ -141,22 +171,13 @@ namespace LogGrok.LogParserBase
                 consumer.Finish();
         }
 
-        private CreateSubStream() : Stream
-        {
-            if (_beginOffset == 0l && _endOffset == -1l)
-                _streamFactory()
-            else
-                ReadSubStream(_streamFactory(), _beginOffset, _endOffset);
-        }
-
         private _streamFactory : void -> Stream;
-        private _lineReaderFactory : LineReaderFactory;
+        private _loadFunc : LogProcessor*IEnumerable[IIndexedLineConsumer] * CancellationToken -> void;
         private _lineReader : ILineReader;
         private _lineIndex : LineIndex;
         private _cancellationTokenSource = CancellationTokenSource();
         private mutable _task : Task = Task.Factory.StartNew(() => {});
-        private _beginOffset : long;
-        private _endOffset : long;
+
         private _fileSearcher : FileSearcher.GetOffsetsWithTextFunction;
         private _errorPresenter : ErrorPresenter;
     }

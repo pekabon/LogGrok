@@ -23,11 +23,8 @@ namespace LogGrok.IndexedFilter
     [ModuleAttribute(ModuleName = "IndexedFilter")]
     public class Module : IModule
     {
-        
-        
         public Initialize() : void 
         {
-            
             _ = _container
                     .RegisterType.[GenericIndexer](HierarchicalLifetimeManager())
                     .RegisterType.[IIndexedLineConsumer, GenericIndexer]("ThreadsAndCategoriesIndex", HierarchicalLifetimeManager(), 
@@ -47,16 +44,6 @@ namespace LogGrok.IndexedFilter
                                 view;
                             }
                         }));
-                    
-            //        .RegisterType.[ComponentsViewModel](HierarchicalLifetimeManager())
-            //        .RegisterType.[ThreadFilterViewModel](HierarchicalLifetimeManager())
-            //        .RegisterType.[SeveritiesViewModel](HierarchicalLifetimeManager());
-                    
-            //_container.RegisterForRegion.[ThreadFilterView, ThreadFilterViewModel]("ThreadFilter");
-            //_container.RegisterForRegion.[IndexedFilterView, ComponentsViewModel]("CategoriesSearch");
-            //_container.RegisterForRegion.[SeverityFilterView, SeveritiesViewModel]("SeverityFilter");
-            
-            //_container.RegisterForRegion.[ItemContextMenu, ItemContextMenuViewModel]("ContextMenu");
         }
         
         _container : IUnityContainer;

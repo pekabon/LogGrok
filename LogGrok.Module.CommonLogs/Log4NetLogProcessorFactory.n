@@ -50,7 +50,7 @@ namespace LogGrok.Module.CommonLogs
                             parser.Parse(s).Value;
                         }
                         
-                        def processor = LogProcessor(name, streamFactory, Log4NetLineReader(_, prefix, parseFunc), FileSearcher.GetOffsetsWithUtf8Text, _ => None(), container, 
+                        def processor = LogProcessor.CreateInstance.[ILine](name, streamFactory, Log4NetLineReader(_, prefix, parseFunc), FileSearcher.GetOffsetsWithUtf8Text, _ => None(), container, 
                                              startOffset, endOffset);
                          Some((processor, if (prefix == "log4j") Log4NetLog4jXmlMetaInformation else Log4NetXmlMetaInformation))
                     }

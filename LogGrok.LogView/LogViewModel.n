@@ -347,9 +347,9 @@ namespace LogGrok.LogView
         
         public AddSingleLineToScratchPad : ICommand { get; private set; }
         
-        private GetComponentsInSelectedLines(componentKey : string) : IEnumerable[Text]
+        private GetComponentsInSelectedLines(componentKey : string) : IEnumerable[TextRange]
         {
-            GetSelectedLines().Select(line => line[componentKey]).Cast.[Text]().Distinct()
+            GetSelectedLines().Select(line => line[componentKey]).Distinct()
         }
         
         private UpdateLines() : void

@@ -27,7 +27,7 @@ namespace LogGrok.LogView
                 RawLine = _line.RawLine;
             }
             
-            public Item[s : string] : object
+            public Item[s : string] : TextRange
             {
                 get { _line[s] }
             }
@@ -59,15 +59,15 @@ namespace LogGrok.LogView
             _colors = Lazy(GetColors);           
         }
         
-        public Item[s : string] : object
+        public Item[s : string] : TextRange
         {
             [Memoize]
             get
             {
                 match(s)
                 { 
-                    | "Index" => Index : object
-                    | "Time" => Time
+                    | "Index" => TextRange.FromString(Index.ToString())
+                    | "Time" => TextRange.FromString(Time.ToString())
                     | _ => _fields[s]
                 }
             }
@@ -161,7 +161,7 @@ namespace LogGrok.LogView
         mutable _colors : Lazy[bool*Color*Color];
         
         private _index : int;
-        private _fields : Dictionary[string, object];
+        private _fields : Dictionary[string, TextRange];
         private _textColorizer : TextColorizer;
         private _line : ILine;
     }
