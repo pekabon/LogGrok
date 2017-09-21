@@ -161,6 +161,9 @@
     <Compile Include="GenericUtf8LogProcessorFactory.n">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="KLLogProcessorFactory.n">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Log4NetLogProcessorFactory.n">
       <SubType>Code</SubType>
     </Compile>

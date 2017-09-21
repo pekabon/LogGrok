@@ -143,7 +143,7 @@ namespace LogGrok.RegexParser
 
         IEnumerable<RegexBasedLine> GetRegexBasedLineEnumerable()
         {
-            var taskCollection = new BlockingCollection<Task<(List<RegexBasedLine>, BufferParser.Result)>>(Environment.ProcessorCount);
+            var taskCollection = new BlockingCollection<Task<(List<RegexBasedLine>, BufferParser.Result)>>(Environment.ProcessorCount*2);
             Task.Factory.StartNew(() => ReadBuffers(taskCollection), TaskCreationOptions.LongRunning);
 
             foreach (var task in taskCollection.GetConsumingEnumerable())

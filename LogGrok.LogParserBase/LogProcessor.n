@@ -71,7 +71,11 @@ namespace LogGrok.LogParserBase
             def LoadFunc(logProcessor, indexedLineConsumers, cancellationToken)  
             { 
                 using (lineReader = lineReaderFactory(streamFactory))
-                    logProcessor.LoadCore.[T](indexedLineConsumers, lineReader, cancellationToken); 
+                {
+                    def lines  = lineReader :> IEnumerable[T];                        
+                    logProcessor.LoadCore.[T](indexedLineConsumers, lines, cancellationToken); 
+            
+                }
             }
             
             def CreateSubStream()
@@ -142,16 +146,17 @@ namespace LogGrok.LogParserBase
         [TraceMethod]               
         private LoadCore[T](
             indexedLineConsumers : IEnumerable[IIndexedLineConsumer], 
-            lineReader : ILineReader,
+            lineReader : IEnumerable[T],
             cancellationToken : CancellationToken) : void 
                 where T : ILine         
         {
             try
             {
+                def lineConsumers = indexedLineConsumers.ToList();
                 foreach (line in lineReader.TakeWhile(_ => !cancellationToken.IsCancellationRequested))
                 {
                     def index = _lineIndex.AddNextLine(line.Offset, line.EndOffset);
-                    foreach(indexedLineConsumer in indexedLineConsumers)
+                    foreach(indexedLineConsumer in lineConsumers)
                     {
                         indexedLineConsumer.Process(line, index);
                     }

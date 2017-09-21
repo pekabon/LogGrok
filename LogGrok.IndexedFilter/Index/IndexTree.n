@@ -15,11 +15,12 @@ namespace LogGrok.IndexedFilter.Index
         {
             _treeHead = TreeNode.Empty(pageFactory.NodeSize);
             _pageFactory =  pageFactory; 
+            _leafFactory = () => TreeNode.Leaf(_pageFactory.Create(), None());
         }
         
         public Add(value: int) : void
         {
-            _treeHead = _treeHead.Insert(Count, value, () => TreeNode.Leaf(_pageFactory.Create(), None()));
+            _treeHead = _treeHead.Insert(Count, value, _leafFactory);
             Count++;
         }
         
@@ -56,5 +57,6 @@ namespace LogGrok.IndexedFilter.Index
         
         private mutable _treeHead : TreeNode;
         private _pageFactory : PageFactory[int, int, byte];
+        private _leafFactory : void ->TreeNode.Leaf;
     }
 }

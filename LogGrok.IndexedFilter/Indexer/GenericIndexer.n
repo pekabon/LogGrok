@@ -33,36 +33,39 @@ namespace LogGrok.IndexedFilter.Indexer
 
         public Process[T](line : T, index : int) : void where T : ILine
         {
-            def keyBytes = array(_keyFields.Length);
-
-            foreach (keyField in _keyFields with idx)
+            unchecked
             {
-                // TODO: fix compilation line[keyField]
-                def component = line.Item[keyField];
-                def components = _componentsMap[keyField];
-                def (localComponent, isNewComponent) = components.Insert(component);
+                def keyBytes = array(_keyFields.Length);
                 
-                keyBytes[idx] = localComponent;
+                foreach (keyField in _keyFields with idx)
+                {
+                    // TODO: fix compilation line[keyField]
+                    def component = line.Item[keyField];
+                    def components = _componentsMap[keyField];
+                    def (localComponent, isNewComponent) = components.Insert(component);
                 
-                when(isNewComponent)
-                    NewComponentFound(keyField, localComponent);
+                    keyBytes[idx] = localComponent;
+                
+                    when(isNewComponent)
+                        NewComponentFound(keyField, localComponent);
+                }
+                
+                def key = ByteKey(keyBytes);
+                
+                unless(key.Equals(_cachedKey))
+                {
+                    _cachedKey = key;
+                    _cachedIndex = _indices.GetOrAdd(key, _indexTreeFactory);
+                }
+
+                _cachedIndex.Add(index);
+                _lastIndex = index;
+
+                _countsIndex.Add(index, _indices);
             }
-
-            
-            def key = ByteKey(keyBytes);
-            unless (key.Equals(_cachedKey))
-            {
-                _cachedKey = key;
-                _cachedIndex = _indices.GetOrAdd(key, _ => IndexTree(_pageFactory));
-            }
-
-            def indexTree = _cachedIndex;
-
-            indexTree.Add(index);
-            _lastIndex = index;
-
-            _countsIndex.Add(index, _indices);
         }
+        
+        private _indexTreeFactory : Func[ByteKey, IndexTree] =  _ => IndexTree(_pageFactory);
 
         public event NewComponentFound : Action[string, TextRange];
 
@@ -248,7 +251,7 @@ namespace LogGrok.IndexedFilter.Indexer
                 {
                     mutable localComponent;
                     def isNewComponent = !_components.TryGetValue(newComponent, out localComponent);
-                    
+
                     _last = 
                         if(isNewComponent)
                         {

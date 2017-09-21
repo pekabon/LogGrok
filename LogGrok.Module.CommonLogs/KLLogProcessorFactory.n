@@ -1,0 +1,84 @@
+﻿using Nemerle.Assertions;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text.RegularExpressions;
+
+using Microsoft.Practices.Unity;
+using System.IO;
+
+using LogGrok.Core;
+using LogGrok.Core.EncodingDetector;
+using LogGrok.LogParserBase;
+using LogGrok.RegexParser;
+
+namespace LogGrok.Module.CommonLogs
+{
+    [Record]
+    internal class KLLogProcessorFactory: BaseLogProcessorFactory
+    {
+        public override Create([NotNullOrEmpty] name : string, [NotNull] streamFactory : void -> Stream, [NotNull] container : IUnityContainer,
+                            startOffset : long, endOffset : long) : option[ILogProcessor * MetaInformation]
+        {
+            try
+            {
+                def encoding = DetectEncoding(streamFactory());
+                
+                if (!CheckFormat(streamFactory, encoding))
+                {
+                    None()
+                }
+                else
+                {
+                    def processor = LogProcessor.CreateInstance.[RegexLineReader.RegexBasedLine](name, 
+                                    streamFactory, 
+                                    sf => RegexLineReader(Func.[Stream](sf), encoding, Regexes, MetaInformation), 
+                                    FileSearcher.GetOffsets(encoding, _, _, _, _) , _ => None(), 
+                                    container, 
+                                    startOffset, 
+                                    endOffset);
+
+                    Some((processor, MetaInformation))
+                }
+            }
+            catch 
+            {
+                | _ => None()
+            }
+        }
+
+        private CheckFormat(streamFactory: void -> Stream, encoding : System.Text.Encoding) : bool
+        {
+            
+            def streamReader = BufferStreamReader(streamFactory(), encoding);
+            
+            def probe = 256;
+            
+            def lines = streamReader
+                            .ReadStrings()
+                            .Take(probe)
+                            .ToList();
+            
+            lines.Where(s => Regexes.Where(r => r.IsMatch(s)).Any()).Count() > lines.Count/2
+            
+        }
+        
+        private static Regexes : list[Regex] =
+            [
+                Regex(<#(?<Timestamp>\d{2}:\d{2}:\d{2}\.\d{3})\t0x(?<Thread>[^\t]+)\t(?<Severity>[^\t]+)\t(?<Component>[^\t]*)\t(?<Text>.*)#>, RegexOptions.Compiled | RegexOptions.Singleline)
+                //Regex(<#^MSI (?<Source>\(\w\)) \((?<Process>\d{2}|\w{2})[:|\!](?<Thread>\d{2}|\w{2})\) \[(?<Timestamp>\d{2}:\d{2}:\d{2}:\d{3})\]:\s?(?<Text>.*)#>, RegexOptions.Compiled | RegexOptions.Singleline),
+                //Regex(<#^(?<Text>(=== Verbose|=== Logging|Action|Property\(.\)).*)#>, RegexOptions.Compiled | RegexOptions.Singleline),
+            ];
+
+
+        public static MetaInformation : MetaInformation = CreateMetaInformation(
+            "AVP tra",
+            [("Timestamp", false), ("Thread", true), ("Severity", true), ("Component", true), ("Text" , false)],
+            //MsiLineReader.GetFields(),
+            Uri($"pack://application:,,,/$(typeof(MsiLogProcessorFactory).Assembly.GetName().Name);component/resources/MSIColors.json"));
+    }
+}
