@@ -24,7 +24,8 @@ namespace LogGrok.IndexedFilter.Indexer
     {
         public this(meta : MetaInformation)
         {
-            _keyFields = meta.Fields.Where(_.IsIndexed).Select(_.FieldName).ToList().ToNList();
+            _keyFields = meta.Fields.Where(_.IsIndexed).Select(_.FieldName).ToList();
+            _keyBytes = array(_keyFields.Count);
             _componentsMap = _keyFields.ToDictionary(k => k, _=> ComponentSet());
 
             NewComponentFound += (_, _) => {}
@@ -35,8 +36,6 @@ namespace LogGrok.IndexedFilter.Indexer
         {
             unchecked
             {
-                def keyBytes = array(_keyFields.Length);
-                
                 foreach (keyField in _keyFields with idx)
                 {
                     // TODO: fix compilation line[keyField]
@@ -44,13 +43,13 @@ namespace LogGrok.IndexedFilter.Indexer
                     def components = _componentsMap[keyField];
                     def (localComponent, isNewComponent) = components.Insert(component);
                 
-                    keyBytes[idx] = localComponent;
+                    _keyBytes[idx] = localComponent;
                 
                     when(isNewComponent)
                         NewComponentFound(keyField, localComponent);
                 }
                 
-                def key = ByteKey(keyBytes);
+                def key = ByteKey(_keyBytes);
                 
                 unless(key.Equals(_cachedKey))
                 {
@@ -65,7 +64,12 @@ namespace LogGrok.IndexedFilter.Indexer
             }
         }
         
-        private _indexTreeFactory : Func[ByteKey, IndexTree] =  _ => IndexTree(_pageFactory);
+        private mutable _keyBytes : array[TextRange];
+        private _indexTreeFactory : Func[ByteKey, IndexTree] =  _ => 
+            {
+                _keyBytes = array(_keyFields.Count);
+                IndexTree(_pageFactory);
+            }
 
         public event NewComponentFound : Action[string, TextRange];
 
@@ -283,7 +287,7 @@ namespace LogGrok.IndexedFilter.Indexer
         private _countsIndex : CountsIndex[ByteKey] = CountsIndex();
         private _componentsMap : Dictionary[string, ComponentSet] = Dictionary(); 
 
-        private _keyFields : list[string];
+        private _keyFields : List[string];
 
         private _pageFactory : PageFactory[int, int, byte]  = PageFactory(256); //TODO
 

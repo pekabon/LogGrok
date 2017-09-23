@@ -16,6 +16,7 @@ namespace LogGrok.Unsafe
         private readonly SimpleObjectPool<int[]> _intArrayPool = new SimpleObjectPool<int[]>(() => new int[16384]);
         private readonly int _maxResultSize;
         private Dictionary<string, int>[] _groupMappings;
+        private List<KeyValuePair<string, int>>[] _groupMappingList;
 
         private readonly Func<Match, int[][]> _matchesGetter  = GetFieldAccessor<Match, int[][]>("_matches");
 
@@ -41,6 +42,8 @@ namespace LogGrok.Unsafe
                         regex.GetGroupNames(),
                         regex.GetGroupNumbers(), Tuple.Create)
                     .ToDictionary(n => n.Item1, n => n.Item2)).ToArray();
+
+            _groupMappingList = _groupMappings.Select(s => s.ToList()).ToArray();
         }
     
 
@@ -80,7 +83,13 @@ namespace LogGrok.Unsafe
                 return _groupMappings[regexIndex];
             }
 
-            public Result(byte[] buffer, SimpleObjectPool<string> stringPool, SimpleObjectPool<int[]> intArrayPool, int maxResultSize, Dictionary<string, int>[] groupMappings)
+            public List<KeyValuePair<string, int>> GetGroupNameMappingList(int resultIndex)
+            {
+                var regexIndex = StringIndices[resultIndex * _maxResultSize];
+                return _groupMappingList[regexIndex];
+            }
+
+            public Result(byte[] buffer, SimpleObjectPool<string> stringPool, SimpleObjectPool<int[]> intArrayPool, int maxResultSize, Dictionary<string, int>[] groupMappings, List<KeyValuePair<string, int>>[] groupMappingList)
             {
                 Buffer = buffer;
                 ByteIndices = intArrayPool.Get();
@@ -90,6 +99,7 @@ namespace LogGrok.Unsafe
                 _intArrayPool = intArrayPool;
                 _maxResultSize = maxResultSize;
                 _groupMappings = groupMappings;
+                _groupMappingList = groupMappingList;
             }
 
             public override string ToString()
@@ -108,6 +118,7 @@ namespace LogGrok.Unsafe
             private readonly SimpleObjectPool<string> _stringPool;
             private readonly SimpleObjectPool<int[]> _intArrayPool;
             private readonly Dictionary<string, int>[] _groupMappings;
+            private List<KeyValuePair<string, int>>[] _groupMappingList;
             private readonly int _maxResultSize;
         }
 
@@ -116,7 +127,7 @@ namespace LogGrok.Unsafe
             if (from + len > buffer.Length)
                 throw new ArgumentOutOfRangeException(nameof(len));
 
-            var result = new Result(buffer, _stringPool, _intArrayPool, _maxResultSize, _groupMappings);
+            var result = new Result(buffer, _stringPool, _intArrayPool, _maxResultSize, _groupMappings, _groupMappingList);
             ProcessBuffer(buffer, from, len, result);
             return result;
         }

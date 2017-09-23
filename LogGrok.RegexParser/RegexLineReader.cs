@@ -18,7 +18,7 @@ namespace LogGrok.RegexParser
     {
         public struct RegexBasedLine : ILine
         {
-            public RegexBasedLine(StringStorage storage, int[] groups, int groupsOffset, Dictionary<string, int> groupNameMapping, long beginOffset, long endOffset)
+            public RegexBasedLine(StringStorage storage, int[] groups, int groupsOffset, List<KeyValuePair<string, int>> groupNameMapping, long beginOffset, long endOffset)
             {
                 _stringStorage = storage;
                 _groups = groups;
@@ -32,16 +32,17 @@ namespace LogGrok.RegexParser
             { 
                 get
                 {
-                    if (!_groupNameMapping.TryGetValue(s, out var groupNum))
+                    for(var groupNum = 0; groupNum < _groupNameMapping.Count; groupNum++)
                     {
-                        return TextRange.Empty;
+                        var kv = _groupNameMapping[groupNum];
+                        if (kv.Key != s) continue;
+                        var offset = groupNum * 2 + _groupsOffset;
+                        var start = _groups[offset];
+                        var len = _groups[offset + 1];
+                        var result = new TextRange(start, len, _stringStorage);
+                        return result;
                     }
-
-                    var offset = groupNum * 2 + _groupsOffset;
-                    var start = _groups[offset];
-                    var len = _groups[offset + 1];
-                    var result = new TextRange(start, len, _stringStorage);
-                    return result;
+                    return TextRange.Empty;
                 }
             }
 
@@ -82,7 +83,9 @@ namespace LogGrok.RegexParser
 
             private readonly int[] _groups;
             private readonly int _groupsOffset;
-            private readonly Dictionary<string, int> _groupNameMapping;
+
+            //private readonly Dictionary<string, int> _groupNameMapping;
+            private readonly List<KeyValuePair<string, int>> _groupNameMapping;
             private readonly long _beginOffset;
             private readonly long _endOffset;
             private readonly StringStorage _stringStorage;
@@ -241,7 +244,7 @@ namespace LogGrok.RegexParser
                     var lineLength = parseResult.GetLineLength(idx);
                     var position = bufferReadResult.Position;
                     var line = new RegexBasedLine(stringStorage, parseResult.StringIndices, parseResult.GetStringIndicesOffset(idx),
-                        parseResult.GetGroupNameMapping(idx), lineStart + position, lineStart + lineLength + position);
+                        parseResult.GetGroupNameMappingList(idx), lineStart + position, lineStart + lineLength + position);
                     list.Add(line);
                 }
                 return (list, parseResult);
