@@ -86,7 +86,6 @@
     <Reference Include="LogGrok.Core, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL" />
     <Reference Include="LogGrok.Diagnostics, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL" />
     <Reference Include="MahApps.Metro, Version=1.1.2.0, Culture=neutral, PublicKeyToken=f4fb5a3c4d1e5b4f, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
       <HintPath>..\packages\MahApps.Metro.1.1.2.0\lib\net45\MahApps.Metro.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Practices.Prism.Composition, Version=5.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
@@ -123,7 +122,7 @@
       <HintPath>..\packages\Unity.3.5.1404.0\lib\net45\Microsoft.Practices.Unity.RegistrationByConvention.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.VisualBasic" />
-    <Reference Include="Nemerle, Version=1.2.0.543, Culture=neutral, PublicKeyToken=e080a9c724e2bfcd, processorArchitecture=MSIL">
+    <Reference Include="Nemerle">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\..\..\Program Files (x86)\Nemerle\net-4.0\Nemerle.dll</HintPath>
     </Reference>
@@ -162,9 +161,7 @@
       <SubType>Code</SubType>
     </Compile>
     <None Include="LogGrok.Shell.Starter_TemporaryKey.pfx" />
-    <None Include="packages.config">
-      <SubType>Designer</SubType>
-    </None>
+    <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config">

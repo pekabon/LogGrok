@@ -69,7 +69,7 @@ namespace LogGrok.Module.CommonLogs
         
         private static Regexes : list[Regex] =
             [
-                Regex(<#(?<Timestamp>\d{2}:\d{2}:\d{2}\.\d{3})\t0x(?<Thread>[^\t]+)\t(?<Severity>[^\t]+)\t(?<Component>[^\t]*)\t(?<Text>.*)#>, RegexOptions.Compiled | RegexOptions.Singleline)
+                Regex(<#(?<Timestamp>\d{2}:\d{2}:\d{2}\.\d{3})\t0x(?<Thread>[^\t]+)\t(?<Severity>[^\t]+)\t+(?<Component>[^\t]*)\t(?<Text>.*)#>, RegexOptions.Compiled | RegexOptions.Singleline)
                 //Regex(<#^MSI (?<Source>\(\w\)) \((?<Process>\d{2}|\w{2})[:|\!](?<Thread>\d{2}|\w{2})\) \[(?<Timestamp>\d{2}:\d{2}:\d{2}:\d{3})\]:\s?(?<Text>.*)#>, RegexOptions.Compiled | RegexOptions.Singleline),
                 //Regex(<#^(?<Text>(=== Verbose|=== Logging|Action|Property\(.\)).*)#>, RegexOptions.Compiled | RegexOptions.Singleline),
             ];

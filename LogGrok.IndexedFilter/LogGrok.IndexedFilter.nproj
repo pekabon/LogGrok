@@ -78,6 +78,7 @@
       <Name>Microsoft.Practices.Prism.SharedInterfaces</Name>
       <AssemblyName>Microsoft.Practices.Prism.SharedInterfaces.dll</AssemblyName>
       <HintPath>..\packages\Prism.Mvvm.1.0.0\lib\net45\Microsoft.Practices.Prism.SharedInterfaces.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Practices.Prism.UnityExtensions, Version=5.0.1.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35">
       <Name>Microsoft.Practices.Prism.UnityExtensions</Name>

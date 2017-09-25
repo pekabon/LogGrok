@@ -11,6 +11,7 @@ using LogGrok.Unsafe;
 using System.Collections.Concurrent;
 using System.Threading.Tasks;
 using System.Threading;
+using System.Diagnostics;
 
 namespace LogGrok.RegexParser
 {
@@ -35,7 +36,7 @@ namespace LogGrok.RegexParser
                     for(var groupNum = 0; groupNum < _groupNameMapping.Count; groupNum++)
                     {
                         var kv = _groupNameMapping[groupNum];
-                        if (kv.Key != s) continue;
+                         if (kv.Key != s) continue;
                         var offset = groupNum * 2 + _groupsOffset;
                         var start = _groups[offset];
                         var len = _groups[offset + 1];
@@ -144,21 +145,61 @@ namespace LogGrok.RegexParser
             }
         }
 
+        private struct OnDisposeGuard : IDisposable
+        {
+            private readonly Action _action;
+            public OnDisposeGuard(Action action) { _action = action; }
+            public void Dispose() { _action(); }
+        }
+
         IEnumerable<RegexBasedLine> GetRegexBasedLineEnumerable()
         {
-            var taskCollection = new BlockingCollection<Task<(List<RegexBasedLine>, BufferParser.Result)>>(Environment.ProcessorCount*2);
-            Task.Factory.StartNew(() => ReadBuffers(taskCollection), TaskCreationOptions.LongRunning);
+            var cancellationTokenSource = new CancellationTokenSource();
 
-            foreach (var task in taskCollection.GetConsumingEnumerable())
+            using (var taskCollection = new BlockingCollection<Task<(List<RegexBasedLine>, BufferParser.Result)>>(Environment.ProcessorCount * 2))
             {
-                (var lineList, var parseResult) = task.Result;
+                var readTask = Task.Factory.StartNew(() => ReadBuffers(taskCollection, cancellationTokenSource.Token), cancellationTokenSource.Token);
 
-                using (parseResult)
-                    foreach (var line in lineList)
-                        yield return line;
+                void Cancel()
+                {
+                    try
+                    {
+                        if (!readTask.IsCompleted)
+                        {
+                            cancellationTokenSource.Cancel();
+                            readTask.Wait();
+                        }
+                    }
+                    catch (AggregateException excpt)
+                    {
+                        excpt.Handle(e => (e is OperationCanceledException) ? true : false);
+                    }
+                }
 
-                lineList.Clear();
-                _listPool.Release(lineList);
+                using (new OnDisposeGuard(() => Cancel()))
+                {
+                    foreach (var task in taskCollection.GetConsumingEnumerable())
+                    {
+                        List<RegexBasedLine> lineList = null;
+                        BufferParser.Result parseResult = null;
+
+                        try
+                        {
+                            (lineList, parseResult) = task.Result;
+                        }
+                        catch(OperationCanceledException)
+                        {
+                            break;
+                        }
+
+                        using (parseResult)
+                            foreach (var line in lineList)
+                                yield return line;
+
+                        lineList.Clear();
+                        _listPool.Release(lineList);
+                    }
+                }
             }
         }
 
@@ -251,62 +292,112 @@ namespace LogGrok.RegexParser
             }
         }
 
-        private void ReadBuffers(BlockingCollection<Task<(List<RegexBasedLine>, BufferParser.Result)>> taskCollection)
+        private List<Task> CreateParsingWorkers(BlockingCollection<(BufferReadResult, TaskCompletionSource<(List<RegexBasedLine>, BufferParser.Result)>)> parsingQueue, CancellationToken token)
+        {
+            Task CreateParsingTask()
+            {
+                return Task.Factory.StartNew(() =>
+                {
+                    try
+                    {
+                        var bufferParser = new BufferParser(_encoding, _threadLocalRegexes.Value);
+                        foreach (var item in parsingQueue.GetConsumingEnumerable(token))
+                        {
+                            (var bufferReadResult, var taskCompletionSource) = item;
+                            var parseResult = ParseBuffer(bufferParser, bufferReadResult);
+                            taskCompletionSource.SetResult(parseResult);
+                        }
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        Debug.WriteLine("Parsing task cancelled gracefully");
+                    }
+                }, token, TaskCreationOptions.LongRunning, TaskScheduler.Current);
+            }
+
+            return Enumerable.Range(0, Environment.ProcessorCount).Select(_ => CreateParsingTask()).ToList();
+        }
+
+        private void ReadBuffers(BlockingCollection<Task<(List<RegexBasedLine>, BufferParser.Result)>> taskCollection, CancellationToken token)
         {
             var stream = _streamFactory();
             SkipPreamble(stream);
             var position = stream.Position;
 
-            var parsingQueue = new BlockingCollection<(BufferReadResult, TaskCompletionSource<(List<RegexBasedLine>, BufferParser.Result)>)>();
-            for (var idx = 0; idx < Environment.ProcessorCount; idx++)
+            using (var parsingQueue = new BlockingCollection<(BufferReadResult, TaskCompletionSource<(List<RegexBasedLine>, BufferParser.Result)>)>())
             {
-                Task.Factory.StartNew(() =>
-                {
-                    var bufferParser = new BufferParser(_encoding, _threadLocalRegexes.Value);
+                var taskCreator = Task.Factory.StartNew(() => CreateParsingWorkers(parsingQueue, token), token);
 
-                    foreach (var item in parsingQueue.GetConsumingEnumerable())
+                var tsk = new Task(() => CreateParsingWorkers(parsingQueue, token), token);
+
+                using (new OnDisposeGuard(() => Task.WaitAll(taskCreator.Result.ToArray())))
+                {
+                    bool firstBuffer = true;
+                    void ParseSynchronously(byte[] buffer, int lastLineStart, long pos)
                     {
-                        (var bufferReadResult, var taskCompletionSource) = item;
+                        var bufferParser = new BufferParser(_encoding, _threadLocalRegexes.Value);
+                        var bufferReadResult = new BufferReadResult(_byteBufferPool, buffer, lastLineStart, pos);
+                        var taskCompletionSource = new TaskCompletionSource<(List<RegexBasedLine>, BufferParser.Result)>();
                         var parseResult = ParseBuffer(bufferParser, bufferReadResult);
                         taskCompletionSource.SetResult(parseResult);
+                        taskCollection.Add(taskCompletionSource.Task, token);
                     }
-                }, TaskCreationOptions.LongRunning);
-            }
 
-            void CreateParseTask(byte[] buffer, int lastLineStart, long pos)
-            {
-                var bufferReadResult = new BufferReadResult(_byteBufferPool, buffer, lastLineStart, pos);
-                var taskCompletionSource = new TaskCompletionSource<(List<RegexBasedLine>, BufferParser.Result)>();
-                parsingQueue.Add((bufferReadResult, taskCompletionSource));
-                taskCollection.Add(taskCompletionSource.Task);
-            }
-
-            while (position < stream.Length - _crSize)
-            {
-                var buffer = _byteBufferPool.Get();
-                var bytesRead = stream.Read(buffer, 0, buffer.Length);
-                var lastLineStart = FindLastLineStart(buffer, bytesRead);
-                if (lastLineStart > 0)
-                {
-                    CreateParseTask(buffer, lastLineStart, position);
-                    stream.Position = position + lastLineStart;
-                }
-                else
-                {
-                    if (bytesRead < buffer.Length)
+                    void PushToParsingQueue(byte[] buffer, int lastLineStart, long pos)
                     {
-                        CreateParseTask(buffer, bytesRead, position);
-                        break;
+                        if (firstBuffer)
+                        {
+                            ParseSynchronously(buffer, lastLineStart, pos);
+                            firstBuffer = false;
+                            return;
+                        }
+
+                        var bufferReadResult = new BufferReadResult(_byteBufferPool, buffer, lastLineStart, pos);
+                        var taskCompletionSource = new TaskCompletionSource<(List<RegexBasedLine>, BufferParser.Result)>();
+                        parsingQueue.Add((bufferReadResult, taskCompletionSource), token);
+                        taskCollection.Add(taskCompletionSource.Task, token);
                     }
 
-                    CreateParseTask(buffer, buffer.Length - 1024, position);
-                    stream.Position = position + buffer.Length - 1024;
-                }
-                position = stream.Position;
-            }
+                    bool ProcessNextBuffer(byte[] buffer, int toRead)
+                    {
+                        var bytesRead = stream.Read(buffer, 0, toRead);
+                        var lastLineStart = FindLastLineStart(buffer, bytesRead);
+                        if (lastLineStart > 0)
+                        {
+                            PushToParsingQueue(buffer, lastLineStart, position);
+                            stream.Position = position + lastLineStart;
+                        }
+                        else
+                        {
+                            if (bytesRead < toRead)
+                            {
+                                PushToParsingQueue(buffer, bytesRead, position);
+                                return false;
+                            }
 
-            parsingQueue.CompleteAdding();
-            taskCollection.CompleteAdding();
+                            // TODO: correct
+                            PushToParsingQueue(buffer, toRead - 1024, position);
+                            stream.Position = position + toRead - 1024;
+                        }
+                        position = stream.Position;
+                        return true;
+                    }
+
+                    ProcessNextBuffer(_byteBufferPool.Get(), 64 * 1024);
+
+                    while (position < stream.Length - _crSize 
+                        && !token.IsCancellationRequested)
+                    {
+                        var buffer = _byteBufferPool.Get();
+                        if (!ProcessNextBuffer(buffer, buffer.Length))
+                            break;
+
+                    }
+
+                    parsingQueue.CompleteAdding();
+                    taskCollection.CompleteAdding();
+                }
+            }
         }
 
         

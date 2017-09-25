@@ -33,7 +33,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Nemerle, Version=1.2.0.543, Culture=neutral, PublicKeyToken=e080a9c724e2bfcd, processorArchitecture=MSIL">
+    <Reference Include="Nemerle">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\..\..\Program Files (x86)\Nemerle\net-4.0\Nemerle.dll</HintPath>
     </Reference>

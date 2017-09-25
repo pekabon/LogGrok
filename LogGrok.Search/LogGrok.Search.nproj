@@ -87,6 +87,7 @@
       <Name>Microsoft.Practices.Prism.SharedInterfaces</Name>
       <AssemblyName>Microsoft.Practices.Prism.SharedInterfaces.dll</AssemblyName>
       <HintPath>..\packages\Prism.Mvvm.1.0.0\lib\net45\Microsoft.Practices.Prism.SharedInterfaces.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Practices.Prism.UnityExtensions, Version=5.0.1.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35">
       <Name>Microsoft.Practices.Prism.UnityExtensions</Name>
@@ -218,11 +219,6 @@
     <Folder Include="Themes\" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="packages.config">
-      <SubType>Content</SubType>
-    </Content>
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="..\LogGrok.Controls\LogGrok.Controls.nproj">
       <Name>LogGrok.Controls</Name>
       <Project>{d5607529-83ef-4f6c-bdbd-049b84ab5787}</Project>
@@ -263,6 +259,11 @@
       <Project>{5565dfb5-5d9e-43eb-834f-f4e9bfbb0104}</Project>
       <Private>True</Private>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="packages.config">
+      <SubType>Content</SubType>
+    </Content>
   </ItemGroup>
   <Import Project="$(Nemerle)\Nemerle.MSBuild.targets" />
   <Import Project="$(SolutionDir)\.nuget\NuGet.targets" Condition="Exists('$(SolutionDir)\.nuget\NuGet.targets')" />

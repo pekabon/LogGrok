@@ -78,6 +78,7 @@
       <Name>Microsoft.Practices.Prism.SharedInterfaces</Name>
       <AssemblyName>Microsoft.Practices.Prism.SharedInterfaces.dll</AssemblyName>
       <HintPath>..\packages\Prism.Mvvm.1.0.0\lib\net45\Microsoft.Practices.Prism.SharedInterfaces.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Practices.ServiceLocation, Version=1.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35">
       <Name>Microsoft.Practices.ServiceLocation</Name>
@@ -184,9 +185,6 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Content Include="packages.config">
-      <SubType>Content</SubType>
-    </Content>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\LogGrok.Core\LogGrok.Core.nproj">
@@ -204,6 +202,11 @@
       <Project>{236ada26-ef7b-4aa8-a1cf-1eb5f69d9a0d}</Project>
       <Private>True</Private>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="packages.config">
+      <SubType>Content</SubType>
+    </Content>
   </ItemGroup>
   <Import Project="$(Nemerle)\Nemerle.MSBuild.targets" />
   <PropertyGroup>

@@ -58,11 +58,6 @@
       <AssemblyName>MahApps.Metro.dll</AssemblyName>
       <HintPath>..\packages\MahApps.Metro.1.1.2.0\lib\net45\MahApps.Metro.dll</HintPath>
     </Reference>
-    <Reference Include="Nemerle.Wpf">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>$(Nemerle)\Nemerle.WPF.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
     <Reference Include="Microsoft.Practices.Prism.Composition, Version=5.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35">
       <Name>Microsoft.Practices.Prism.Composition</Name>
       <AssemblyName>Microsoft.Practices.Prism.Composition.dll</AssemblyName>
@@ -92,6 +87,7 @@
       <Name>Microsoft.Practices.Prism.SharedInterfaces</Name>
       <AssemblyName>Microsoft.Practices.Prism.SharedInterfaces.dll</AssemblyName>
       <HintPath>..\packages\Prism.Mvvm.1.0.0\lib\net45\Microsoft.Practices.Prism.SharedInterfaces.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Practices.Prism.UnityExtensions, Version=5.0.1.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35">
       <Name>Microsoft.Practices.Prism.UnityExtensions</Name>
@@ -117,6 +113,11 @@
       <Name>Microsoft.Practices.Unity.RegistrationByConvention</Name>
       <AssemblyName>Microsoft.Practices.Unity.RegistrationByConvention.dll</AssemblyName>
       <HintPath>..\packages\Unity.3.5.1404.0\lib\net45\Microsoft.Practices.Unity.RegistrationByConvention.dll</HintPath>
+    </Reference>
+    <Reference Include="Nemerle.Wpf">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>$(Nemerle)\Nemerle.WPF.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="mscorlib" />
     <Reference Include="Newtonsoft.Json, Version=6.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed">
@@ -313,9 +314,6 @@
     <Page Include="LogGridViewColumn.xaml">
       <SubType>Designer</SubType>
     </Page>
-    <Content Include="packages.config">
-      <SubType>Content</SubType>
-    </Content>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\LogGrok.Controls\LogGrok.Controls.nproj">
@@ -343,6 +341,11 @@
       <Project>{b5c80e41-f1f6-4ac0-a584-507808cba010}</Project>
       <Private>False</Private>
     </MacroProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="packages.config">
+      <SubType>Content</SubType>
+    </Content>
   </ItemGroup>
   <Import Project="$(Nemerle)\Nemerle.MSBuild.targets" />
   <Import Project="$(SolutionDir)\.nuget\NuGet.targets" Condition="Exists('$(SolutionDir)\.nuget\NuGet.targets')" />

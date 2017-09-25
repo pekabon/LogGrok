@@ -76,6 +76,7 @@
       <Name>Microsoft.Practices.Prism.SharedInterfaces</Name>
       <AssemblyName>Microsoft.Practices.Prism.SharedInterfaces.dll</AssemblyName>
       <HintPath>..\packages\Prism.Mvvm.1.0.0\lib\net45\Microsoft.Practices.Prism.SharedInterfaces.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Practices.Prism.UnityExtensions, Version=5.0.1.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35">
       <Name>Microsoft.Practices.Prism.UnityExtensions</Name>
@@ -108,11 +109,6 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="mscorlib" />
-    <Reference Include="Nemerle.Unsafe, Version=1.2.0.543, Culture=neutral, PublicKeyToken=e080a9c724e2bfcd">
-      <Name>Nemerle.Unsafe</Name>
-      <AssemblyName>Nemerle.Unsafe.dll</AssemblyName>
-      <HintPath>..\..\..\..\Program Files (x86)\Nemerle\net-4.0\Nemerle.Unsafe.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
@@ -243,17 +239,17 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="packages.config">
-      <SubType>Content</SubType>
-    </Content>
-  </ItemGroup>
-  <ItemGroup>
     <Resource Include="Resources\GenericUTF16Colors.json" />
     <Resource Include="Resources\GenericUTF8Colors.json" />
     <Resource Include="Resources\MSIColors.json" />
     <Resource Include="Resources\NLogColors.json" />
     <Resource Include="Resources\VBColors.json" />
     <Resource Include="Resources\Log4NetColors.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="packages.config">
+      <SubType>Content</SubType>
+    </Content>
   </ItemGroup>
   <Import Project="$(Nemerle)\Nemerle.MSBuild.targets" />
   <Import Project="$(SolutionDir)\.nuget\NuGet.targets" Condition="Exists('$(SolutionDir)\.nuget\NuGet.targets')" />
