@@ -26,6 +26,8 @@ namespace LogGrok.IndexedFilter.Indexer
         {
             _keyFields = meta.Fields.Where(_.IsIndexed).Select(_.FieldName).ToList();
             _keyBytes = array(_keyFields.Count);
+            _keyBytes2 = array(_keyFields.Count);
+
             _componentsMap = _keyFields.ToDictionary(k => k, _=> ComponentSet());
 
             NewComponentFound += (_, _) => {}
@@ -53,6 +55,11 @@ namespace LogGrok.IndexedFilter.Indexer
                 
                 unless(key.Equals(_cachedKey))
                 {
+                    // BUG: _cached key uses the same buffer as temporary key
+                    def tmp = _keyBytes;
+                    _keyBytes = _keyBytes2;
+                    _keyBytes2 = tmp;
+                    
                     _cachedKey = key;
                     _cachedIndex = _indices.GetOrAdd(key, _indexTreeFactory);
                 }
@@ -65,6 +72,7 @@ namespace LogGrok.IndexedFilter.Indexer
         }
         
         private mutable _keyBytes : array[TextRange];
+        private mutable _keyBytes2 : array[TextRange];
         private _indexTreeFactory : Func[ByteKey, IndexTree] =  _ => 
             {
                 _keyBytes = array(_keyFields.Count);

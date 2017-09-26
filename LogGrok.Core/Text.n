@@ -94,7 +94,12 @@ namespace LogGrok.Core
         
         public ToString(begin : int, len : int) : string
         {
-            _storage.Substring(begin, len)
+            match (len)
+            {
+                | 0 => "Empty"
+                | -1 => "Invalid"
+                | _ => _storage.Substring(begin, len)
+            }
         }
         
         public CopyToLocalStorage(begin : int, len : int) : TextRange
@@ -184,7 +189,10 @@ namespace LogGrok.Core
         
         public override ToString() : string
         {
-            Storage.ToString(Begin, Length)
+            if (Storage == null)
+                "Uninitialized"
+            else
+                Storage.ToString(Begin, Length)
         }
         
         public override GetHashCode() : int
