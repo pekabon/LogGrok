@@ -143,10 +143,10 @@ namespace LogGrok.IndexedFilter
         private Subscribe(indexer : GenericIndexer,  syncContext : SynchronizationContext) : void
         {
             indexer.NewComponentFound += _ => 
-                                         syncContext.Post(_ => 
+                syncContext.Post(_ => 
                 {
-                                                          foreach(t in indexer.GetAllComponents(_componentKey).ToList().Except(Categories))
-                                                              AddNewCategory(t);
+                    foreach(t in indexer.GetAllComponents(_componentKey).ToList().Except(Categories))
+                        AddNewCategory(t);
                 }, null);
         }
 

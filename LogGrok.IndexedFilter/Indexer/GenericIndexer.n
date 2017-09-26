@@ -29,8 +29,7 @@ namespace LogGrok.IndexedFilter.Indexer
             _componentsMap = _keyFields.ToDictionary(k => k, _=> ComponentSet());
 
             NewComponentFound += (_, _) => {}
-            _cachedKey = ByteKey(_keyFields.Count);
-            _cachedKey.Commit();
+            _cachedKey = ByteKey.Invalid;
         }        
 
         public Process[T](line : T, index : int) : void where T : ILine
@@ -40,15 +39,7 @@ namespace LogGrok.IndexedFilter.Indexer
                 def key = ByteKey(_keyFields.Count);
                 foreach (keyField in _keyFields with idx)
                 {
-                    // TODO: fix compilation line[keyField]
-                    def component = line.Item[keyField];
-                    def components = _componentsMap[keyField];
-                    def (localComponent, isNewComponent) = components.Insert(component);
-                
-                    key[idx] = localComponent;
-                
-                    when(isNewComponent)
-                        NewComponentFound(keyField, localComponent);
+                    key[idx] = line.Item[keyField];
                 }
                 
                 unless(key.Equals(_cachedKey))
@@ -65,6 +56,16 @@ namespace LogGrok.IndexedFilter.Indexer
         
         private _indexTreeFactory : Func[ByteKey, ByteKey*IndexTree] =  (key) => 
         {
+            foreach (keyField in _keyFields with idx)
+            {
+                def component = key[idx];
+                def components = _componentsMap[keyField];
+                def (localComponent, isNewComponent) = components.Insert(component);
+                key[idx] = localComponent;
+                when(isNewComponent)
+                        NewComponentFound(keyField, localComponent);
+            }
+            
             key.Commit();
             (key, IndexTree(_pageFactory))
         }
@@ -253,25 +254,30 @@ namespace LogGrok.IndexedFilter.Indexer
                 }
                 else
                 {
-                    mutable localComponent;
-                    def isNewComponent = !_components.TryGetValue(newComponent, out localComponent);
-
-                    _last = 
-                        if(isNewComponent)
-                        {
-                            def localComponent = newComponent.MoveToLocalStorage();
-                            _ = _components.Add(localComponent, localComponent);
-                            localComponent
-                        }
-                        else
-                        {
-                            localComponent
-                        };
-                        
-                    (_last, isNewComponent)
+                    InsertSlow(newComponent);
                 }
             }
 
+            private InsertSlow(newComponent : TextRange) : TextRange*bool
+            {
+                mutable localComponent;
+                def isNewComponent = !_components.TryGetValue(newComponent, out localComponent);
+
+                _last = 
+                    if(isNewComponent)
+                    {
+                        def localComponent = newComponent.MoveToLocalStorage();
+                        _ = _components.Add(localComponent, localComponent);
+                        localComponent
+                    }
+                    else
+                    {
+                        localComponent
+                    };
+                        
+                (_last, isNewComponent)
+            }
+            
             public GetAllComponents() : IEnumerable[TextRange]
             {
                 _components.Keys

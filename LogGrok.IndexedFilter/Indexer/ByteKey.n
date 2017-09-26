@@ -23,7 +23,22 @@ namespace LogGrok.IndexedFilter.Indexer
             _start = _current;
             _length = length;
         }
-
+        
+        private this(start : int, length : int, data : array[TextRange])
+        {
+            _start = start;
+            _length = length;
+            _data = data;
+        }
+        
+        public static Invalid : ByteKey
+        {
+            get
+            {
+                ByteKey(0, -1, null)
+            }
+        }
+        
         public Item[index : int] : TextRange
         {
             get
