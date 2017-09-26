@@ -1,23 +1,54 @@
 ﻿using Nemerle;
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 
 using LogGrok.Core;
 
 namespace LogGrok.IndexedFilter.Indexer
 {
-    [Record]
+    
     public struct ByteKey : IEquatable[ByteKey]
     {
+        public this(length : int)
+        {
+            when (_current + length > _staticData.Length)
+            {
+                _staticData = array(2048);
+                _current = 0;
+            }
+            
+            _data = _staticData;
+            _start = _current;
+            _length = length;
+        }
+
+        public Item[index : int] : TextRange
+        {
+            get
+            {
+                _data[_start + index]
+            }
+            set
+            {
+                _data[_start + index] = value
+            }
+        }
+        
+        public Commit() : void
+        {
+            _current = _start + _length;
+        }
+        
         public override GetHashCode() : int
         {
             unchecked
             {
                 mutable result = 17;
-                for (mutable i = 0; i < _data.Length ; i++)
+                for (mutable i = 0; i < _length; i++)
                 {
-                    result = result * 31 + _data[i].GetHashCode();
+                    result = result * 31 + this[i].GetHashCode();
                 }
                 result
             }
@@ -25,27 +56,26 @@ namespace LogGrok.IndexedFilter.Indexer
         
         public Equals(otherKey : ByteKey) : bool
         {
-            if (otherKey._data.Length != _data.Length)
+            if (otherKey._length != _length)
                 false
             else
             {
                 mutable result = true;
                 mutable i =0;
-                def otherData = otherKey._data;
-                while (i < _data.Length && result)
+                while (i < _length && result)
                 {
-                    result = _data[i].Equals(otherData[i]);
-                    i ++;
+                    result = this[i].Equals(otherKey[i]);
+                    i++;
                 }
                 result
             }
         }
         
-        public GetComponent(i : int) : TextRange
-        {
-            _data[i]
-        }
-        
+        private _start : int;
+        private _length : int;
         private _data : array[TextRange];
+        
+        private static mutable _staticData : array[TextRange] = array(2048);
+        private static mutable _current : int =  0;
     }
 }

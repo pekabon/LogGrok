@@ -13,7 +13,7 @@ namespace LogGrok.IndexedFilter.Index.Counts
 {
     internal class CountsIndex[T]
     {
-        internal Add(lastIndex : int,  indices : IDictionary.[T, IndexTree]) : void
+        internal Add(lastIndex : int,  indices : IDictionary.[T, T*IndexTree]) : void
         {
             when ((lastIndex + 1) % Granularity == 0)
             {
@@ -21,14 +21,14 @@ namespace LogGrok.IndexedFilter.Index.Counts
             }
         }
         
-        internal Finish(indices : IDictionary.[T, IndexTree]) : void
+        internal Finish(indices : IDictionary.[T, T*IndexTree]) : void
         {
             Snapshot(indices)
         }
         
-        private Snapshot(indices : IDictionary.[T, IndexTree]) : void
+        private Snapshot(indices : IDictionary.[T, T*IndexTree]) : void
         {
-            _countIndices.Add(indices.Select(kv => (kv.Key, kv.Value.Count)).ToList());
+            _countIndices.Add(indices.Select(kv => (kv.Key, kv.Value[1].Count)).ToList());
         }
         
         public Granularity : int { get { 65536 } }
@@ -36,7 +36,5 @@ namespace LogGrok.IndexedFilter.Index.Counts
         public CountIndices : ConcurrentList.[List[(T) * int]] { get { _countIndices } } 
         
         public _countIndices : ConcurrentList.[List[(T) * int]] = ConcurrentList.[List[(T) * int]]();
-        
-        
     }
 }

@@ -25,19 +25,19 @@ namespace LogGrok.IndexedFilter.Indexer
         public this(meta : MetaInformation)
         {
             _keyFields = meta.Fields.Where(_.IsIndexed).Select(_.FieldName).ToList();
-            _keyBytes = array(_keyFields.Count);
-            _keyBytes2 = array(_keyFields.Count);
 
             _componentsMap = _keyFields.ToDictionary(k => k, _=> ComponentSet());
 
             NewComponentFound += (_, _) => {}
-            _cachedKey = ByteKey(array[TextRange.Invalid]);
+            _cachedKey = ByteKey(_keyFields.Count);
+            _cachedKey.Commit();
         }        
 
         public Process[T](line : T, index : int) : void where T : ILine
         {
             unchecked
             {
+                def key = ByteKey(_keyFields.Count);
                 foreach (keyField in _keyFields with idx)
                 {
                     // TODO: fix compilation line[keyField]
@@ -45,23 +45,15 @@ namespace LogGrok.IndexedFilter.Indexer
                     def components = _componentsMap[keyField];
                     def (localComponent, isNewComponent) = components.Insert(component);
                 
-                    _keyBytes[idx] = localComponent;
+                    key[idx] = localComponent;
                 
                     when(isNewComponent)
                         NewComponentFound(keyField, localComponent);
                 }
                 
-                def key = ByteKey(_keyBytes);
-                
                 unless(key.Equals(_cachedKey))
                 {
-                    // BUG: _cached key uses the same buffer as temporary key
-                    def tmp = _keyBytes;
-                    _keyBytes = _keyBytes2;
-                    _keyBytes2 = tmp;
-                    
-                    _cachedKey = key;
-                    _cachedIndex = _indices.GetOrAdd(key, _indexTreeFactory);
+                    (_cachedKey, _cachedIndex) = _indices.GetOrAdd(key, _indexTreeFactory);
                 }
 
                 _cachedIndex.Add(index);
@@ -71,13 +63,11 @@ namespace LogGrok.IndexedFilter.Indexer
             }
         }
         
-        private mutable _keyBytes : array[TextRange];
-        private mutable _keyBytes2 : array[TextRange];
-        private _indexTreeFactory : Func[ByteKey, IndexTree] =  _ => 
-            {
-                _keyBytes = array(_keyFields.Count);
-                IndexTree(_pageFactory);
-            }
+        private _indexTreeFactory : Func[ByteKey, ByteKey*IndexTree] =  (key) => 
+        {
+            key.Commit();
+            (key, IndexTree(_pageFactory))
+        }
 
         public event NewComponentFound : Action[string, TextRange];
 
@@ -98,15 +88,15 @@ namespace LogGrok.IndexedFilter.Indexer
         {
             def componentIndex =  _keyFields.IndexOf(componentKey);
             
-            _indices.Select(keyValuePair => keyValuePair.Key.GetComponent(componentIndex)).Distinct().ToArray()
+            _indices.Select(keyValuePair => keyValuePair.Key[componentIndex]).Distinct().ToArray()
         }
 
         public GetIndexCountForComponent(componentKey : string, componentValue : TextRange) : int
         {
             def componentIndex = _keyFields.IndexOf(componentKey);
             _indices
-                .Where(keyValuePair => keyValuePair.Key.GetComponent(componentIndex).Equals(componentValue))
-                .Sum(kv => kv.Value.Count)
+                .Where(keyValuePair => keyValuePair.Key[componentIndex].Equals(componentValue))
+                .Sum(kv => kv.Value[1].Count)
         }
         
         public GetFilteredIndices(excludedComponents : Dictionary[string, array[TextRange]]) : IEnumerable[int]
@@ -147,9 +137,10 @@ namespace LogGrok.IndexedFilter.Indexer
                 }
             }
             
-            foreach (indexTree in GetActiveIndicies(excludedComponents))
+            foreach (kv in GetActiveIndicies(excludedComponents))
             {
-                TryAdd(cursors, indexTree.Key, indexTree.Value.GetIndices().GetEnumerator());
+                def (_, indexTree) = kv.Value;
+                TryAdd(cursors, kv.Key, indexTree.GetIndices().GetEnumerator());
             }
 
             def indicesCollections = cursors.Values.Select(cursor=> cursor.GetNextChunk(lastIndex));
@@ -157,14 +148,14 @@ namespace LogGrok.IndexedFilter.Indexer
             (CollectionUtils.MergeSorted(indicesCollections,  (i1, i2) => i2 == i1 + 1), cursors)
         }
         
-        private GetActiveIndicies(excludedComponents : Dictionary[string, array[TextRange]]) : IEnumerable[KeyValuePair[ByteKey, IndexTree]]
+        private GetActiveIndicies(excludedComponents : Dictionary[string, array[TextRange]]) : IEnumerable[KeyValuePair[ByteKey, ByteKey*IndexTree]]
         {
             def excludedComponentsByIndex = excludedComponents.Select(
                     keyValuePair => new (ComponentIndex = _keyFields.IndexOf(keyValuePair.Key), ExcludedComponentValues = keyValuePair.Value));
                 
             _indices.Where(kv =>
                 excludedComponentsByIndex.All(
-                    c => !c.ExcludedComponentValues.Contains(kv.Key.GetComponent(c.ComponentIndex))));
+                    c => !c.ExcludedComponentValues.Contains(kv.Key[c.ComponentIndex])));
         }
         
         private class Fetcher : IItemProvider[int]
@@ -179,7 +170,7 @@ namespace LogGrok.IndexedFilter.Indexer
                 
                 def predicate = key : ByteKey =>
                     excludedComponentsByIndex.All(
-                    c => !c.ExcludedComponentValues.Contains(key.GetComponent(c.ComponentIndex)));
+                    c => !c.ExcludedComponentValues.Contains(key[c.ComponentIndex]));
                     
                     
                 _countsIndexer = 
@@ -234,11 +225,12 @@ namespace LogGrok.IndexedFilter.Indexer
                 def indices = 
                     _countsIndexer.GetAllKeys().Select(key =>
                         {
-                            mutable startPosition;
+                            mutable startPosition;;
+                            def (_, indices) = _indexer._indices[key];
                             if (startIndices.TryGetValue(key, out startPosition))
-                                KeyValuePair(key, _indexer._indices[key].GetIndices(startPosition))
+                                KeyValuePair(key, indices.GetIndices(startPosition))
                             else
-                                KeyValuePair(key, _indexer._indices[key].GetIndices())
+                                KeyValuePair(key, indices.GetIndices())
                         });
                         
                 CollectionUtils.MergeSorted(indices.Select(kv => kv.Value), (i1, i2) => i2 == i1 + 1)
@@ -291,7 +283,7 @@ namespace LogGrok.IndexedFilter.Indexer
         }
 
   
-        private _indices = ConcurrentDictionary.[ByteKey, IndexTree]();
+        private _indices = ConcurrentDictionary.[ByteKey, ByteKey*IndexTree]();
         private _countsIndex : CountsIndex[ByteKey] = CountsIndex();
         private _componentsMap : Dictionary[string, ComponentSet] = Dictionary(); 
 
