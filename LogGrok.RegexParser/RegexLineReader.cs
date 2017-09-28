@@ -15,6 +15,23 @@ using System.Diagnostics;
 
 namespace LogGrok.RegexParser
 {
+    internal static class ExceptionExtensions
+    {
+        public static bool IsCancelException(this Exception ex)
+        {
+            switch (ex)
+            {
+                case OperationCanceledException _:
+                    return true;
+                case AggregateException agg:
+                    return agg.InnerExceptions.Aggregate(true, (b, exception) => b && exception.IsCancelException());
+               default:
+                   return false;
+            }
+        }
+
+    }
+
     public class RegexLineReader : ILineReader, IEnumerable<RegexLineReader.RegexBasedLine>
     {
         public struct RegexBasedLine : ILine
@@ -92,9 +109,8 @@ namespace LogGrok.RegexParser
             private readonly StringStorage _stringStorage;
         }
 
-        public RegexLineReader(Func<Stream> streamFactory, Encoding encoding, IEnumerable<Regex> regexes, MetaInformation meta)
+        public RegexLineReader(Func<Stream> streamFactory, Encoding encoding, IEnumerable<Regex> regexes)
         {
-            _meta = meta;
             _encoding = encoding;
             _lineStream = streamFactory();
             _streamFactory = streamFactory;
@@ -151,8 +167,7 @@ namespace LogGrok.RegexParser
             public OnDisposeGuard(Action action) { _action = action; }
             public void Dispose() { _action(); }
         }
-
-        IEnumerable<RegexBasedLine> GetRegexBasedLineEnumerable()
+        private IEnumerable<RegexBasedLine> GetRegexBasedLineEnumerable()
         {
             var cancellationTokenSource = new CancellationTokenSource();
 
@@ -164,24 +179,28 @@ namespace LogGrok.RegexParser
                 {
                     try
                     {
-                        if (!readTask.IsCompleted)
-                        {
-                            cancellationTokenSource.Cancel();
-                            readTask.Wait();
-                        }
+                        Trace.TraceInformation($"Read enumerator dispose called; cancelling tasks...");
+                        if (readTask.IsCompleted) return;
+                        cancellationTokenSource.Cancel();
+                        readTask.Wait();
                     }
-                    catch (AggregateException excpt)
+                    catch (Exception excpt) when (excpt.IsCancelException())
                     {
-                        excpt.Handle(e => (e is OperationCanceledException) ? true : false);
+                        Trace.TraceInformation("Tasks gracefully cancelled.");
+                    }
+                    catch (Exception excpt)
+                    {
+                        Trace.TraceError($"Exception on cancellation: {excpt}");
+                        throw;
                     }
                 }
 
-                using (new OnDisposeGuard(() => Cancel()))
+                using (new OnDisposeGuard(Cancel))
                 {
                     foreach (var task in taskCollection.GetConsumingEnumerable())
                     {
-                        List<RegexBasedLine> lineList = null;
-                        BufferParser.Result parseResult = null;
+                        List<RegexBasedLine> lineList;
+                        BufferParser.Result parseResult;
 
                         try
                         {
@@ -332,7 +351,7 @@ namespace LogGrok.RegexParser
 
                 using (new OnDisposeGuard(() => Task.WaitAll(taskCreator.Result.ToArray())))
                 {
-                    bool firstBuffer = true;
+                    var firstBuffer = true;
                     void ParseSynchronously(byte[] buffer, int lastLineStart, long pos)
                     {
                         var bufferParser = new BufferParser(_encoding, _threadLocalRegexes.Value);
@@ -409,24 +428,23 @@ namespace LogGrok.RegexParser
 
             public string RawLine => string.Empty;
 
-            public long Offset { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
-            public long EndOffset { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+            public long Offset { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+            public long EndOffset { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
         }
 
         public const int ReadBufferSize = 4 * 1024 * 1024;
-        private SimpleObjectPool<byte[]> _byteBufferPool = new SimpleObjectPool<byte[]>(() => new byte[ReadBufferSize]);
-        private SimpleObjectPool<List<RegexBasedLine>> _listPool = new SimpleObjectPool<List<RegexBasedLine>>(() => new List<RegexBasedLine>());
-        private static ILine EmptyLine = new EmptyLinePrivate();
-        private MetaInformation _meta;
-        private Encoding _encoding;
-        private Stream _lineStream;
-        private Func<Stream> _streamFactory;
+        private readonly SimpleObjectPool<byte[]> _byteBufferPool = new SimpleObjectPool<byte[]>(() => new byte[ReadBufferSize]);
+        private readonly SimpleObjectPool<List<RegexBasedLine>> _listPool = new SimpleObjectPool<List<RegexBasedLine>>(() => new List<RegexBasedLine>());
+        private static readonly ILine EmptyLine = new EmptyLinePrivate();
+        private readonly Encoding _encoding;
+        private readonly Stream _lineStream;
+        private readonly Func<Stream> _streamFactory;
 
-        private ThreadLocal<Regex[]> _threadLocalRegexes;
-        private BufferParser _lineBufferParser;
+        private readonly ThreadLocal<Regex[]> _threadLocalRegexes;
+        private readonly BufferParser _lineBufferParser;
 
-        private int _crSize;
-        private byte[] _nBytes;
-        private byte[] _rBytes;
+        private readonly int _crSize;
+        private readonly byte[] _nBytes;
+        private readonly byte[] _rBytes;
     }
 }

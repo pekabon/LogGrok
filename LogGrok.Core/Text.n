@@ -96,7 +96,7 @@ namespace LogGrok.Core
         {
             match (len)
             {
-                | 0 => "Empty"
+                | 0 => string.Empty;
                 | -1 => "Invalid"
                 | _ => _storage.Substring(begin, len)
             }

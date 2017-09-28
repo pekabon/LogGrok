@@ -5,6 +5,7 @@ using Nemerle.Utility;
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text.RegularExpressions;
 
@@ -36,7 +37,7 @@ namespace LogGrok.Module.CommonLogs
                 {
                     def processor = LogProcessor.CreateInstance.[RegexLineReader.RegexBasedLine](name, 
                                     streamFactory, 
-                                    sf => RegexLineReader(Func.[Stream](sf), encoding, Regexes, MetaInformation), 
+                                    sf => RegexLineReader(Func.[Stream](sf), encoding, Regexes), 
                                     FileSearcher.GetOffsets(encoding, _, _, _, _) , _ => None(), 
                                     container, 
                                     startOffset, 
@@ -47,8 +48,18 @@ namespace LogGrok.Module.CommonLogs
             }
             catch 
             {
-                | _ => None()
+                | e => Trace.TraceInformation("Failed to create KLLogProcessorFactory."); ProcessException(e); None()
+                
             }
+        }
+        
+        private ProcessException(e : Exception) : void
+        {
+            | e is AggregateException => 
+                Trace.TraceInformation($"$e. \n Inner exceptions:\n");
+                foreach(ex in e.InnerExceptions)
+                    ProcessException(ex);
+            | _ => Trace.TraceInformation($"$e StackTrace: $(e.StackTrace)");
         }
 
         private CheckFormat(streamFactory: void -> Stream, encoding : System.Text.Encoding) : bool
