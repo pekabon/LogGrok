@@ -1,0 +1,19 @@
+LogGrok is the multi-file log viewer with customizable docking windows UI.
+[image:mainPage.jpg] 
+! Key Features:
+•	Large files support
+•	Search by any field (including RegEx)
+•	Multiple search results
+•	Filter the log by any field for MSI, VB, NLog and Log4Net/Log4j(with XmlLayout)
+•	Background and text colors customization
+•	File drag & drop support (including multiple files)
+•	Scratch pad for copying log entries
+•	Opening files partially
+•	Customizable docking windows UI
+•	Supports all types of logs
+
+*More info:* [url:https://loggrok.codeplex.com/documentation]
+
+Visit us at *Facebook:* [url:https://www.facebook.com/LogGrok]
+Submit your *Feedback:* [url:https://loggrok.uservoice.com/forums/263295-general]
+
