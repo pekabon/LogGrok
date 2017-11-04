@@ -12,7 +12,12 @@ LogGrok is the multi-file log viewer with customizable docking windows UI.
 •	Customizable docking windows UI
 •	Supports all types of logs
 
+# Download 
+
+ClickOnce installer is [here](https://raw.githubusercontent.com/pekabon/LogGrok/master/publish/setup.exe)
+
 **More info:** [docs/Documentation.md](docs/Documentation.md)
 
 Submit your **Feedback:** [https://loggrok.uservoice.com/forums/263295-general](https://loggrok.uservoice.com/forums/263295-general)
+
 
