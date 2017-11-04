@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <asmv1:assembly xsi:schemaLocation="urn:schemas-microsoft-com:asm.v1 assembly.adaptive.xsd" manifestVersion="1.0" xmlns:asmv1="urn:schemas-microsoft-com:asm.v1" xmlns="urn:schemas-microsoft-com:asm.v2" xmlns:asmv2="urn:schemas-microsoft-com:asm.v2" xmlns:xrml="urn:mpeg:mpeg21:2003:01-REL-R-NS" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:asmv3="urn:schemas-microsoft-com:asm.v3" xmlns:dsig="http://www.w3.org/2000/09/xmldsig#" xmlns:co.v1="urn:schemas-microsoft-com:clickonce.v1" xmlns:co.v2="urn:schemas-microsoft-com:clickonce.v2">
-  <assemblyIdentity name="LogGrok.Shell.Starter.application" version="1.0.0.765" publicKeyToken="0000000000000000" language="neutral" processorArchitecture="msil" xmlns="urn:schemas-microsoft-com:asm.v1" />
+  <assemblyIdentity name="LogGrok.Shell.Starter.application" version="1.0.0.766" publicKeyToken="0000000000000000" language="neutral" processorArchitecture="msil" xmlns="urn:schemas-microsoft-com:asm.v1" />
   <description asmv2:publisher="pekabon" asmv2:product="LogGrok.Shell.Starter" asmv2:supportUrl="https://loggrok.uservoice.com/" co.v1:errorReportUrl="https://loggrok.uservoice.com/" xmlns="urn:schemas-microsoft-com:asm.v1" />
   <deployment install="true" mapFileExtensions="true" trustURLParameters="true" co.v1:createDesktopShortcut="true">
     <subscription>
@@ -14,14 +14,14 @@
     <framework targetVersion="4.5" profile="Full" supportedRuntime="4.0.30319" />
   </compatibleFrameworks>
   <dependency>
-    <dependentAssembly dependencyType="install" codebase="Application Files\LogGrok.Shell.Starter_1_0_0_765\LogGrok.Shell.Starter.exe.manifest" size="54600">
-      <assemblyIdentity name="LogGrok.Shell.Starter.exe" version="1.0.0.765" publicKeyToken="0000000000000000" language="neutral" processorArchitecture="msil" type="win32" />
+    <dependentAssembly dependencyType="install" codebase="Application Files\LogGrok.Shell.Starter_1_0_0_766\LogGrok.Shell.Starter.exe.manifest" size="54600">
+      <assemblyIdentity name="LogGrok.Shell.Starter.exe" version="1.0.0.766" publicKeyToken="0000000000000000" language="neutral" processorArchitecture="msil" type="win32" />
       <hash>
         <dsig:Transforms>
           <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
         </dsig:Transforms>
         <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha256" />
-        <dsig:DigestValue>8zWBeCHreQN2hUVG6aG0UDMJb7hEDof66iRCUytAfNo=</dsig:DigestValue>
+        <dsig:DigestValue>LxnIjFTiUZ+zYEOIkVFMVDiA4jARsjFfTvYnJ3WuBFQ=</dsig:DigestValue>
       </hash>
     </dependentAssembly>
   </dependency>

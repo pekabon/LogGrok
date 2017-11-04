@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<configuration>
+
+  
+  
+
+  <configSections>
+    <section name="nlog" type="NLog.Config.ConfigSectionHandler, NLog"/>
+    <sectionGroup name="userSettings" type="System.Configuration.UserSettingsGroup, System, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" >
+      <section name="LogGrok.Resources.Properties.Settings" type="System.Configuration.ClientSettingsSection, System, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" allowExeDefinition="MachineToLocalUser" requirePermission="false" />
+    </sectionGroup>
+  </configSections>
+
+  <userSettings>
+    <LogGrok.Resources.Properties.Settings>
+      <setting name="MainViewHeightSetting" serializeAs="String">
+        <value>2*</value>
+      </setting>
+      <setting name="SearchViewHeightSetting" serializeAs="String">
+        <value>*</value>
+      </setting>
+    </LogGrok.Resources.Properties.Settings>
+  </userSettings>
+
+  <startup>
+    <supportedRuntime version="v4.0" sku=".NETFramework,Version=v4.5" />
+  </startup>
+
+  <nlog xmlns="http://www.nlog-project.org/schemas/NLog.xsd"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        throwExceptions="false" internalLogToConsoleError="true" internalLogLevel="Warn">
+    <extensions>
+      <add assembly="LogGrok.Diagnostics" />
+    </extensions>
+    <variable name="logDirectory" value="${environment:ALLUSERSPROFILE}/LogGrok/"/>
+    <variable name="tab" value="${literal:text=\t}"/>
+    <variable name="messageLayout"
+              value="${date:format=HH\:mm\:ss.fff}${tab}${processid}${tab}0x${threadid:format=X8}${tab}${event-context:item=levelShort}${tab}${event-context:item=component}${tab}${message}"/>
+    <variable name="logfilename"
+                value="LogGrok-${filesystem-normalize:inner=${windows-identity}}${IsElevated}" />
+    <!-- <target fileName="${logDirectory}/LogGrok_${cached:inner=${date:format=MM.dd_HH.mm}}_${processid}.log" -->
+    <targets>
+      <target name="file"
+              xsi:type="File"
+              createDirs="true"
+              fileName="${logDirectory}/${logfilename}.log"
+              layout="${messageLayout}"
+              encoding="utf-8"
+              keepFileOpen="true"
+              autoFlush="true"
+              replaceFileContentsOnEachWrite="false"
+              concurrentWrites="true"
+              bufferSize="65536"
+              openFileCacheTimeout="5"
+              archiveEvery="Day"
+              maxArchiveFiles="10"
+              archiveFileName="${logDirectory}/${logfilename}_{#}.log"
+              archiveNumbering="Rolling">
+        <layout xsi:type="LayoutWithHeaderAndFooter">
+          <header xsi:type="SimpleLayout"
+                  text="LogGrok Log File${newline}Version: ${gdc:item=DeploymentVersion}${newline}Entry Assembly: ${gdc:item=EntryAssembly}${newline}Base Dir: ${basedir}${newline}${newline}"/>
+          <layout xsi:type="SimpleLayout" text="${messageLayout}" />
+          <footer xsi:type="SimpleLayout" text="END OF LOG${newline}"/>
+        </layout>
+      </target>
+      <target name="debugger"
+              xsi:type="Debugger"
+              layout="${messageLayout}"
+              />
+    </targets>
+    <rules>
+      <logger name="*" minlevel="Info" writeTo="file,debugger" />
+    </rules>
+  </nlog>
+
+</configuration>
