@@ -20,7 +20,7 @@
     <IsWebBootstrapper>true</IsWebBootstrapper>
     <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\</SolutionDir>
     <RestorePackages>true</RestorePackages>
-    <PublishUrl>C:\sources\LogGrok\bin\Release\ClickOnce\</PublishUrl>
+    <PublishUrl>..\publish\</PublishUrl>
     <Install>true</Install>
     <InstallFrom>Web</InstallFrom>
     <UpdateEnabled>true</UpdateEnabled>
@@ -30,15 +30,15 @@
     <UpdatePeriodically>false</UpdatePeriodically>
     <UpdateRequired>false</UpdateRequired>
     <MapFileExtensions>true</MapFileExtensions>
-    <InstallUrl>http://loggrok.codeplex.com/releases/clickonce/</InstallUrl>
+    <InstallUrl>https://raw.githubusercontent.com/pekabon/LogGrok/master/publish/</InstallUrl>
     <SupportUrl>https://loggrok.uservoice.com/</SupportUrl>
     <ErrorReportUrl>https://loggrok.uservoice.com/</ErrorReportUrl>
-    <PublisherName>despicable me</PublisherName>
+    <PublisherName>pekabon</PublisherName>
     <CreateWebPageOnPublish>true</CreateWebPageOnPublish>
     <WebPage>publish.htm</WebPage>
     <TrustUrlParameters>true</TrustUrlParameters>
-    <ApplicationRevision>763</ApplicationRevision>
-    <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
+    <ApplicationRevision>765</ApplicationRevision>
+    <ApplicationVersion>1.0.0.765</ApplicationVersion>
     <UseApplicationTrust>false</UseApplicationTrust>
     <CreateDesktopShortcut>true</CreateDesktopShortcut>
     <PublishWizardCompleted>true</PublishWizardCompleted>

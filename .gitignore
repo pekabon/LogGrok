@@ -1,3 +1,4 @@
+!publish/
 obj/
 bin/
 *.tmp_proj
