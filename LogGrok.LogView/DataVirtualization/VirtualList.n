@@ -41,7 +41,7 @@ namespace LogGrok.LogView.DataVirtualization
 		public GetEnumerablor() : IEnumerator[T]
             implements IEnumerable[T].GetEnumerator
 		{
-			foreach (index in [0 .. Count])
+			foreach (index in [0 .. Count - 1])
 			{
 				yield (this : IList[T])[index]
 			}
