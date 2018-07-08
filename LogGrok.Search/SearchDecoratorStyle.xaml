@@ -196,6 +196,33 @@
                                                                                                              RelativeSource={RelativeSource FindAncestor,
                                                                                                                                             AncestorType={x:Type ContextMenu}}}"
                                               Header="Add to scratch pad" />
+                                    <Separator 
+                                      Visibility="{Binding IsAnalyzatorLoaded,
+                                                               Mode=OneWay,
+                                                               Converter={StaticResource BooleanToVisibilityConverter}}"
+                                        />  
+                                    <MenuItem Command="{Binding AddAndAnalyzeToScratchPad}"
+                                              CommandParameter="{Binding PlacementTarget.Tag,
+                                                                                                             RelativeSource={RelativeSource FindAncestor,
+                                                                                                                                            AncestorType={x:Type ContextMenu}}}"
+                                      Visibility="{Binding IsAnalyzatorLoaded,
+                                                               Mode=OneWay,
+                                                               Converter={StaticResource BooleanToVisibilityConverter}}"
+                                              Header="Analyze selected" />
+
+                                    <MenuItem Command="{Binding AnalyzeAllToScratchPad}"
+                                              CommandParameter="{Binding PlacementTarget.Tag,
+                                                                                                             RelativeSource={RelativeSource FindAncestor,
+                                                                                                                                            AncestorType={x:Type ContextMenu}}}"
+                                      Visibility="{Binding IsAnalyzatorLoaded,
+                                                               Mode=OneWay,
+                                                               Converter={StaticResource BooleanToVisibilityConverter}}"
+                                              Header="Analyze all lines" />
+                                    <Separator
+                                      Visibility="{Binding IsAnalyzatorLoaded,
+                                                               Mode=OneWay,
+                                                               Converter={StaticResource BooleanToVisibilityConverter}}"
+                                        />
                                   </ContextMenu>
                                 </controls:VirtualizingStackPanel.ContextMenu>
                               </controls:VirtualizingStackPanel>
