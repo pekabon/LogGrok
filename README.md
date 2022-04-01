@@ -1,3 +1,7 @@
+
+# This repository is abandoned.
+## Development of the next version of Loggrok continues at https://github.com/pekabon/LogGrokCore
+
 LogGrok is the multi-file log viewer with customizable docking windows UI.
 ![](docs/Home_mainPage.jpg) 
 # Key Features:
