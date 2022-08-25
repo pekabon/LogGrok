@@ -318,6 +318,11 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\LogGrok.AutoAnalyzer\LogGrok.AutoAnalyzer.csproj">
+      <Name>LogGrok.AutoAnalyzer</Name>
+      <Project>{c121c9ef-d4dc-4aec-84d6-54ab45fa8863}</Project>
+      <Private>True</Private>
+    </ProjectReference>
     <ProjectReference Include="..\LogGrok.Controls\LogGrok.Controls.nproj">
       <Name>LogGrok.Controls</Name>
       <Project>{d5607529-83ef-4f6c-bdbd-049b84ab5787}</Project>

@@ -46,5 +46,16 @@ namespace LogGrok.Resources.Properties {
                 this["SearchViewHeightSetting"] = value;
             }
         }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("AnalyzeSettings.xml")]
+        public string AnalyzeSettingsFile
+        {
+            get
+            {
+                return ((string)(this["AnalyzeSettingsFile"]));
+            }
+        }
     }
 }

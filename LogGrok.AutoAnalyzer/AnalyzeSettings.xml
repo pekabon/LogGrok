@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<ItemsList>
+    <Item>
+        <Expression>ERR.*</Expression>
+        <Text>This is error</Text>
+    </Item>
+    <Item>
+        <Expression>FATAL</Expression>
+        <Text>This is fatal</Text>
+    </Item>
+</ItemsList>

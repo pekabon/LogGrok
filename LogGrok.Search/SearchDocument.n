@@ -38,7 +38,7 @@ namespace LogGrok.Search
                     [NotNull] filterManager : FilterManager, 
                     [NotNull] searchFilter : SearchFilter, 
                     [NotNull] scratchPad : IScratchPad,
-                    [NotNull] gridViewFactory : LogGridViewFactory,
+                     [NotNull] gridViewFactory : LogGridViewFactory,
                     [NotNull] lineViewModelProviderFactory : IItemProvider[int] -> IItemProvider[LineViewModel],
                     [NotNull] syncContext : SynchronizationContext)
         {
@@ -52,6 +52,12 @@ namespace LogGrok.Search
             
             AddToScratchPad = DelegateCommand(o => (o : IEnumerable[object]).Cast.[VirtualLineViewModel]().Iter(x => scratchPad.AddText(x.RawLine)) );
             AddSingleLineToScratchPad = DelegateCommand(o => AddToScratchPad.Execute([o]));
+
+            AddAndAnalyzeToScratchPad = DelegateCommand(o => (o : IEnumerable[object]).Cast.[VirtualLineViewModel]().Iter(x => scratchPad.AddAndAnalyzeText(x.RawLine)) );
+            AddAndAnalyzeSingleLineToScratchPad = DelegateCommand(o => AddAndAnalyzeToScratchPad.Execute([o]));
+            
+            AnalyzeAllToScratchPad = DelegateCommand(_ => SearchResults.Iter(ln => scratchPad.AddAndAnalyzeText(ln.RawLine)));
+            
             NavigateToIndex = DelegateCommand(
                 i : object => match(i) { 
                     | i is int => 
@@ -164,7 +170,18 @@ namespace LogGrok.Search
         
         public AddToScratchPad : ICommand { get; private set; }
         public AddSingleLineToScratchPad : ICommand { get; private set; }
+        public AddAndAnalyzeToScratchPad : ICommand { get; private set; }
+        public AddAndAnalyzeSingleLineToScratchPad : ICommand { get; private set; }
+        public AnalyzeAllToScratchPad : ICommand { get; private set; }
         public NavigateToIndex : ICommand { get; private set; }
+        
+        public IsAnalyzatorLoaded : bool
+        {
+            get 
+            { 
+                !AutoAnalyzer.SimpleLinesAnalyzer.Instance.IsEmpty()
+            }
+        }
         
         private _navigationService : ILogNavigation;
         private mutable _selectedValue : VirtualLineViewModel;    

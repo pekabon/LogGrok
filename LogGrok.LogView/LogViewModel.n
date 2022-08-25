@@ -109,6 +109,16 @@ namespace LogGrok.LogView
                 scratchPad.AddText(o.ToString())
             });
 
+            AddAndAnalyzeToScratchPad = DelegateCommand(o =>
+                            GetOrderedLineViewModels(o: IEnumerable[int]).Iter(ln => scratchPad.AddAndAnalyzeText(ln.RawLine)));
+
+            AddAndAnalyzeSingleLineToScratchPad = DelegateCommand(o : object => 
+            {
+                scratchPad.AddAndAnalyzeText(o.ToString())
+            });
+            
+            AnalyzeAllToScratchPad = DelegateCommand(_ => this.VirtualLines.Select(x=> x : VirtualLineViewModel).Iter(ln => scratchPad.AddAndAnalyzeText(ln.RawLine)));
+            
             _indexProvider = OriginalLineProvider(_documentLineProvider, _logInfo);
             
             UpdateLines();
@@ -346,6 +356,20 @@ namespace LogGrok.LogView
         public AddToScratchPad : ICommand { get; private set; }
         
         public AddSingleLineToScratchPad : ICommand { get; private set; }
+        
+        public AddAndAnalyzeToScratchPad : ICommand { get; private set; }
+        
+        public AddAndAnalyzeSingleLineToScratchPad : ICommand { get; private set; }
+        
+        public AnalyzeAllToScratchPad : ICommand { get; private set; }
+        
+        public IsAnalyzatorLoaded : bool
+        {
+            get 
+            { 
+                !AutoAnalyzer.SimpleLinesAnalyzer.Instance.IsEmpty()
+            }
+        }
         
         private GetComponentsInSelectedLines(componentKey : string) : IEnumerable[Text]
         {

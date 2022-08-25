@@ -21,6 +21,16 @@ namespace LogGrok.LogView
             TextAdded(this, EventArgs.Empty);
         }
         
+        virtual public AddAndAnalyzeText(text : string) : void
+        {
+        	mutable Tmp : string;
+        	if(AutoAnalyzer.SimpleLinesAnalyzer.Instance.TryToAnalyze(text, out Tmp))
+				Text += Tmp + "\t" + text + "\n";
+			else
+				0;
+            TextAdded(this, EventArgs.Empty);
+        }
+        
         public event TextAdded: EventHandler;
         
         public Text : string { get; private set }
